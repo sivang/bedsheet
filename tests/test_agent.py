@@ -4,7 +4,7 @@ from bedsheet.agent import Agent
 from bedsheet.action_group import ActionGroup
 from bedsheet.memory.in_memory import InMemory
 from bedsheet.testing import MockLLMClient, MockResponse
-from bedsheet.events import CompletionEvent, ToolCallEvent, ToolResultEvent
+from bedsheet.events import CompletionEvent, ToolCallEvent, ToolResultEvent, ErrorEvent
 from bedsheet.llm.base import ToolCall
 
 
@@ -206,3 +206,101 @@ async def test_agent_parallel_tool_calls():
     # If parallel, we'd see: start_SF, start_NYC, end_*, end_*
     assert execution_order[0].startswith("start_")
     assert execution_order[1].startswith("start_")
+
+
+@pytest.mark.asyncio
+async def test_agent_tool_error_recovery():
+    """Test that tool errors are passed to LLM for recovery."""
+    mock = MockLLMClient(responses=[
+        MockResponse(tool_calls=[
+            ToolCall(id="call_1", name="failing_tool", input={})
+        ]),
+        MockResponse(text="Sorry, the tool failed. Let me help another way."),
+    ])
+
+    agent = Agent(
+        name="TestAgent",
+        instruction="Be helpful.",
+        model_client=mock,
+    )
+
+    group = ActionGroup(name="Tools")
+
+    @group.action(name="failing_tool", description="A tool that fails")
+    async def failing_tool() -> str:
+        raise ValueError("Something went wrong!")
+
+    agent.add_action_group(group)
+
+    events = []
+    async for event in agent.invoke(session_id="test", input_text="Do something"):
+        events.append(event)
+
+    # Should have ToolCallEvent, ToolResultEvent (with error), CompletionEvent
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_results) == 1
+    assert tool_results[0].error == "Something went wrong!"
+    assert tool_results[0].result is None
+
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1
+
+
+@pytest.mark.asyncio
+async def test_agent_unknown_action():
+    """Test handling when LLM calls unknown action."""
+    mock = MockLLMClient(responses=[
+        MockResponse(tool_calls=[
+            ToolCall(id="call_1", name="nonexistent", input={})
+        ]),
+        MockResponse(text="I apologize, that action isn't available."),
+    ])
+
+    agent = Agent(
+        name="TestAgent",
+        instruction="Be helpful.",
+        model_client=mock,
+    )
+
+    events = []
+    async for event in agent.invoke(session_id="test", input_text="Do something"):
+        events.append(event)
+
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_results) == 1
+    assert "Unknown action: nonexistent" in tool_results[0].error
+
+
+@pytest.mark.asyncio
+async def test_agent_max_iterations():
+    """Test that max iterations stops infinite loops."""
+    # LLM always returns tool calls, never completes
+    mock = MockLLMClient(responses=[
+        MockResponse(tool_calls=[ToolCall(id=f"call_{i}", name="loop", input={})])
+        for i in range(20)
+    ])
+
+    agent = Agent(
+        name="TestAgent",
+        instruction="Be helpful.",
+        model_client=mock,
+        max_iterations=3,
+    )
+
+    group = ActionGroup(name="Tools")
+
+    @group.action(name="loop", description="Loops forever")
+    async def loop() -> str:
+        return "still going"
+
+    agent.add_action_group(group)
+
+    events = []
+    async for event in agent.invoke(session_id="test", input_text="Loop"):
+        events.append(event)
+
+    # Should hit max iterations and yield ErrorEvent
+    error_events = [e for e in events if isinstance(e, ErrorEvent)]
+    assert len(error_events) == 1
+    assert "Max iterations" in error_events[0].error
+    assert error_events[0].recoverable is False
