@@ -1,9 +1,11 @@
 import pytest
+import asyncio
 from bedsheet.agent import Agent
 from bedsheet.action_group import ActionGroup
 from bedsheet.memory.in_memory import InMemory
 from bedsheet.testing import MockLLMClient, MockResponse
-from bedsheet.events import CompletionEvent
+from bedsheet.events import CompletionEvent, ToolCallEvent, ToolResultEvent
+from bedsheet.llm.base import ToolCall
 
 
 def test_agent_creation():
@@ -110,3 +112,97 @@ async def test_agent_invoke_simple_completion():
     assert len(events) == 1
     assert isinstance(events[0], CompletionEvent)
     assert events[0].response == "Hello! How can I help you?"
+
+
+@pytest.mark.asyncio
+async def test_agent_invoke_with_tool_call():
+    """Test agent that calls a tool and then responds."""
+    mock = MockLLMClient(responses=[
+        MockResponse(tool_calls=[
+            ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
+        ]),
+        MockResponse(text="The weather in SF is sunny and 72°F."),
+    ])
+
+    agent = Agent(
+        name="WeatherAgent",
+        instruction="You help with weather.",
+        model_client=mock,
+    )
+
+    group = ActionGroup(name="Weather")
+
+    @group.action(name="get_weather", description="Get weather for a city")
+    async def get_weather(city: str) -> dict:
+        return {"city": city, "temp": 72, "condition": "sunny"}
+
+    agent.add_action_group(group)
+
+    events = []
+    async for event in agent.invoke(session_id="test-123", input_text="Weather in SF?"):
+        events.append(event)
+
+    # Should have: ToolCallEvent, ToolResultEvent, CompletionEvent
+    assert len(events) == 3
+
+    assert isinstance(events[0], ToolCallEvent)
+    assert events[0].tool_name == "get_weather"
+    assert events[0].tool_input == {"city": "SF"}
+
+    assert isinstance(events[1], ToolResultEvent)
+    assert events[1].call_id == "call_1"
+    assert events[1].result == {"city": "SF", "temp": 72, "condition": "sunny"}
+    assert events[1].error is None
+
+    assert isinstance(events[2], CompletionEvent)
+    assert "sunny" in events[2].response
+
+
+@pytest.mark.asyncio
+async def test_agent_parallel_tool_calls():
+    """Test agent executes multiple tool calls in parallel."""
+    mock = MockLLMClient(responses=[
+        MockResponse(tool_calls=[
+            ToolCall(id="call_1", name="get_weather", input={"city": "SF"}),
+            ToolCall(id="call_2", name="get_weather", input={"city": "NYC"}),
+        ]),
+        MockResponse(text="SF is sunny, NYC is cloudy."),
+    ])
+
+    agent = Agent(
+        name="WeatherAgent",
+        instruction="You help with weather.",
+        model_client=mock,
+    )
+
+    execution_order = []
+
+    group = ActionGroup(name="Weather")
+
+    @group.action(name="get_weather", description="Get weather")
+    async def get_weather(city: str) -> dict:
+        execution_order.append(f"start_{city}")
+        await asyncio.sleep(0.01)  # Small delay to verify parallel execution
+        execution_order.append(f"end_{city}")
+        return {"city": city, "temp": 72}
+
+    agent.add_action_group(group)
+
+    events = []
+    async for event in agent.invoke(session_id="test", input_text="Weather?"):
+        events.append(event)
+
+    # Should have: 2 ToolCallEvents, 2 ToolResultEvents, 1 CompletionEvent
+    tool_calls = [e for e in events if isinstance(e, ToolCallEvent)]
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+
+    assert len(tool_calls) == 2
+    assert len(tool_results) == 2
+    assert len(completions) == 1
+
+    # Verify parallel execution: both should start before either ends
+    # If sequential, we'd see: start_SF, end_SF, start_NYC, end_NYC
+    # If parallel, we'd see: start_SF, start_NYC, end_*, end_*
+    assert execution_order[0].startswith("start_")
+    assert execution_order[1].startswith("start_")

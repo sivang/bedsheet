@@ -1,8 +1,11 @@
 """Agent class - the main orchestrator."""
+import asyncio
+import json
 from typing import AsyncIterator
 
 from bedsheet.action_group import ActionGroup, Action
-from bedsheet.events import Event, CompletionEvent
+from bedsheet.events import Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent
+from bedsheet.exceptions import MaxIterationsError
 from bedsheet.llm.base import LLMClient, ToolDefinition
 from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
@@ -81,21 +84,92 @@ Current date: $current_datetime$
         # 2. Append user message
         user_message = Message(role="user", content=input_text)
         messages.append(user_message)
+        new_messages = [user_message]
 
         # 3. Get tool definitions
         tools = self.get_tool_definitions() or None
 
-        # 4. Call LLM
-        response = await self.model_client.chat(
-            messages=messages,
-            system=self._render_system_prompt(),
-            tools=tools,
+        # 4. Main loop
+        for iteration in range(self.max_iterations):
+            # Call LLM
+            response = await self.model_client.chat(
+                messages=messages,
+                system=self._render_system_prompt(),
+                tools=tools,
+            )
+
+            # If text response with no tool calls, we're done
+            if response.text and not response.tool_calls:
+                assistant_message = Message(role="assistant", content=response.text)
+                messages.append(assistant_message)
+                new_messages.append(assistant_message)
+
+                # Save all new messages to memory
+                await self.memory.add_messages(session_id, new_messages)
+
+                yield CompletionEvent(response=response.text)
+                return
+
+            # Handle tool calls
+            if response.tool_calls:
+                # Record assistant message with tool calls
+                assistant_message = Message(
+                    role="assistant",
+                    content=None,
+                    tool_calls=[
+                        {"id": tc.id, "name": tc.name, "input": tc.input}
+                        for tc in response.tool_calls
+                    ]
+                )
+                messages.append(assistant_message)
+                new_messages.append(assistant_message)
+
+                # Yield all tool call events first
+                for tool_call in response.tool_calls:
+                    yield ToolCallEvent(
+                        tool_name=tool_call.name,
+                        tool_input=tool_call.input,
+                        call_id=tool_call.id,
+                    )
+
+                # Execute all tool calls in parallel
+                async def execute_tool(tool_call):
+                    action = self.get_action(tool_call.name)
+                    if action is None:
+                        return tool_call.id, None, f"Unknown action: {tool_call.name}"
+                    try:
+                        result = await action.fn(**tool_call.input)
+                        return tool_call.id, result, None
+                    except Exception as e:
+                        return tool_call.id, None, str(e)
+
+                results = await asyncio.gather(*[
+                    execute_tool(tc) for tc in response.tool_calls
+                ])
+
+                # Yield results and build messages
+                for call_id, result, error in results:
+                    yield ToolResultEvent(
+                        call_id=call_id,
+                        result=result,
+                        error=error,
+                    )
+
+                    if error:
+                        content = f"Error: {error}"
+                    else:
+                        content = json.dumps(result) if not isinstance(result, str) else result
+
+                    tool_result_message = Message(
+                        role="tool_result",
+                        content=content,
+                        tool_call_id=call_id,
+                    )
+                    messages.append(tool_result_message)
+                    new_messages.append(tool_result_message)
+
+        # Max iterations reached
+        yield ErrorEvent(
+            error=f"Max iterations ({self.max_iterations}) exceeded",
+            recoverable=False,
         )
-
-        # 5. If text response, yield completion
-        if response.text and not response.tool_calls:
-            # Save messages to memory
-            assistant_message = Message(role="assistant", content=response.text)
-            await self.memory.add_messages(session_id, [user_message, assistant_message])
-
-            yield CompletionEvent(response=response.text)
