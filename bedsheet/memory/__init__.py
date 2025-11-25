@@ -1,5 +1,6 @@
 """Memory implementations for conversation persistence."""
 from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
+from bedsheet.memory.redis import RedisMemory
 
-__all__ = ["Memory", "Message", "InMemory"]
+__all__ = ["Memory", "Message", "InMemory", "RedisMemory"]
