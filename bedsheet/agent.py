@@ -1,7 +1,10 @@
 """Agent class - the main orchestrator."""
+from typing import AsyncIterator
+
 from bedsheet.action_group import ActionGroup, Action
+from bedsheet.events import Event, CompletionEvent
 from bedsheet.llm.base import LLMClient, ToolDefinition
-from bedsheet.memory.base import Memory
+from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
 
 
@@ -65,3 +68,34 @@ Current date: $current_datetime$
         for group in self._action_groups:
             tools.extend(group.get_tool_definitions())
         return tools
+
+    async def invoke(
+        self,
+        session_id: str,
+        input_text: str,
+    ) -> AsyncIterator[Event]:
+        """Invoke the agent with user input, yielding events as execution progresses."""
+        # 1. Load history from memory
+        messages = await self.memory.get_messages(session_id)
+
+        # 2. Append user message
+        user_message = Message(role="user", content=input_text)
+        messages.append(user_message)
+
+        # 3. Get tool definitions
+        tools = self.get_tool_definitions() or None
+
+        # 4. Call LLM
+        response = await self.model_client.chat(
+            messages=messages,
+            system=self._render_system_prompt(),
+            tools=tools,
+        )
+
+        # 5. If text response, yield completion
+        if response.text and not response.tool_calls:
+            # Save messages to memory
+            assistant_message = Message(role="assistant", content=response.text)
+            await self.memory.add_messages(session_id, [user_message, assistant_message])
+
+            yield CompletionEvent(response=response.text)

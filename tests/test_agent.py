@@ -3,6 +3,7 @@ from bedsheet.agent import Agent
 from bedsheet.action_group import ActionGroup
 from bedsheet.memory.in_memory import InMemory
 from bedsheet.testing import MockLLMClient, MockResponse
+from bedsheet.events import CompletionEvent
 
 
 def test_agent_creation():
@@ -86,3 +87,26 @@ def test_agent_get_action_not_found():
 
     action = agent.get_action("nonexistent")
     assert action is None
+
+
+@pytest.mark.asyncio
+async def test_agent_invoke_simple_completion():
+    """Test agent with LLM that returns text directly (no tool calls)."""
+    mock = MockLLMClient(responses=[
+        MockResponse(text="Hello! How can I help you?")
+    ])
+
+    agent = Agent(
+        name="TestAgent",
+        instruction="You are helpful.",
+        model_client=mock,
+    )
+
+    events = []
+    async for event in agent.invoke(session_id="test-123", input_text="Hi"):
+        events.append(event)
+
+    # Should have exactly one completion event
+    assert len(events) == 1
+    assert isinstance(events[0], CompletionEvent)
+    assert events[0].response == "Hello! How can I help you?"
