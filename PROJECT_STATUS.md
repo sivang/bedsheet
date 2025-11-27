@@ -23,16 +23,17 @@
 
 ## Roadmap
 
-### v0.2: Multi-Agent Collaboration (Next)
+### v0.2: Multi-Agent Collaboration (In Design)
 
 | Feature | Status | Priority |
 |---------|--------|----------|
-| Supervisor Agent | 🔮 Planned | High |
-| Supervisor-Router Mode | 🔮 Planned | High |
-| Collaborator Agents | 🔮 Planned | High |
-| Agent-to-Agent Data Handoff | 🔮 Planned | High |
-| Parallel Sub-Agent Execution | 🔮 Planned | Medium |
-| DelegationEvent, RoutingEvent | 🔮 Planned | Medium |
+| Supervisor Agent | 📐 Designed | High |
+| Supervisor Mode | 📐 Designed | High |
+| Router Mode | 📐 Designed | High |
+| Collaborator Agents | 📐 Designed | High |
+| Delegate Tool | 📐 Designed | High |
+| Parallel Delegation | 📐 Designed | Medium |
+| DelegationEvent, CollaboratorEvent, etc. | 📐 Designed | Medium |
 
 ### v0.3: Knowledge & Safety
 
@@ -55,7 +56,31 @@
 
 ---
 
+## v0.2 Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Supervisor class | Extends `Agent` | Reuse existing functionality, consistent API |
+| Collaboration modes | Both supervisor + router | Match AWS Bedrock, flexibility |
+| Delegation mechanism | Single `delegate` tool | Matches AWS `AgentCommunication::sendMessage` |
+| Parallel delegation | Supported | Delegate to multiple agents at once |
+| Memory sharing | Isolated per delegation | Simple, supervisor controls context |
+| Error handling | Pass to supervisor LLM | Consistent with v0.1 tool errors |
+| Event streaming | CollaboratorEvent wrapper | Full visibility into collaborator work |
+
+### New Events for v0.2
+
+- `RoutingEvent` - Router mode picks an agent
+- `DelegationEvent` - Supervisor delegates task(s)
+- `CollaboratorStartEvent` - Collaborator begins work
+- `CollaboratorEvent` - Wraps any event from collaborator
+- `CollaboratorCompleteEvent` - Collaborator finishes
+
+---
+
 ## Architecture
+
+### v0.1 (Current)
 
 ```
 bedsheet/
@@ -73,13 +98,20 @@ bedsheet/
     └── redis.py          # Redis storage
 ```
 
-### Planned for v0.2
+### v0.2 (Planned)
 
 ```
 bedsheet/
-├── supervisor.py         # Supervisor agent (extends Agent)
-├── collaboration.py      # Collaboration modes, routing
-└── events.py             # + DelegationEvent, RoutingEvent, CollaboratorResultEvent
+├── agent.py              # Agent class (unchanged)
+├── supervisor.py         # NEW: Supervisor class
+├── action_group.py       # ActionGroup (unchanged)
+├── events.py             # + new multi-agent events
+├── exceptions.py         # (unchanged)
+├── testing.py            # + MockSupervisor helpers
+├── llm/
+│   └── ...
+└── memory/
+    └── ...
 ```
 
 ---
@@ -94,9 +126,18 @@ bedsheet/
 4. **Parallel by default** - Multiple tool calls execute concurrently
 5. **Protocol-based extensibility** - Memory and LLMClient as protocols
 
+### v0.2 Decisions
+
+1. **Supervisor IS-A Agent** - Extend Agent rather than separate class hierarchy
+2. **Single delegate tool** - Match AWS's AgentCommunication::sendMessage pattern
+3. **Isolated memory** - Collaborators don't share supervisor's conversation
+4. **Error passback** - Collaborator errors go to supervisor LLM for handling
+5. **Full event streaming** - Wrap collaborator events for visibility
+
 ---
 
 ## Links
 
 - [v0.1 Design Doc](docs/plans/2025-11-25-bedsheet-v0.1-design.md)
 - [v0.1 Implementation Plan](docs/plans/2025-11-25-bedsheet-v0.1-implementation.md)
+- [v0.2 Multi-Agent Design Doc](docs/plans/2025-11-27-bedsheet-v0.2-multi-agent-design.md)
