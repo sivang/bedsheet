@@ -8,7 +8,7 @@ from bedsheet.action_group import ActionGroup
 from bedsheet.events import (
     Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent,
     CollaboratorStartEvent, CollaboratorEvent, CollaboratorCompleteEvent,
-    DelegationEvent,
+    DelegationEvent, RoutingEvent,
 )
 from bedsheet.llm.base import LLMClient
 from bedsheet.memory.base import Memory, Message
@@ -206,7 +206,43 @@ If no agent is appropriate, respond directly.
                         # Check for parallel delegation
                         delegations_input = tool_call.input.get("delegations")
 
-                        if delegations_input:
+                        # Router mode: direct handoff to one agent
+                        if self.collaboration_mode == "router" and not delegations_input:
+                            agent_name = tool_call.input.get("agent_name")
+                            task = tool_call.input.get("task")
+
+                            if agent_name not in self.collaborators:
+                                yield ToolResultEvent(
+                                    call_id=tool_call.id,
+                                    result=None,
+                                    error=f"Unknown agent: {agent_name}. Available: {list(self.collaborators.keys())}",
+                                )
+                                # Continue loop to let supervisor handle error
+                                tool_result_message = Message(
+                                    role="tool_result",
+                                    content=f"Unknown agent: {agent_name}. Available: {list(self.collaborators.keys())}",
+                                    tool_call_id=tool_call.id,
+                                )
+                                messages.append(tool_result_message)
+                                new_messages.append(tool_result_message)
+                                continue
+
+                            # Emit routing event
+                            yield RoutingEvent(agent_name=agent_name, task=task)
+
+                            # Execute delegation and collect final response
+                            final_response = ""
+                            async for event in self._execute_single_delegation(agent_name, task, session_id):
+                                yield event
+                                if isinstance(event, CollaboratorCompleteEvent):
+                                    final_response = event.response
+
+                            # Save messages and return collaborator's response directly
+                            await self.memory.add_messages(session_id, new_messages)
+                            yield CompletionEvent(response=final_response)
+                            return
+
+                        elif delegations_input:
                             # Parallel delegation
                             yield DelegationEvent(delegations=delegations_input)
 
