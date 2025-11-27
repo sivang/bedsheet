@@ -396,3 +396,49 @@ async def test_supervisor_parallel_delegation():
 
     agent_names = {s.agent_name for s in starts}
     assert agent_names == {"FinanceAgent", "ResearchAgent"}
+
+
+# Task 9: Router Mode
+@pytest.mark.asyncio
+async def test_router_mode_direct_handoff():
+    """Test router mode hands off entirely to one agent."""
+    technical = Agent(
+        name="TechnicalSupport",
+        instruction="Handle technical issues.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(text="Have you tried turning it off and on again?"),
+        ]),
+    )
+
+    router = Supervisor(
+        name="Router",
+        instruction="Route requests.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="call_1", name="delegate", input={
+                    "agent_name": "TechnicalSupport",
+                    "task": "User can't log in"
+                })
+            ]),
+            # In router mode, after delegation the router should just pass through
+            # the collaborator's response without synthesis
+        ]),
+        collaborators=[technical],
+        collaboration_mode="router",
+    )
+
+    events = []
+    async for event in router.invoke(session_id="test", input_text="I can't log in"):
+        events.append(event)
+
+    from bedsheet.events import RoutingEvent, CompletionEvent
+
+    # Should have RoutingEvent (not DelegationEvent in router mode)
+    routing_events = [e for e in events if isinstance(e, RoutingEvent)]
+    assert len(routing_events) == 1
+    assert routing_events[0].agent_name == "TechnicalSupport"
+
+    # Final completion should be collaborator's response directly
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1
+    assert "turning it off and on" in completions[0].response
