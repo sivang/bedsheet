@@ -1,4 +1,5 @@
 """Supervisor agent for multi-agent collaboration."""
+import asyncio
 import json
 from typing import AsyncIterator, Literal
 
@@ -7,6 +8,7 @@ from bedsheet.action_group import ActionGroup
 from bedsheet.events import (
     Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent,
     CollaboratorStartEvent, CollaboratorEvent, CollaboratorCompleteEvent,
+    DelegationEvent,
 )
 from bedsheet.llm.base import LLMClient
 from bedsheet.memory.base import Memory, Message
@@ -76,12 +78,42 @@ If no agent is appropriate, respond directly.
             description="Tools for delegating to collaborator agents",
         )
 
+        # Define schema explicitly to support optional parameters for both single and parallel delegation
+        delegate_schema = {
+            "type": "object",
+            "properties": {
+                "agent_name": {
+                    "type": "string",
+                    "description": "Name of the agent to delegate to (for single delegation)"
+                },
+                "task": {
+                    "type": "string",
+                    "description": "Task to delegate (for single delegation)"
+                },
+                "delegations": {
+                    "type": "array",
+                    "description": "List of delegations for parallel execution",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "agent_name": {"type": "string"},
+                            "task": {"type": "string"}
+                        },
+                        "required": ["agent_name", "task"]
+                    }
+                }
+            },
+            "required": []  # All parameters are optional, one of the patterns must be used
+        }
+
         @delegate_group.action(
             name="delegate",
-            description="Delegate a task to a collaborator agent",
+            description="Delegate task(s) to collaborator agent(s). Use agent_name+task for single delegation, or delegations array for parallel.",
+            parameters=delegate_schema,
         )
-        async def delegate(agent_name: str, task: str) -> str:
-            return await self._execute_delegation(agent_name, task)
+        async def delegate(**kwargs) -> str:
+            # Schema only - actual execution handled in invoke()
+            return ""
 
         self.add_action_group(delegate_group)
 
@@ -171,22 +203,55 @@ If no agent is appropriate, respond directly.
                 # Process tool calls
                 for tool_call in response.tool_calls:
                     if tool_call.name == "delegate":
-                        # Handle delegation specially
-                        agent_name = tool_call.input.get("agent_name")
-                        task = tool_call.input.get("task")
+                        # Check for parallel delegation
+                        delegations_input = tool_call.input.get("delegations")
 
-                        if agent_name not in self.collaborators:
-                            content = f"Unknown agent: {agent_name}. Available: {list(self.collaborators.keys())}"
-                            error = content
-                        else:
-                            result = ""
-                            async for event in self._execute_single_delegation(agent_name, task, session_id):
-                                yield event
-                                if isinstance(event, CollaboratorCompleteEvent):
-                                    result = event.response
+                        if delegations_input:
+                            # Parallel delegation
+                            yield DelegationEvent(delegations=delegations_input)
 
-                            content = result
+                            results = {}
+
+                            async def run_delegation(d):
+                                agent_name = d["agent_name"]
+                                task = d["task"]
+                                events = []
+                                async for event in self._execute_single_delegation(agent_name, task, session_id):
+                                    events.append(event)
+                                return agent_name, events
+
+                            # Run all delegations concurrently
+                            tasks = [run_delegation(d) for d in delegations_input]
+                            delegation_results = await asyncio.gather(*tasks)
+
+                            # Yield all events and collect results
+                            for agent_name, events in delegation_results:
+                                for event in events:
+                                    yield event
+                                    if isinstance(event, CollaboratorCompleteEvent):
+                                        results[agent_name] = event.response
+
+                            # Build combined result
+                            content = json.dumps(results)
                             error = None
+
+                        else:
+                            # Single delegation
+                            agent_name = tool_call.input.get("agent_name")
+                            task = tool_call.input.get("task")
+
+                            if agent_name not in self.collaborators:
+                                content = f"Unknown agent: {agent_name}. Available: {list(self.collaborators.keys())}"
+                                error = content
+                            else:
+                                result = ""
+                                async for event in self._execute_single_delegation(agent_name, task, session_id):
+                                    yield event
+                                    if isinstance(event, CollaboratorCompleteEvent):
+                                        result = event.response
+
+                                content = result
+                                error = None
 
                         yield ToolResultEvent(
                             call_id=tool_call.id,
