@@ -1,6 +1,7 @@
 import pytest
 from bedsheet.supervisor import Supervisor
 from bedsheet.agent import Agent
+from bedsheet.action_group import ActionGroup
 from bedsheet.testing import MockLLMClient, MockResponse
 from bedsheet.llm.base import ToolCall
 
@@ -191,3 +192,148 @@ async def test_supervisor_delegates_to_collaborator():
 
     assert len(completions) == 1
     assert "2.3M" in completions[0].response
+
+
+# Task 6: Collaborator Events Streaming
+@pytest.mark.asyncio
+async def test_supervisor_streams_collaborator_events():
+    """Test that collaborator tool events are wrapped and streamed."""
+    # Collaborator uses a tool, then responds
+    collab_group = ActionGroup(name="Data")
+
+    @collab_group.action(name="get_data", description="Get data")
+    async def get_data() -> dict:
+        return {"value": 123}
+
+    collaborator = Agent(
+        name="DataAgent",
+        instruction="You fetch data.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="collab_call_1", name="get_data", input={})
+            ]),
+            MockResponse(text="The value is 123"),
+        ]),
+    )
+    collaborator.add_action_group(collab_group)
+
+    supervisor = Supervisor(
+        name="Manager",
+        instruction="Coordinate.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="call_1", name="delegate", input={
+                    "agent_name": "DataAgent",
+                    "task": "Get the value"
+                })
+            ]),
+            MockResponse(text="Got it: 123"),
+        ]),
+        collaborators=[collaborator],
+    )
+
+    events = []
+    async for event in supervisor.invoke(session_id="test", input_text="Get data"):
+        events.append(event)
+
+    from bedsheet.events import CollaboratorEvent, ToolCallEvent, ToolResultEvent
+
+    # Find wrapped collaborator events
+    collab_events = [e for e in events if isinstance(e, CollaboratorEvent)]
+
+    # Should have wrapped ToolCallEvent and ToolResultEvent from collaborator
+    inner_tool_calls = [e for e in collab_events if isinstance(e.inner_event, ToolCallEvent)]
+    inner_tool_results = [e for e in collab_events if isinstance(e.inner_event, ToolResultEvent)]
+
+    assert len(inner_tool_calls) >= 1
+    assert inner_tool_calls[0].agent_name == "DataAgent"
+    assert inner_tool_calls[0].inner_event.tool_name == "get_data"
+
+    assert len(inner_tool_results) >= 1
+
+
+# Task 7: Delegation Error Handling
+@pytest.mark.asyncio
+async def test_supervisor_handles_unknown_agent():
+    """Test supervisor handles delegation to unknown agent."""
+    supervisor = Supervisor(
+        name="Manager",
+        instruction="Coordinate.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="call_1", name="delegate", input={
+                    "agent_name": "NonexistentAgent",
+                    "task": "Do something"
+                })
+            ]),
+            MockResponse(text="Sorry, that agent doesn't exist."),
+        ]),
+        collaborators=[],  # No collaborators
+    )
+
+    events = []
+    async for event in supervisor.invoke(session_id="test", input_text="Help"):
+        events.append(event)
+
+    from bedsheet.events import ToolResultEvent, CompletionEvent
+
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_results) == 1
+    assert "Unknown agent" in tool_results[0].error
+
+    # Supervisor should still complete
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1
+
+
+@pytest.mark.asyncio
+async def test_supervisor_handles_collaborator_error():
+    """Test supervisor handles collaborator that hits max iterations."""
+    # Collaborator that never completes
+    collaborator = Agent(
+        name="BrokenAgent",
+        instruction="You are broken.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[ToolCall(id=f"c_{i}", name="loop", input={})])
+            for i in range(10)
+        ]),
+        max_iterations=2,
+    )
+
+    loop_group = ActionGroup(name="Loop")
+
+    @loop_group.action(name="loop", description="Loop")
+    async def loop() -> str:
+        return "looping"
+
+    collaborator.add_action_group(loop_group)
+
+    supervisor = Supervisor(
+        name="Manager",
+        instruction="Coordinate.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="call_1", name="delegate", input={
+                    "agent_name": "BrokenAgent",
+                    "task": "Do something"
+                })
+            ]),
+            MockResponse(text="The agent had an error."),
+        ]),
+        collaborators=[collaborator],
+    )
+
+    events = []
+    async for event in supervisor.invoke(session_id="test", input_text="Help"):
+        events.append(event)
+
+    from bedsheet.events import CollaboratorCompleteEvent, CompletionEvent
+
+    # Collaborator should complete with error
+    collab_completes = [e for e in events if isinstance(e, CollaboratorCompleteEvent)]
+    assert len(collab_completes) == 1
+    assert "Error" in collab_completes[0].response or "Max iterations" in collab_completes[0].response
+
+    # Supervisor should still complete
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1

@@ -54,3 +54,23 @@ def test_exceptions_exports():
     assert MaxIterationsError is not None
     assert LLMError is not None
     assert ActionNotFoundError is not None
+
+
+def test_supervisor_importable():
+    from bedsheet import Supervisor
+    assert Supervisor is not None
+
+
+def test_new_events_importable():
+    from bedsheet.events import (
+        RoutingEvent,
+        DelegationEvent,
+        CollaboratorStartEvent,
+        CollaboratorEvent,
+        CollaboratorCompleteEvent,
+    )
+    assert RoutingEvent is not None
+    assert DelegationEvent is not None
+    assert CollaboratorStartEvent is not None
+    assert CollaboratorEvent is not None
+    assert CollaboratorCompleteEvent is not None
