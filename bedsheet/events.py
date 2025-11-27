@@ -43,4 +43,54 @@ class ErrorEvent:
     type: Literal["error"] = field(default="error", init=False)
 
 
-Event = Union[ThinkingEvent, ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent]
+@dataclass
+class RoutingEvent:
+    """Router mode: supervisor picked an agent to route to."""
+    agent_name: str
+    task: str
+    type: Literal["routing"] = field(default="routing", init=False)
+
+
+@dataclass
+class DelegationEvent:
+    """Supervisor mode: supervisor is delegating task(s)."""
+    delegations: list[dict]
+    type: Literal["delegation"] = field(default="delegation", init=False)
+
+
+@dataclass
+class CollaboratorStartEvent:
+    """A collaborator agent is starting work."""
+    agent_name: str
+    task: str
+    type: Literal["collaborator_start"] = field(default="collaborator_start", init=False)
+
+
+@dataclass
+class CollaboratorEvent:
+    """Wraps any event from a collaborator for visibility."""
+    agent_name: str
+    inner_event: "Event"
+    type: Literal["collaborator"] = field(default="collaborator", init=False)
+
+
+@dataclass
+class CollaboratorCompleteEvent:
+    """A collaborator agent has finished."""
+    agent_name: str
+    response: str
+    type: Literal["collaborator_complete"] = field(default="collaborator_complete", init=False)
+
+
+Event = Union[
+    ThinkingEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+    CompletionEvent,
+    ErrorEvent,
+    RoutingEvent,
+    DelegationEvent,
+    CollaboratorStartEvent,
+    CollaboratorEvent,
+    CollaboratorCompleteEvent,
+]
