@@ -337,3 +337,62 @@ async def test_supervisor_handles_collaborator_error():
     # Supervisor should still complete
     completions = [e for e in events if isinstance(e, CompletionEvent)]
     assert len(completions) == 1
+
+
+# Task 8: Parallel Delegation
+@pytest.mark.asyncio
+async def test_supervisor_parallel_delegation():
+    """Test supervisor delegates to multiple agents in parallel."""
+    finance = Agent(
+        name="FinanceAgent",
+        instruction="Finance.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(text="Revenue: $2M"),
+        ]),
+    )
+
+    research = Agent(
+        name="ResearchAgent",
+        instruction="Research.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(text="Competitor: $1.5M"),
+        ]),
+    )
+
+    supervisor = Supervisor(
+        name="Manager",
+        instruction="Coordinate.",
+        model_client=MockLLMClient(responses=[
+            MockResponse(tool_calls=[
+                ToolCall(id="call_1", name="delegate", input={
+                    "delegations": [
+                        {"agent_name": "FinanceAgent", "task": "Get revenue"},
+                        {"agent_name": "ResearchAgent", "task": "Get competitor data"},
+                    ]
+                })
+            ]),
+            MockResponse(text="We have $2M vs competitor $1.5M"),
+        ]),
+        collaborators=[finance, research],
+    )
+
+    events = []
+    async for event in supervisor.invoke(session_id="test", input_text="Compare"):
+        events.append(event)
+
+    from bedsheet.events import CollaboratorStartEvent, CollaboratorCompleteEvent, DelegationEvent
+
+    # Should have DelegationEvent
+    delegation_events = [e for e in events if isinstance(e, DelegationEvent)]
+    assert len(delegation_events) == 1
+    assert len(delegation_events[0].delegations) == 2
+
+    # Should have 2 collaborator starts and completes
+    starts = [e for e in events if isinstance(e, CollaboratorStartEvent)]
+    completes = [e for e in events if isinstance(e, CollaboratorCompleteEvent)]
+
+    assert len(starts) == 2
+    assert len(completes) == 2
+
+    agent_names = {s.agent_name for s in starts}
+    assert agent_names == {"FinanceAgent", "ResearchAgent"}
