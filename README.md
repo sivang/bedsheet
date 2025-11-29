@@ -342,6 +342,38 @@ Bedsheet is designed for production use from day one:
 
 ---
 
+## Quick Start
+
+**Try it instantly - no API key required:**
+
+```bash
+pip install bedsheet-agents
+python -m bedsheet
+```
+
+This runs a multi-agent demo showing parallel delegation, event streaming, and supervisor synthesis using simulated responses.
+
+**Output:**
+```
+======================================================================
+  BEDSHEET AGENTS - Multi-Agent Collaboration Demo
+======================================================================
+
+User: Analyze NVIDIA stock for me
+
+[0.1s] PARALLEL DELEGATION - dispatching 2 agents:
+         -> MarketAnalyst: Analyze NVIDIA (NVDA) stock price and technical...
+         -> NewsResearcher: Find and analyze recent news about NVIDIA
+
+[0.2s] || [MarketAnalyst] Starting...
+[0.2s] || [NewsResearcher] Starting...
+         [MarketAnalyst] -> get_stock_data({'symbol': 'NVDA'})
+         [NewsResearcher] -> search_news({'company': 'NVIDIA'})
+...
+```
+
+---
+
 ## Installation
 
 ```bash
@@ -361,7 +393,8 @@ pip install bedsheet-agents[dev]
 ## Requirements
 
 - Python 3.11+
-- Anthropic API key (set `ANTHROPIC_API_KEY` environment variable)
+- Anthropic API key for real usage (set `ANTHROPIC_API_KEY` environment variable)
+- No API key needed for the demo: `python -m bedsheet`
 
 ---
 
