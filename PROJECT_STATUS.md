@@ -15,7 +15,7 @@
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
 | Documentation | ✅ Multi-agent guide |
 | Examples | ✅ Investment advisor demo |
-| Zero-Config Demo | ✅ `python -m bedsheet` |
+| Demo | ✅ `python -m bedsheet` (requires API key) |
 | pyproject.toml | ✅ PyPI ready |
 
 ---
