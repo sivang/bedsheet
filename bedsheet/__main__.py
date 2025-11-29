@@ -191,74 +191,87 @@ Always use parallel delegation for faster response.""",
 # Event Display
 # ============================================================
 
+def emit(text: str, end: str = "\n"):
+    """Print and immediately flush to show real-time progress."""
+    print(text, end=end, flush=True)
+
+
 async def run_demo():
-    """Run the demo with rich event output."""
+    """Run the demo with real-time event streaming."""
 
     # Check for API key
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        print()
-        print("=" * 60)
-        print("  ANTHROPIC_API_KEY not set")
-        print("=" * 60)
-        print()
-        print("  This demo uses Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
-        print("  and requires an Anthropic API key.")
-        print()
-        print("  Set your API key:")
-        print("    export ANTHROPIC_API_KEY=your-key-here")
-        print()
-        print("  Get an API key at: https://console.anthropic.com/")
-        print("=" * 60)
-        print()
+        emit("")
+        emit("=" * 60)
+        emit("  ANTHROPIC_API_KEY not set")
+        emit("=" * 60)
+        emit("")
+        emit("  This demo uses Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
+        emit("  and requires an Anthropic API key.")
+        emit("")
+        emit("  Set your API key:")
+        emit("    export ANTHROPIC_API_KEY=your-key-here")
+        emit("")
+        emit("  Get an API key at: https://console.anthropic.com/")
+        emit("=" * 60)
+        emit("")
         sys.exit(1)
 
-    print()
-    print("=" * 60)
-    print("  BEDSHEET AGENTS - Investment Advisor Demo")
-    print("=" * 60)
-    print()
-    print("  This demo shows:")
-    print("  - Parallel delegation to multiple agents")
-    print("  - Rich event streaming (see every step)")
-    print("  - Supervisor synthesis of results")
-    print()
-    print("  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
-    print("  Note: This uses your Anthropic API credits")
-    print()
-    print("-" * 60)
-    print()
+    emit("")
+    emit("=" * 60)
+    emit("  BEDSHEET AGENTS - Investment Advisor Demo")
+    emit("=" * 60)
+    emit("")
+    emit("  This demo shows:")
+    emit("  - Parallel delegation to multiple agents")
+    emit("  - Rich event streaming (see every step)")
+    emit("  - Supervisor synthesis of results")
+    emit("")
+    emit("  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
+    emit("  Note: This uses your Anthropic API credits")
+    emit("")
+    emit("-" * 60)
+    emit("")
 
     user_input = "Analyze NVIDIA stock for me"
-    print(f"User: {user_input}")
-    print()
-    print("-" * 60)
+    emit(f"User: {user_input}")
+    emit("")
+    emit("-" * 60)
+    emit("")
+    emit("Waiting for Claude...", end="")
 
     advisor = create_agents()
     start_time = time.time()
     parallel_agents = []
+    first_event = True
 
     async for event in advisor.invoke(session_id="demo", input_text=user_input):
+
+        # Clear "Waiting for Claude..." on first event
+        if first_event:
+            emit("\r" + " " * 30 + "\r", end="")
+            first_event = False
 
         if isinstance(event, DelegationEvent):
             agents = [d["agent_name"] for d in event.delegations]
             elapsed = time.time() - start_time
             if len(agents) > 1:
-                print(f"\n[{elapsed:.1f}s] PARALLEL DELEGATION - dispatching {len(agents)} agents:")
+                emit(f"[{elapsed:.1f}s] PARALLEL DELEGATION - dispatching {len(agents)} agents:")
                 for d in event.delegations:
                     task = d['task'][:50] + "..." if len(d['task']) > 50 else d['task']
-                    print(f"         -> {d['agent_name']}: {task}")
+                    emit(f"        -> {d['agent_name']}: {task}")
                 parallel_agents = agents
             else:
-                print(f"\n[{elapsed:.1f}s] DELEGATION -> {agents[0]}")
+                emit(f"[{elapsed:.1f}s] DELEGATION -> {agents[0]}")
 
         elif isinstance(event, CollaboratorStartEvent):
             elapsed = time.time() - start_time
             icon = "||" if event.agent_name in parallel_agents else "->"
-            print(f"\n[{elapsed:.1f}s] {icon} [{event.agent_name}] Starting...")
+            emit(f"\n[{elapsed:.1f}s] {icon} [{event.agent_name}] Starting...")
 
         elif isinstance(event, CollaboratorCompleteEvent):
             elapsed = time.time() - start_time
-            print(f"[{elapsed:.1f}s] OK [{event.agent_name}] Complete")
+            emit(f"[{elapsed:.1f}s] OK [{event.agent_name}] Complete")
 
         elif isinstance(event, CollaboratorEvent):
             inner = event.inner_event
@@ -268,33 +281,33 @@ async def run_demo():
                 args = str(inner.tool_input)
                 if len(args) > 40:
                     args = args[:40] + "..."
-                print(f"         [{agent}] -> {inner.tool_name}({args})")
+                emit(f"        [{agent}] -> {inner.tool_name}({args})")
 
             elif isinstance(inner, ToolResultEvent) and not inner.error:
                 result = str(inner.result)
                 if len(result) > 50:
                     result = result[:50] + "..."
-                print(f"         [{agent}] <- {result}")
+                emit(f"        [{agent}] <- {result}")
 
         elif isinstance(event, CompletionEvent):
             elapsed = time.time() - start_time
-            print()
-            print("-" * 60)
-            print(f"FINAL RESPONSE ({elapsed:.1f}s)")
-            print("-" * 60)
-            print()
-            print(event.response)
+            emit("")
+            emit("-" * 60)
+            emit(f"FINAL RESPONSE ({elapsed:.1f}s)")
+            emit("-" * 60)
+            emit("")
+            emit(event.response)
 
         elif isinstance(event, ErrorEvent):
-            print(f"\nERROR: {event.error}")
+            emit(f"\nERROR: {event.error}")
 
-    print()
-    print("=" * 60)
-    print("  Demo complete!")
-    print()
-    print("  Docs: https://github.com/vitakka/bedsheet-agents")
-    print("=" * 60)
-    print()
+    emit("")
+    emit("=" * 60)
+    emit("  Demo complete!")
+    emit("")
+    emit("  Docs: https://github.com/vitakka/bedsheet-agents")
+    emit("=" * 60)
+    emit("")
 
 
 def main():
