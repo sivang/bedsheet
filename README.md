@@ -352,7 +352,7 @@ python -m bedsheet
 
 This runs a multi-agent investment advisor demo showing parallel delegation, event streaming, and supervisor synthesis.
 
-**Uses:** Claude Sonnet 4 (`claude-sonnet-4-20250514`) - this will use your Anthropic API credits.
+**Uses:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) - this will use your Anthropic API credits.
 
 **Output:**
 ```
@@ -360,7 +360,7 @@ This runs a multi-agent investment advisor demo showing parallel delegation, eve
   BEDSHEET AGENTS - Investment Advisor Demo
 ============================================================
 
-  Model: Claude Sonnet 4 (claude-sonnet-4-20250514)
+  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 
 User: Analyze NVIDIA stock for me
 
