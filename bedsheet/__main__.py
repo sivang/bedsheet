@@ -7,7 +7,7 @@ A multi-agent investment advisor demonstrating:
 - Supervisor synthesis of results
 
 Requires: ANTHROPIC_API_KEY environment variable
-Uses: Claude Sonnet 4 (claude-sonnet-4-20250514)
+Uses: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 """
 
 import asyncio
@@ -201,7 +201,7 @@ async def run_demo():
         print("  ANTHROPIC_API_KEY not set")
         print("=" * 60)
         print()
-        print("  This demo uses Claude (claude-sonnet-4-20250514)")
+        print("  This demo uses Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
         print("  and requires an Anthropic API key.")
         print()
         print("  Set your API key:")
@@ -222,7 +222,7 @@ async def run_demo():
     print("  - Rich event streaming (see every step)")
     print("  - Supervisor synthesis of results")
     print()
-    print("  Model: Claude Sonnet 4 (claude-sonnet-4-20250514)")
+    print("  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
     print("  Note: This uses your Anthropic API credits")
     print()
     print("-" * 60)
