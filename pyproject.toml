@@ -4,13 +4,34 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bedsheet-agents"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cloud-agnostic agent orchestration inspired by AWS Bedrock Agents"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "Apache-2.0"
 authors = [
-    { name = "Sivan" }
+    { name = "Sivan Grunberg", email = "sivan@vitakka.co" }
+]
+keywords = [
+    "agents",
+    "llm",
+    "ai",
+    "orchestration",
+    "multi-agent",
+    "anthropic",
+    "claude",
+    "bedrock",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "anthropic>=0.39.0",
@@ -25,6 +46,12 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "redis>=5.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/vitakka/bedsheet-agents"
+Documentation = "https://github.com/vitakka/bedsheet-agents#readme"
+Repository = "https://github.com/vitakka/bedsheet-agents"
+Issues = "https://github.com/vitakka/bedsheet-agents/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["bedsheet"]
