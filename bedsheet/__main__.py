@@ -115,7 +115,7 @@ async def search_news(query: str) -> dict:
     name="analyze_sentiment",
     description="Analyze overall sentiment from news articles"
 )
-async def analyze_sentiment(articles: list[dict]) -> dict:
+async def analyze_sentiment(articles: list) -> dict:
     """Analyze sentiment from news articles."""
     if not articles:
         return {"sentiment": "neutral", "confidence": 0.0}
