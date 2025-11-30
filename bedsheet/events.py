@@ -44,6 +44,13 @@ class ErrorEvent:
 
 
 @dataclass
+class TextTokenEvent:
+    """Emitted when a text token arrives from the LLM (streaming mode)."""
+    token: str
+    type: Literal["text_token"] = field(default="text_token", init=False)
+
+
+@dataclass
 class RoutingEvent:
     """Router mode: supervisor picked an agent to route to."""
     agent_name: str
@@ -84,6 +91,7 @@ class CollaboratorCompleteEvent:
 
 Event = Union[
     ThinkingEvent,
+    TextTokenEvent,
     ToolCallEvent,
     ToolResultEvent,
     CompletionEvent,

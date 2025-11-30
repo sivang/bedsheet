@@ -1,4 +1,5 @@
 """Testing utilities for Bedsheet Agents."""
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
 from bedsheet.llm.base import LLMResponse, ToolCall, ToolDefinition
@@ -19,6 +20,10 @@ class MockLLMClient:
     def __init__(self, responses: list[MockResponse]) -> None:
         self._responses = iter(responses)
 
+    def _get_next_response(self) -> MockResponse:
+        """Get the next mock response from the queue."""
+        return next(self._responses)
+
     async def chat(
         self,
         messages: list[Message],
@@ -26,7 +31,7 @@ class MockLLMClient:
         tools: list[ToolDefinition] | None = None,
     ) -> LLMResponse:
         """Return the next mock response."""
-        response = next(self._responses)
+        response = self._get_next_response()
 
         stop_reason = "tool_use" if response.tool_calls else "end_turn"
 
@@ -35,4 +40,28 @@ class MockLLMClient:
             tool_calls=response.tool_calls,
             stop_reason=stop_reason,
             thinking=response.thinking,
+        )
+
+    async def chat_stream(
+        self,
+        messages: list,
+        system: str,
+        tools: list | None = None,
+    ) -> AsyncIterator[str | LLMResponse]:
+        """Stream mock response - yields tokens then final LLMResponse."""
+        response = self._get_next_response()
+
+        # Stream text tokens (word by word for readability)
+        if response.text:
+            words = response.text.split(' ')
+            for i, word in enumerate(words):
+                if i > 0:
+                    yield ' '
+                yield word
+
+        # Yield final response for tool calls
+        yield LLMResponse(
+            text=response.text,
+            tool_calls=response.tool_calls or [],
+            stop_reason="end_turn",
         )

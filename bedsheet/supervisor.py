@@ -8,7 +8,7 @@ from bedsheet.action_group import ActionGroup
 from bedsheet.events import (
     Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent,
     CollaboratorStartEvent, CollaboratorEvent, CollaboratorCompleteEvent,
-    DelegationEvent, RoutingEvent,
+    DelegationEvent, RoutingEvent, TextTokenEvent,
 )
 from bedsheet.llm.base import LLMClient
 from bedsheet.memory.base import Memory, Message
@@ -131,6 +131,7 @@ If no agent is appropriate, respond directly.
         agent_name: str,
         task: str,
         session_id: str,
+        stream: bool = False,
     ) -> AsyncIterator[Event]:
         """Execute delegation to a single collaborator, yielding events."""
         collaborator = self.collaborators.get(agent_name)
@@ -141,7 +142,7 @@ If no agent is appropriate, respond directly.
         yield CollaboratorStartEvent(agent_name=agent_name, task=task)
 
         result = ""
-        async for event in collaborator.invoke(session_id=f"{session_id}:{agent_name}", input_text=task):
+        async for event in collaborator.invoke(session_id=f"{session_id}:{agent_name}", input_text=task, stream=stream):
             yield CollaboratorEvent(agent_name=agent_name, inner_event=event)
             if isinstance(event, CompletionEvent):
                 result = event.response
@@ -154,6 +155,7 @@ If no agent is appropriate, respond directly.
         self,
         session_id: str,
         input_text: str,
+        stream: bool = False,
     ) -> AsyncIterator[Event]:
         """Invoke the supervisor, handling delegations specially."""
         messages = await self.memory.get_messages(session_id)
@@ -232,7 +234,7 @@ If no agent is appropriate, respond directly.
 
                             # Execute delegation and collect final response
                             final_response = ""
-                            async for event in self._execute_single_delegation(agent_name, task, session_id):
+                            async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
                                 yield event
                                 if isinstance(event, CollaboratorCompleteEvent):
                                     final_response = event.response
@@ -252,7 +254,7 @@ If no agent is appropriate, respond directly.
                                 agent_name = d["agent_name"]
                                 task = d["task"]
                                 events = []
-                                async for event in self._execute_single_delegation(agent_name, task, session_id):
+                                async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
                                     events.append(event)
                                 return agent_name, events
 
@@ -281,7 +283,7 @@ If no agent is appropriate, respond directly.
                                 error = content
                             else:
                                 result = ""
-                                async for event in self._execute_single_delegation(agent_name, task, session_id):
+                                async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
                                     yield event
                                     if isinstance(event, CollaboratorCompleteEvent):
                                         result = event.response
