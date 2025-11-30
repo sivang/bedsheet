@@ -15,7 +15,7 @@ def test_anthropic_client_implements_protocol():
 def test_anthropic_client_default_model():
     with patch("bedsheet.llm.anthropic.anthropic"):
         client = AnthropicClient(api_key="test-key")
-        assert client.model == "claude-sonnet-4-20250514"
+        assert client.model == "claude-sonnet-4-5-20250929"
 
 
 def test_anthropic_client_custom_model():

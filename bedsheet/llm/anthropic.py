@@ -1,4 +1,6 @@
 """Anthropic Claude LLM client implementation."""
+from typing import AsyncIterator
+
 import anthropic
 
 from bedsheet.llm.base import LLMClient, LLMResponse, ToolCall, ToolDefinition
@@ -52,6 +54,35 @@ class AnthropicClient:
 
         # Parse response
         return self._parse_response(response)
+
+    async def chat_stream(
+        self,
+        messages: list[Message],
+        system: str,
+        tools: list[ToolDefinition] | None = None,
+    ) -> AsyncIterator[str | LLMResponse]:
+        """Stream response from Claude."""
+        anthropic_messages = self._convert_messages(messages)
+
+        kwargs = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system,
+            "messages": anthropic_messages,
+        }
+
+        if tools:
+            kwargs["tools"] = [
+                {"name": tool.name, "description": tool.description, "input_schema": tool.input_schema}
+                for tool in tools
+            ]
+
+        async with self._client.messages.stream(**kwargs) as stream:
+            async for text in stream.text_stream:
+                yield text
+
+            final = await stream.get_final_message()
+            yield self._parse_response(final)
 
     def _convert_messages(self, messages: list[Message]) -> list[dict]:
         """Convert internal messages to Anthropic format."""

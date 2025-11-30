@@ -20,7 +20,7 @@ from bedsheet.memory import InMemory
 from bedsheet.events import (
     ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent,
     DelegationEvent, CollaboratorStartEvent, CollaboratorEvent,
-    CollaboratorCompleteEvent, RoutingEvent
+    CollaboratorCompleteEvent, RoutingEvent, TextTokenEvent
 )
 
 
@@ -245,7 +245,7 @@ async def run_demo():
     parallel_agents = []
     first_event = True
 
-    async for event in advisor.invoke(session_id="demo", input_text=user_input):
+    async for event in advisor.invoke(session_id="demo", input_text=user_input, stream=True):
 
         # Clear "Waiting for Claude..." on first event
         if first_event:
@@ -277,7 +277,11 @@ async def run_demo():
             inner = event.inner_event
             agent = event.agent_name
 
-            if isinstance(inner, ToolCallEvent):
+            if isinstance(inner, TextTokenEvent):
+                # Show streaming tokens from collaborator agents
+                emit(inner.token, end="")
+
+            elif isinstance(inner, ToolCallEvent):
                 args = str(inner.tool_input)
                 if len(args) > 40:
                     args = args[:40] + "..."
@@ -288,6 +292,10 @@ async def run_demo():
                 if len(result) > 50:
                     result = result[:50] + "..."
                 emit(f"        [{agent}] <- {result}")
+
+        elif isinstance(event, TextTokenEvent):
+            # Show streaming tokens from supervisor's final response
+            emit(event.token, end="")
 
         elif isinstance(event, CompletionEvent):
             elapsed = time.time() - start_time

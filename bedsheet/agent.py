@@ -4,7 +4,7 @@ import json
 from typing import AsyncIterator
 
 from bedsheet.action_group import ActionGroup, Action
-from bedsheet.events import Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent
+from bedsheet.events import Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent, TextTokenEvent
 from bedsheet.exceptions import MaxIterationsError
 from bedsheet.llm.base import LLMClient, ToolDefinition
 from bedsheet.memory.base import Memory, Message
@@ -76,6 +76,7 @@ Current date: $current_datetime$
         self,
         session_id: str,
         input_text: str,
+        stream: bool = False,
     ) -> AsyncIterator[Event]:
         """Invoke the agent with user input, yielding events as execution progresses."""
         # 1. Load history from memory
@@ -91,12 +92,24 @@ Current date: $current_datetime$
 
         # 4. Main loop
         for iteration in range(self.max_iterations):
-            # Call LLM
-            response = await self.model_client.chat(
-                messages=messages,
-                system=self._render_system_prompt(),
-                tools=tools,
-            )
+            # Call LLM (with streaming if requested and supported)
+            if stream and hasattr(self.model_client, 'chat_stream'):
+                response = None
+                async for chunk in self.model_client.chat_stream(
+                    messages=messages,
+                    system=self._render_system_prompt(),
+                    tools=tools,
+                ):
+                    if isinstance(chunk, str):
+                        yield TextTokenEvent(token=chunk)
+                    else:
+                        response = chunk  # LLMResponse
+            else:
+                response = await self.model_client.chat(
+                    messages=messages,
+                    system=self._render_system_prompt(),
+                    tools=tools,
+                )
 
             # If text response with no tool calls, we're done
             if response.text and not response.tool_calls:
