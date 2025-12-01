@@ -8,12 +8,10 @@
 /_____/\___/\__,_/____/_/ /_/\___/\___/\__/
                                     AGENTS
 
-        .----------.
-       /   O    O   \    "Finally, an agent framework
-      |    .----.    |    you can read in an afternoon."
-      |    '----'    |
-       \    ~~~~    /
-        '----------'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Cloud-agnostic AI agents for Python
+     No PhD required. We checked.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
