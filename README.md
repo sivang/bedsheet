@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Bedsheet Agents" width="650">
+  <img src="logo.png" alt="Bedsheet Agents" width="800">
 </p>
 
 <p align="center">
