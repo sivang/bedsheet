@@ -1,5 +1,5 @@
 """Tests for LLM base protocol and response types."""
-from bedsheet.llm.base import LLMClient, LLMResponse, ToolCall, ToolDefinition
+from bedsheet.llm.base import LLMClient, LLMResponse, ToolCall
 from typing import runtime_checkable
 
 

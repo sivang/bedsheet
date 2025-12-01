@@ -175,8 +175,7 @@ async def test_supervisor_delegates_to_collaborator():
 
     # Should have delegation events
     from bedsheet.events import (
-        CollaboratorStartEvent, CollaboratorCompleteEvent,
-        ToolCallEvent, ToolResultEvent, CompletionEvent
+        CollaboratorStartEvent, CollaboratorCompleteEvent, CompletionEvent
     )
 
     collab_starts = [e for e in events if isinstance(e, CollaboratorStartEvent)]

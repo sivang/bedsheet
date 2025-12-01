@@ -5,7 +5,6 @@ from bedsheet.events import (
     ToolResultEvent,
     CompletionEvent,
     ErrorEvent,
-    Event,
 )
 
 

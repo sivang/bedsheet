@@ -5,7 +5,6 @@ from typing import AsyncIterator
 
 from bedsheet.action_group import ActionGroup, Action
 from bedsheet.events import Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent, TextTokenEvent
-from bedsheet.exceptions import MaxIterationsError
 from bedsheet.llm.base import LLMClient, ToolDefinition
 from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
@@ -110,6 +109,11 @@ Current date: $current_datetime$
                     system=self._render_system_prompt(),
                     tools=tools,
                 )
+
+            # Ensure we have a response (streaming should always end with LLMResponse)
+            if response is None:
+                yield ErrorEvent(error="No response from LLM", recoverable=False)
+                return
 
             # If text response with no tool calls, we're done
             if response.text and not response.tool_calls:

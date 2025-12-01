@@ -1,6 +1,6 @@
 """ActionGroup and Action system for defining agent tools."""
 import inspect
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Awaitable
 
 from bedsheet.llm.base import ToolDefinition

@@ -85,7 +85,7 @@ Be concise and friendly. Use tools when needed to answer questions accurately.""
                     if event.error:
                         print(f"\n  [❌ Error: {event.error}]", end="", flush=True)
                     else:
-                        print(f"\n  [✅ Got result]", end="", flush=True)
+                        print("\n  [✅ Got result]", end="", flush=True)
                 elif isinstance(event, CompletionEvent):
                     print(f"\n{event.response}")
 
