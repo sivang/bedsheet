@@ -1,24 +1,18 @@
-# Bedsheet Agents
+<p align="center">
+  <img src="logo.png" alt="Bedsheet Agents" width="500">
+</p>
 
-```
-    ____           __      __               __
-   / __ )___  ____/ /_____/ /_  ___  ___  / /_
-  / __  / _ \/ __  / ___/ __ \/ _ \/ _ \/ __/
- / /_/ /  __/ /_/ (__  ) / / /  __/  __/ /_
-/_____/\___/\__,_/____/_/ /_/\___/\___/\__/
-                                    AGENTS
+<p align="center">
+  <i>No PhD required. We checked.</i>
+</p>
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  Cloud-agnostic AI agents for Python
-     No PhD required. We checked.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-```
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/tests-99%20passing-brightgreen.svg" alt="Tests">
+</p>
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen.svg)]()
-
-**Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside. No PhD required. We checked.
+**Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside.
 
 ---
 
