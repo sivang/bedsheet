@@ -1,5 +1,5 @@
 """LLM client protocol and response types."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
 from bedsheet.memory.base import Message
@@ -43,7 +43,7 @@ class LLMClient(Protocol):
         """Send messages to the LLM and get a response."""
         ...
 
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: list[Message],
         system: str,

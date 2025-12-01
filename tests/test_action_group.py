@@ -1,5 +1,5 @@
 import pytest
-from bedsheet.action_group import ActionGroup, Action, generate_schema
+from bedsheet.action_group import ActionGroup, generate_schema
 
 
 def test_generate_schema_string():

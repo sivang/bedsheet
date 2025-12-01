@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from bedsheet.memory.redis import RedisMemory
 from bedsheet.memory.base import Message, Memory
 

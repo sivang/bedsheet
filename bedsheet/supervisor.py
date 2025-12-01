@@ -8,7 +8,7 @@ from bedsheet.action_group import ActionGroup
 from bedsheet.events import (
     Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent,
     CollaboratorStartEvent, CollaboratorEvent, CollaboratorCompleteEvent,
-    DelegationEvent, RoutingEvent, TextTokenEvent,
+    DelegationEvent, RoutingEvent,
 )
 from bedsheet.llm.base import LLMClient
 from bedsheet.memory.base import Memory, Message
@@ -210,10 +210,10 @@ If no agent is appropriate, respond directly.
 
                         # Router mode: direct handoff to one agent
                         if self.collaboration_mode == "router" and not delegations_input:
-                            agent_name = tool_call.input.get("agent_name")
-                            task = tool_call.input.get("task")
+                            agent_name = tool_call.input.get("agent_name", "")
+                            task = tool_call.input.get("task", "")
 
-                            if agent_name not in self.collaborators:
+                            if not agent_name or agent_name not in self.collaborators:
                                 yield ToolResultEvent(
                                     call_id=tool_call.id,
                                     result=None,
@@ -275,10 +275,10 @@ If no agent is appropriate, respond directly.
 
                         else:
                             # Single delegation
-                            agent_name = tool_call.input.get("agent_name")
-                            task = tool_call.input.get("task")
+                            agent_name = tool_call.input.get("agent_name", "")
+                            task = tool_call.input.get("task", "")
 
-                            if agent_name not in self.collaborators:
+                            if not agent_name or agent_name not in self.collaborators:
                                 content = f"Unknown agent: {agent_name}. Available: {list(self.collaborators.keys())}"
                                 error = content
                             else:

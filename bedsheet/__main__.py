@@ -20,7 +20,7 @@ from bedsheet.memory import InMemory
 from bedsheet.events import (
     ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent,
     DelegationEvent, CollaboratorStartEvent, CollaboratorEvent,
-    CollaboratorCompleteEvent, RoutingEvent, TextTokenEvent
+    CollaboratorCompleteEvent, TextTokenEvent
 )
 
 

@@ -1,9 +1,9 @@
 """Anthropic Claude LLM client implementation."""
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import anthropic
 
-from bedsheet.llm.base import LLMClient, LLMResponse, ToolCall, ToolDefinition
+from bedsheet.llm.base import LLMResponse, ToolCall, ToolDefinition
 from bedsheet.memory.base import Message
 
 
@@ -30,17 +30,10 @@ class AnthropicClient:
         # Convert messages to Anthropic format
         anthropic_messages = self._convert_messages(messages)
 
-        # Build request kwargs
-        kwargs = {
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "system": system,
-            "messages": anthropic_messages,
-        }
-
-        # Add tools if provided
+        # Convert tools to Anthropic format
+        anthropic_tools = None
         if tools:
-            kwargs["tools"] = [
+            anthropic_tools = [
                 {
                     "name": tool.name,
                     "description": tool.description,
@@ -50,7 +43,21 @@ class AnthropicClient:
             ]
 
         # Make API call
-        response = await self._client.messages.create(**kwargs)
+        if anthropic_tools:
+            response = await self._client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=anthropic_messages,  # type: ignore[arg-type]
+                tools=anthropic_tools,  # type: ignore[arg-type]
+            )
+        else:
+            response = await self._client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=anthropic_messages,  # type: ignore[arg-type]
+            )
 
         # Parse response
         return self._parse_response(response)
@@ -64,29 +71,40 @@ class AnthropicClient:
         """Stream response from Claude."""
         anthropic_messages = self._convert_messages(messages)
 
-        kwargs = {
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "system": system,
-            "messages": anthropic_messages,
-        }
-
+        # Convert tools to Anthropic format
+        anthropic_tools = None
         if tools:
-            kwargs["tools"] = [
+            anthropic_tools = [
                 {"name": tool.name, "description": tool.description, "input_schema": tool.input_schema}
                 for tool in tools
             ]
 
-        async with self._client.messages.stream(**kwargs) as stream:
+        if anthropic_tools:
+            stream_ctx = self._client.messages.stream(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=anthropic_messages,  # type: ignore[arg-type]
+                tools=anthropic_tools,  # type: ignore[arg-type]
+            )
+        else:
+            stream_ctx = self._client.messages.stream(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=anthropic_messages,  # type: ignore[arg-type]
+            )
+
+        async with stream_ctx as stream:
             async for text in stream.text_stream:
                 yield text
 
             final = await stream.get_final_message()
             yield self._parse_response(final)
 
-    def _convert_messages(self, messages: list[Message]) -> list[dict]:
+    def _convert_messages(self, messages: list[Message]) -> list[dict[str, Any]]:
         """Convert internal messages to Anthropic format."""
-        result = []
+        result: list[dict[str, Any]] = []
 
         for msg in messages:
             if msg.role == "user":

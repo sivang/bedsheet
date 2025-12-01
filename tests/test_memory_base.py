@@ -1,5 +1,5 @@
 from bedsheet.memory.base import Message, Memory
-from typing import Protocol, runtime_checkable
+from typing import runtime_checkable
 
 
 def test_message_user():
