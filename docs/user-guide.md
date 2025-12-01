@@ -688,4 +688,4 @@ help_desk = Supervisor(
 
 ---
 
-**Questions?** Open an issue at [github.com/vitakka/bedsheet-agents](https://github.com/vitakka/bedsheet-agents)
+**Questions?** Open an issue at [github.com/sivang/bedsheet](https://github.com/sivang/bedsheet)

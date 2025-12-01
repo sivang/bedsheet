@@ -67,6 +67,43 @@ asyncio.run(main())
 python -m bedsheet  # Multi-agent investment advisor with parallel execution
 ```
 
+<details>
+<summary>📺 <b>See demo output</b> (click to expand)</summary>
+
+```
+============================================================
+  BEDSHEET AGENTS - Investment Advisor Demo
+============================================================
+
+User: Analyze NVIDIA stock for me
+
+[3.9s] PARALLEL DELEGATION - dispatching 2 agents:
+        -> MarketAnalyst: Analyze NVDA stock data and technicals
+        -> NewsResearcher: Find and analyze news about NVIDIA
+
+[18.2s] || [MarketAnalyst] Starting...
+        [MarketAnalyst] -> get_stock_data({'symbol': 'NVDA'})
+        [MarketAnalyst] -> get_technical_analysis({'symbol': 'NVDA'})
+        [MarketAnalyst] <- {'symbol': 'NVDA', 'price': 875.5, ...}
+
+[18.2s] || [NewsResearcher] Starting...
+        [NewsResearcher] -> search_news({'query': 'NVIDIA'})
+        [NewsResearcher] -> analyze_sentiment({'articles': [...]})
+
+[18.2s] OK [MarketAnalyst] Complete
+[18.2s] OK [NewsResearcher] Complete
+
+FINAL RESPONSE (32.3s)
+------------------------------------------------------------
+# NVIDIA (NVDA) Comprehensive Stock Analysis
+
+## Executive Summary
+NVIDIA shows **strong bullish signals** across both technical
+indicators and fundamental news sentiment...
+```
+
+</details>
+
 ---
 
 ## Why "Bedsheet"?
