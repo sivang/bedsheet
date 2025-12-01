@@ -2,21 +2,73 @@
 
 ## Current Version: v0.2.0 🚀 Release Ready
 
+**Last Session:** 2024-12-01
+
 ### Release Artifacts
 
 | Artifact | Status |
 |----------|--------|
 | Source Code | ✅ Complete |
-| Test Suite | ✅ 96 tests passing |
+| Test Suite | ✅ 99 tests passing |
 | README.md | ✅ Comprehensive with examples |
 | CHANGELOG.md | ✅ v0.1.0 and v0.2.0 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
 | LICENSE | ✅ Apache 2.0 |
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
-| Documentation | ✅ Multi-agent guide |
+| Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
 | Examples | ✅ Investment advisor demo |
-| Demo | ✅ `python -m bedsheet` (requires API key) |
+| Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2024-12-01)
+
+### What Was Done
+
+1. **Consolidated demos** - Single real Claude API demo in `bedsheet/__main__.py`
+   - Uses `claude-sonnet-4-5-20250929` (latest Sonnet)
+   - Real-time streaming output with `flush=True`
+
+2. **Added token streaming feature**
+   - `TextTokenEvent` in events.py
+   - `chat_stream()` method in LLMClient protocol
+   - Streaming implementation in AnthropicClient
+   - `stream=True` parameter for Agent/Supervisor invoke()
+
+3. **Created Technical Guide** (`docs/technical-guide.html`)
+   - All Python patterns: Protocols, dataclasses, async/await, decorators
+   - Light theme with Mermaid.js diagrams
+   - Beginner-friendly with detailed "why" explanations
+
+4. **Created User Guide** (`docs/user-guide.html`)
+   - Progressive 12-lesson tutorial (first agent → deep hierarchies)
+   - Origin story: "Bedsheet" name, AWS Bedrock frustration, code-first philosophy
+   - Rationale for each pattern ("why events?", "why parallel?", etc.)
+
+### Documentation Suite
+
+| Document | Purpose |
+|----------|---------|
+| `docs/user-guide.html` | Progressive tutorial, beginner to advanced |
+| `docs/technical-guide.html` | Python patterns deep dive |
+| `docs/multi-agent-guide.md` | Supervisor patterns in detail |
+| `README.md` | Overview, quick start, comparison |
+
+### Files Changed This Session
+
+- `bedsheet/__main__.py` - Real API demo with streaming
+- `bedsheet/events.py` - Added TextTokenEvent
+- `bedsheet/llm/base.py` - Added chat_stream to protocol
+- `bedsheet/llm/anthropic.py` - Streaming, model updated to claude-sonnet-4-5-20250929
+- `bedsheet/agent.py` - stream parameter
+- `bedsheet/supervisor.py` - stream parameter
+- `bedsheet/testing.py` - MockLLMClient chat_stream()
+- `tests/test_streaming.py` - NEW: streaming tests
+- `tests/test_llm_anthropic.py` - Fixed model name assertion
+- `docs/technical-guide.html` - Light theme, Mermaid diagrams, enhanced explanations
+- `docs/user-guide.html` - NEW: comprehensive user guide
+- `docs/user-guide.md` - NEW: markdown version
 
 ---
 
