@@ -1,383 +1,243 @@
 # Bedsheet Agents
 
+```
+    ____           __      __               __
+   / __ )___  ____/ /_____/ /_  ___  ___  / /_
+  / __  / _ \/ __  / ___/ __ \/ _ \/ _ \/ __/
+ / /_/ /  __/ /_/ (__  ) / / /  __/  __/ /_
+/_____/\___/\__,_/____/_/ /_/\___/\___/\__/
+                                    AGENTS
+
+        .----------.
+       /   O    O   \    "Finally, an agent framework
+      |    .----.    |    you can read in an afternoon."
+      |    '----'    |
+       \    ~~~~    /
+        '----------'
+```
+
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen.svg)]()
 
-**Cloud-agnostic agent orchestration for Python.** Build single agents or coordinate multi-agent teams with streaming events, parallel execution, and full observability.
+**Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside. No PhD required. We checked.
+
+---
+
+## Quick Start (60 seconds)
+
+```bash
+pip install bedsheet-agents
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**A research assistant in 20 lines:**
 
 ```python
-from bedsheet import Agent, Supervisor, ActionGroup
+import asyncio
+from bedsheet import Agent, ActionGroup
 from bedsheet.llm import AnthropicClient
+from bedsheet.events import CompletionEvent
 
-# Create a supervisor that coordinates research and analysis agents
-supervisor = Supervisor(
-    name="ResearchDirector",
-    instruction="Coordinate research tasks across your team.",
+# Give your agent a superpower
+tools = ActionGroup(name="Research")
+
+@tools.action(name="search", description="Search for information")
+async def search(query: str) -> str:
+    # Your real implementation here (API calls, database, etc.)
+    return f"Found 3 results for '{query}': ..."
+
+# Create the agent
+agent = Agent(
+    name="Researcher",
+    instruction="You help users find information. Use the search tool.",
     model_client=AnthropicClient(),
-    collaborators=[researcher, analyst, writer],
-    collaboration_mode="supervisor",
 )
+agent.add_action_group(tools)
 
-# Full visibility into every step
-async for event in supervisor.invoke(session_id, "Analyze the AI chip market"):
-    print(event)  # See delegations, tool calls, agent responses in real-time
+# That's it. Use it.
+async def main():
+    async for event in agent.invoke("session-1", "What's new in Python 3.12?"):
+        if isinstance(event, CompletionEvent):
+            print(event.response)
+
+asyncio.run(main())
+```
+
+**Want the fancy demo?**
+```bash
+python -m bedsheet  # Multi-agent investment advisor with parallel execution
 ```
 
 ---
 
 ## Why "Bedsheet"?
 
-It's a playful nod to **AWS Bedrock Agents** - we "cover" the same concepts (agents, action groups, orchestration) while being cloud-agnostic. Like a bedsheet that covers your bed regardless of brand, Bedsheet covers your agent orchestration needs regardless of cloud provider.
+A playful jab at **AWS Bedrock Agents**. We "cover" the same concepts (agents, action groups, orchestration) but you define everything in **code**, not through a web console with 15 screens and a 3-minute deployment cycle.
 
-Plus, we think agent frameworks shouldn't take themselves too seriously.
+Like a bedsheet fits any bed regardless of brand, Bedsheet fits any cloud—or no cloud at all.
+
+*Also, agent frameworks shouldn't take themselves too seriously. The robots aren't sentient yet.*
 
 ---
 
-## Why Bedsheet?
+## The Problem
 
-### The Problem with Existing Frameworks
+After years of building with existing frameworks:
 
-| Framework | Issue |
-|-----------|-------|
-| **LangChain** | Massive abstraction layers, hard to debug, "magic" that hides what's happening |
-| **AutoGPT** | Autonomous but unpredictable, limited control over agent behavior |
-| **CrewAI** | Role-based but rigid, complex configuration for simple tasks |
+| Framework | Experience |
+|-----------|------------|
+| **LangChain** | 400 pages of docs. Still confused. "Hello world" = 47 lines. |
+| **AWS Bedrock** | Click. Wait. Click. Wait. Change one word. Repeat for eternity. |
+| **AutoGPT** | Agent "researched" by opening 200 browser tabs. RIP laptop. |
+| **CrewAI** | 2 hours configuring "crew dynamics". Agents still fighting. |
 
-### The Bedsheet Approach
-
-**Simple, Observable, Production-Ready**
+**Bedsheet's philosophy:**
 
 ```python
-# No magic. No hidden abstractions. Just Python.
+# This is the entire mental model
 async for event in agent.invoke(session_id, user_input):
-    if isinstance(event, ToolCallEvent):
-        print(f"Calling: {event.tool_name}")  # See exactly what's happening
-    elif isinstance(event, CompletionEvent):
-        print(f"Response: {event.response}")
+    print(event)  # See everything. Debug anything. Trust nothing.
 ```
-
-**Key Principles:**
-
-1. **Streaming-First** - Events flow as they happen, not batch responses
-2. **Full Observability** - See every tool call, every decision, every agent interaction
-3. **Parallel by Default** - Multiple tool calls and agent delegations run concurrently
-4. **Minimal Abstraction** - You can read our source code in an afternoon
-5. **Type-Safe** - Full type hints, protocol-based extensibility
 
 ---
 
 ## Features
 
-### Single Agent with Tools
+### Single Agent + Tools
 
 ```python
-from bedsheet import Agent, ActionGroup
-from bedsheet.llm import AnthropicClient
+tools = ActionGroup(name="Math")
 
-# Define tools with simple decorators
-tools = ActionGroup(name="WebTools")
+@tools.action(name="calculate", description="Do math")
+async def calculate(expression: str) -> float:
+    return eval(expression)  # Don't actually do this in production
 
-@tools.action(name="search", description="Search the web")
-async def search(query: str) -> dict:
-    # Your implementation
-    return {"results": [...]}
-
-@tools.action(name="fetch", description="Fetch a URL")
-async def fetch(url: str) -> str:
-    # Your implementation
-    return "<html>..."
-
-# Create an agent
 agent = Agent(
-    name="WebResearcher",
-    instruction="You research topics on the web.",
+    name="Calculator",
+    instruction="Help with math. Use the calculate tool.",
     model_client=AnthropicClient(),
 )
 agent.add_action_group(tools)
-
-# Invoke with streaming
-async for event in agent.invoke("session-123", "Research quantum computing"):
-    print(event)
 ```
 
-### Multi-Agent Collaboration
+### Multi-Agent Teams
 
-The real power: **supervisors that coordinate teams of agents**.
+The good stuff. A **Supervisor** coordinates specialized agents:
 
 ```python
 from bedsheet import Supervisor
 
-# Create specialized agents
-ethics_checker = Agent(name="EthicsChecker", instruction="Review requests for concerns.", ...)
-researcher = Agent(name="Researcher", instruction="Research topics deeply.", ...)
-writer = Agent(name="Writer", instruction="Write clear summaries.", ...)
+researcher = Agent(name="Researcher", instruction="Research topics.", ...)
+writer = Agent(name="Writer", instruction="Write clearly.", ...)
 
-# Supervisor coordinates them
 supervisor = Supervisor(
-    name="ContentDirector",
-    instruction="""
-    1. First, check ethics
-    2. If approved, research the topic
-    3. Then have the writer create a summary
-    """,
+    name="ContentTeam",
+    instruction="""Coordinate content creation:
+    1. Have Researcher gather info
+    2. Have Writer create the piece
+    Synthesize the final result.""",
     model_client=AnthropicClient(),
-    collaborators=[ethics_checker, researcher, writer],
-    collaboration_mode="supervisor",  # Orchestrate and synthesize
+    collaborators=[researcher, writer],
 )
 ```
 
-### Parallel Delegation
+### Parallel Execution
 
-Supervisors can delegate to multiple agents **simultaneously**:
+Why wait for agents one-by-one?
 
 ```python
-# In the supervisor's instruction:
-# "Delegate to researcher AND analyst in parallel..."
+# In supervisor instruction:
+# "Delegate to BOTH agents simultaneously..."
 
-# The supervisor will call:
 delegate(delegations=[
-    {"agent_name": "Researcher", "task": "Find market data"},
-    {"agent_name": "Analyst", "task": "Analyze competitors"},
+    {"agent_name": "MarketAnalyst", "task": "Get stock data"},
+    {"agent_name": "NewsResearcher", "task": "Find news"}
 ])
 
-# Both run concurrently, results synthesized together
+# Both run at the same time
+# Sequential: 4 seconds → Parallel: 2 seconds
 ```
 
-### Rich Event Streaming
+### Event Streaming
 
-See everything that happens inside your agents:
+See everything happening inside:
 
 ```python
-async for event in supervisor.invoke(session_id, user_input):
+async for event in agent.invoke(session_id, user_input):
     match event:
+        case ToolCallEvent(tool_name=name):
+            print(f"Calling: {name}")
         case DelegationEvent(delegations=d):
             print(f"Delegating to: {[x['agent_name'] for x in d]}")
-
-        case CollaboratorStartEvent(agent_name=name):
-            print(f"  [{name}] Starting...")
-
-        case CollaboratorEvent(agent_name=name, inner_event=inner):
-            if isinstance(inner, ToolCallEvent):
-                print(f"  [{name}] Calling: {inner.tool_name}")
-
-        case CollaboratorCompleteEvent(agent_name=name, response=resp):
-            print(f"  [{name}] Done: {resp[:50]}...")
-
-        case CompletionEvent(response=resp):
-            print(f"\nFinal: {resp}")
+        case CompletionEvent(response=r):
+            print(f"Done: {r}")
+        case ErrorEvent(error=e):
+            print(f"Oops: {e}")  # At least you know what broke
 ```
 
-### Two Collaboration Modes
+### Two Modes
 
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| **Supervisor** | Orchestrates agents, synthesizes results | Complex tasks needing coordination |
-| **Router** | Picks one agent, hands off entirely | Simple routing to specialists |
-
-```python
-# Supervisor mode: coordinates, then synthesizes
-supervisor = Supervisor(..., collaboration_mode="supervisor")
-
-# Router mode: just routes to the right agent
-router = Supervisor(..., collaboration_mode="router")
-```
+| Mode | What It Does | Use When |
+|------|--------------|----------|
+| `supervisor` | Coordinates agents, synthesizes results | Complex tasks |
+| `router` | Picks one agent, hands off completely | Simple routing |
 
 ---
 
-## Real-World Example: Investment Research Assistant
+## Real Example: Todo Assistant
 
-A complete example showing ethics checking, parallel research, and synthesis:
+Something actually useful:
 
 ```python
 import asyncio
-from bedsheet import Agent, Supervisor, ActionGroup
+from bedsheet import Agent, ActionGroup
 from bedsheet.llm import AnthropicClient
+from bedsheet.events import CompletionEvent, ToolCallEvent
 
-# === Define Tools ===
+todos = []  # Use a real database
 
-market_tools = ActionGroup(name="MarketTools")
+tools = ActionGroup(name="Todos")
 
-@market_tools.action(name="get_stock_data", description="Get stock price and metrics")
-async def get_stock_data(symbol: str) -> dict:
-    await asyncio.sleep(0.5)  # Simulate API call
-    return {"symbol": symbol, "price": 875.50, "change": "+3.2%", "pe_ratio": 65.4}
+@tools.action(name="add_todo", description="Add a todo item")
+async def add_todo(task: str, priority: str = "medium") -> dict:
+    todo = {"id": len(todos) + 1, "task": task, "priority": priority, "done": False}
+    todos.append(todo)
+    return todo
 
-@market_tools.action(name="get_technicals", description="Get technical indicators")
-async def get_technicals(symbol: str) -> dict:
-    await asyncio.sleep(0.3)
-    return {"rsi": 62.5, "macd": "bullish", "trend": "uptrend"}
+@tools.action(name="list_todos", description="List all todos")
+async def list_todos() -> list:
+    return todos
 
+@tools.action(name="complete_todo", description="Mark todo as done")
+async def complete_todo(todo_id: int) -> dict:
+    for t in todos:
+        if t["id"] == todo_id:
+            t["done"] = True
+            return t
+    return {"error": "Not found"}
 
-news_tools = ActionGroup(name="NewsTools")
-
-@news_tools.action(name="search_news", description="Search financial news")
-async def search_news(company: str) -> dict:
-    await asyncio.sleep(0.4)
-    return {"articles": [
-        {"headline": "Record AI Chip Revenue", "sentiment": "positive"},
-        {"headline": "New GPU Architecture Announced", "sentiment": "positive"},
-    ]}
-
-
-# === Create Agents ===
-
-market_analyst = Agent(
-    name="MarketAnalyst",
-    instruction="Analyze stocks using price data and technical indicators.",
+assistant = Agent(
+    name="TodoBot",
+    instruction="Manage the user's todo list. Be helpful and concise.",
     model_client=AnthropicClient(),
 )
-market_analyst.add_action_group(market_tools)
-
-news_researcher = Agent(
-    name="NewsResearcher",
-    instruction="Research recent news and analyze sentiment.",
-    model_client=AnthropicClient(),
-)
-news_researcher.add_action_group(news_tools)
-
-
-# === Create Supervisor ===
-
-advisor = Supervisor(
-    name="InvestmentAdvisor",
-    instruction="""You coordinate investment research.
-
-    For each request:
-    1. Delegate to MarketAnalyst AND NewsResearcher IN PARALLEL
-    2. Synthesize their findings into a comprehensive analysis
-
-    Use parallel delegation:
-    delegate(delegations=[
-        {"agent_name": "MarketAnalyst", "task": "Analyze [SYMBOL]"},
-        {"agent_name": "NewsResearcher", "task": "Find news about [COMPANY]"}
-    ])
-    """,
-    model_client=AnthropicClient(),
-    collaborators=[market_analyst, news_researcher],
-    collaboration_mode="supervisor",
-)
-
-
-# === Run It ===
+assistant.add_action_group(tools)
 
 async def main():
-    async for event in advisor.invoke("session-1", "Analyze NVIDIA stock"):
-        print(event)
+    queries = [
+        "Add a task: Buy milk",
+        "Add: Call mom, high priority",
+        "What's on my list?",
+        "Done with the milk!",
+    ]
+    for q in queries:
+        print(f"\nYou: {q}")
+        async for event in assistant.invoke("user-1", q):
+            if isinstance(event, CompletionEvent):
+                print(f"Bot: {event.response}")
 
 asyncio.run(main())
-```
-
-**Output shows parallel execution:**
-```
-DelegationEvent(delegations=[{MarketAnalyst: ...}, {NewsResearcher: ...}])
-CollaboratorStartEvent(agent_name='MarketAnalyst')
-CollaboratorStartEvent(agent_name='NewsResearcher')  # Both start together!
-CollaboratorEvent(agent_name='MarketAnalyst', inner_event=ToolCallEvent(...))
-CollaboratorEvent(agent_name='NewsResearcher', inner_event=ToolCallEvent(...))
-...
-CompletionEvent(response='## NVIDIA Analysis\n\nPrice: $875.50 (+3.2%)...')
-```
-
-See [examples/investment_advisor.py](examples/investment_advisor.py) for the full runnable demo.
-
----
-
-## Comparison with Other Frameworks
-
-| Feature | Bedsheet | AWS Bedrock Agents | LangChain | CrewAI | AutoGPT |
-|---------|----------|-------------------|-----------|--------|---------|
-| **Learning Curve** | Low | Medium | High | Medium | Medium |
-| **Streaming Events** | Built-in | Limited | Add-on | Limited | No |
-| **Multi-Agent** | Native | Native | Via LangGraph | Native | Limited |
-| **Parallel Execution** | Default | Manual | Manual | Limited | No |
-| **Observability** | Full event stream | CloudWatch | Callbacks | Logging | Logging |
-| **Cloud Lock-in** | None | AWS only | None | None | None |
-| **Lines of Code** | ~1000 | N/A (managed) | ~100,000+ | ~10,000 | ~20,000 |
-| **Self-Hosted** | Yes | No | Yes | Yes | Yes |
-| **Cost Model** | Your LLM costs | AWS markup + LLM | Your LLM costs | Your LLM costs | Your LLM costs |
-
-### When to Use Bedsheet
-
-**Choose Bedsheet if you want:**
-- Full visibility into agent execution
-- Simple, readable code you can debug
-- Native multi-agent support with parallel execution
-- Streaming-first architecture
-- Something you can understand in a day
-
----
-
-## Enterprise Ready
-
-Bedsheet is designed for production use from day one:
-
-### Observability & Debugging
-- **Full event streaming** - Every tool call, every agent decision, every result is an event you can log, monitor, and analyze
-- **No black boxes** - Unlike managed services, you can step through every line of code
-- **Easy integration** - Events can feed into your existing observability stack (Datadog, Prometheus, etc.)
-
-### Reliability
-- **96 tests** covering all core functionality
-- **Type-safe** - Full type hints catch errors before runtime
-- **Error recovery** - Failed tool calls are passed back to the LLM for intelligent retry
-- **Max iteration limits** - Built-in protection against runaway agents
-
-### Scalability
-- **Async-first** - Built on `asyncio` for high concurrency
-- **Parallel execution** - Tools and agent delegations run concurrently by default
-- **Pluggable memory** - Swap `InMemory` for `RedisMemory` for distributed state
-- **Stateless agents** - Session state lives in memory backend, agents can run anywhere
-
-### Security & Compliance
-- **Self-hosted** - Your data never leaves your infrastructure
-- **No vendor lock-in** - Switch LLM providers by implementing `LLMClient` protocol
-- **Audit trail** - Event stream provides complete execution history
-- **Open source** - Full code visibility, no hidden behaviors
-
-### Simple Operations
-- **~1000 lines of code** - Small enough to audit, understand, and maintain
-- **Zero external dependencies** beyond `anthropic` SDK
-- **Standard Python** - No custom DSLs, no YAML configs, just Python
-
----
-
-## Quick Start
-
-```bash
-pip install bedsheet-agents
-export ANTHROPIC_API_KEY=your-key-here
-python -m bedsheet
-```
-
-This runs a multi-agent investment advisor demo showing parallel delegation, event streaming, and supervisor synthesis.
-
-**Uses:** Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) - this will use your Anthropic API credits.
-
-**Output:**
-```
-============================================================
-  BEDSHEET AGENTS - Investment Advisor Demo
-============================================================
-
-  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
-
-User: Analyze NVIDIA stock for me
-
-[0.8s] PARALLEL DELEGATION - dispatching 2 agents:
-         -> MarketAnalyst: Analyze NVDA stock data and technicals
-         -> NewsResearcher: Find and analyze news about NVIDIA
-
-[1.2s] || [MarketAnalyst] Starting...
-[1.2s] || [NewsResearcher] Starting...
-         [MarketAnalyst] -> get_stock_data({'symbol': 'NVDA'})
-         [NewsResearcher] -> search_news({'query': 'NVIDIA'})
-...
-
-FINAL RESPONSE (4.2s)
-------------------------------------------------------------
-## NVIDIA (NVDA) Investment Analysis
-...
 ```
 
 ---
@@ -385,32 +245,12 @@ FINAL RESPONSE (4.2s)
 ## Installation
 
 ```bash
-pip install bedsheet-agents
+pip install bedsheet-agents          # Basic
+pip install bedsheet-agents[redis]   # + Redis memory backend
+pip install bedsheet-agents[dev]     # + Development tools
 ```
 
-With Redis memory backend:
-```bash
-pip install bedsheet-agents[redis]
-```
-
-Development:
-```bash
-pip install bedsheet-agents[dev]
-```
-
-## Requirements
-
-- Python 3.11+
-- Anthropic API key (set `ANTHROPIC_API_KEY` environment variable)
-- Get your API key at: https://console.anthropic.com/
-
----
-
-## Documentation
-
-- [Multi-Agent Guide](docs/multi-agent-guide.md) - Complete walkthrough of supervisor patterns
-- [Examples](examples/) - Runnable demos
-- [API Reference](docs/) - Coming soon
+**Requirements:** Python 3.11+ and an [Anthropic API key](https://console.anthropic.com/)
 
 ---
 
@@ -418,44 +258,80 @@ pip install bedsheet-agents[dev]
 
 ```
 bedsheet/
-├── agent.py          # Single agent with ReAct loop
-├── supervisor.py     # Multi-agent coordination
-├── action_group.py   # Tool definitions with @action decorator
-├── events.py         # 10 event types for streaming
+├── agent.py          # Single agent (189 lines)
+├── supervisor.py     # Multi-agent coordination (362 lines)
+├── action_group.py   # Tool definitions (115 lines)
+├── events.py         # Event types (105 lines)
 ├── llm/
-│   ├── base.py       # LLMClient protocol
-│   └── anthropic.py  # Claude integration
+│   ├── base.py       # LLM protocol
+│   └── anthropic.py  # Claude implementation
 └── memory/
-    ├── base.py       # Memory protocol
-    ├── in_memory.py  # Dict-based (development)
-    └── redis.py      # Redis-based (production)
+    ├── in_memory.py  # Development
+    └── redis.py      # Production
+
+Total: ~1,000 lines. Coffee break reading.
 ```
 
 ---
 
-## Contributing
+## Comparison
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+| | Bedsheet | LangChain | AWS Bedrock | CrewAI |
+|---|---|---|---|---|
+| **Lines of code** | ~1,000 | ~100,000+ | N/A | ~10,000 |
+| **Time to understand** | 1 afternoon | 1 week | 2 days | 3 days |
+| **Debugging** | print() works | Good luck | CloudWatch | Logs |
+| **Streaming events** | Built-in | Add-on | Limited | Limited |
+| **Parallel execution** | Default | Manual | Manual | Manual |
+| **Cloud lock-in** | None | None | AWS | None |
 
-```bash
-# Clone and install dev dependencies
-git clone https://github.com/vitakka/bedsheet-agents
-cd bedsheet-agents
-pip install -e ".[dev]"
+---
 
-# Run tests
-pytest -v
-```
+## Documentation
+
+- **[User Guide](docs/user-guide.html)** — Beginner to advanced, 12 lessons
+- **[Technical Guide](docs/technical-guide.html)** — Python patterns explained
+- **[Multi-Agent Guide](docs/multi-agent-guide.md)** — Supervisor deep dive
 
 ---
 
 ## Roadmap
 
-- [x] **v0.1** - Single agent, tools, streaming
-- [x] **v0.2** - Multi-agent, supervisor, parallel delegation
-- [ ] **v0.3** - Knowledge bases, RAG integration
-- [ ] **v0.4** - Guardrails, content filtering
-- [ ] **v0.5** - MCP integration, code interpreter
+- [x] v0.1 — Single agents, tools, streaming
+- [x] v0.2 — Multi-agent, parallel delegation ← *you are here*
+- [ ] v0.3 — Knowledge bases, RAG
+- [ ] v0.4 — Guardrails, safety
+- [ ] v0.5 — MCP integration
+- [ ] v0.6 — Export to AWS/GCP
+
+---
+
+## Contributing
+
+```bash
+git clone https://github.com/sivang/bedsheet.git
+cd bedsheet
+pip install -e ".[dev]"
+pytest -v  # 99 tests, all green
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## FAQ
+
+**Production ready?**
+Yes. 99 tests, type hints, async-first, Redis support. We use it.
+
+**Only Claude?**
+For now. `LLMClient` is a protocol—implement it for OpenAI/Gemini/local. PRs welcome.
+
+**Why not LangChain?**
+Life is short.
+
+**Is the name a joke?**
+Yes. The code isn't.
 
 ---
 
@@ -465,4 +341,8 @@ Apache 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with Claude. Designed for humans.**
+<p align="center">
+<b>Built with Claude. For developers who value simplicity.</b>
+<br><br>
+<sub>Star if it helped. Issue if it didn't. Either way, we're listening.</sub>
+</p>
