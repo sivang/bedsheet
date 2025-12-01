@@ -377,7 +377,7 @@ Apache 2.0 - see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-<b>Built with Claude. For developers who value simplicity.</b>
+<b>Copyright © 2024-2025 Sivan Grünberg, Vitakka Consulting</b>
 <br><br>
 <sub>Star if it helped. Issue if it didn't. Either way, we're listening.</sub>
 </p>
