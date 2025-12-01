@@ -7,24 +7,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent-blue: #58a6ff;
-            --accent-green: #3fb950;
-            --accent-purple: #a371f7;
-            --accent-orange: #d29922;
-            --accent-red: #f85149;
-            --border-color: #30363d;
-            --code-bg: #0d1117;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
             --sidebar-width: 280px;
         }
 
@@ -472,31 +473,36 @@
         <section id="architecture">
             <h2>Architecture Overview</h2>
 
-            <div class="diagram">┌─────────────────────────────────────────────────────────────────┐
-│                         User Application                         │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Supervisor / Agent                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ Instruction │  │   Memory    │  │      ActionGroups       │  │
-│  │   (prompt)  │  │  (history)  │  │   (tools/functions)     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    ▼                           ▼
-         ┌──────────────────┐        ┌──────────────────┐
-         │    LLMClient     │        │   Collaborators  │
-         │  (AnthropicAPI)  │        │  (other Agents)  │
-         └──────────────────┘        └──────────────────┘
-                    │
-                    ▼
-         ┌──────────────────┐
-         │  Event Stream    │
-         │  (AsyncIterator) │
-         └──────────────────┘</div>
+            <div class="mermaid">
+flowchart TB
+    subgraph User["User Application"]
+        Input["User Input"]
+    end
+
+    subgraph Agent["Supervisor / Agent"]
+        Instruction["Instruction<br/>(prompt)"]
+        Memory["Memory<br/>(history)"]
+        Actions["ActionGroups<br/>(tools/functions)"]
+    end
+
+    subgraph External["External Services"]
+        LLM["LLMClient<br/>(Anthropic API)"]
+        Collaborators["Collaborators<br/>(other Agents)"]
+    end
+
+    Output["Event Stream<br/>(AsyncIterator)"]
+
+    Input --> Agent
+    Agent --> LLM
+    Agent --> Collaborators
+    LLM --> Output
+    Collaborators --> Output
+
+    style User fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style Agent fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style External fill:#f3e8ff,stroke:#8250df,color:#1f2328
+    style Output fill:#fef3c7,stroke:#bf8700,color:#1f2328
+</div>
 
             <h3>Key Components</h3>
             <table>
@@ -555,6 +561,27 @@
                 <div class="info-box-title">Why use it</div>
                 <p>Loose coupling. You can swap implementations without changing code that uses the protocol.</p>
             </div>
+
+            <h4>The Problem Protocols Solve</h4>
+            <p>Imagine you want to support multiple LLM providers (Anthropic, OpenAI, local models). Without protocols, you'd typically use inheritance:</p>
+
+            <pre><code class="language-python"># Traditional approach with inheritance (more rigid)
+from abc import ABC, abstractmethod
+
+class BaseLLMClient(ABC):
+    @abstractmethod
+    async def chat(self, messages, system): ...
+
+# Every implementation MUST inherit from BaseLLMClient
+class AnthropicClient(BaseLLMClient):  # Must explicitly inherit
+    async def chat(self, messages, system):
+        # ...
+
+# Problem: What if you want to use a third-party class that
+# has the right methods but doesn't inherit from your base class?
+# You'd have to wrap it or modify it.</code></pre>
+
+            <p>With <strong>Protocols</strong>, any class that has the right methods works automatically - no inheritance required:</p>
 
             <pre><code class="language-python"># bedsheet/llm/base.py
 from typing import Protocol, runtime_checkable
@@ -630,84 +657,211 @@ assert isinstance(client, LLMClient)  # ✓ True</code></pre>
 
             <div class="info-box note">
                 <div class="info-box-title">What it is</div>
-                <p>A decorator that auto-generates <code>__init__</code>, <code>__repr__</code>, <code>__eq__</code>, and more from class attributes.</p>
+                <p>A decorator that auto-generates <code>__init__</code>, <code>__repr__</code>, <code>__eq__</code>, and more from class attributes. It's Python's built-in way to create classes that are primarily containers for data.</p>
             </div>
 
-            <pre><code class="language-python"># bedsheet/events.py
-from dataclasses import dataclass, field
-from typing import Literal
+            <div class="info-box tip">
+                <div class="info-box-title">Why use it</div>
+                <p>Less boilerplate. Instead of writing 20+ lines of repetitive code (<code>__init__</code>, <code>__repr__</code>, <code>__eq__</code>), you write 5 lines and get all of it for free.</p>
+            </div>
 
-@dataclass
-class ToolCallEvent:
-    """Emitted when the LLM requests a tool call."""
-    tool_name: str
-    tool_input: dict[str, Any]
-    call_id: str
-    # field() with default - computed at class definition, not instance creation
-    type: Literal["tool_call"] = field(default="tool_call", init=False)</code></pre>
+            <h4>The Problem: Boilerplate Code</h4>
+            <p>Without dataclasses, creating a simple data container requires writing lots of repetitive code:</p>
 
-            <h4>What dataclass generates:</h4>
-
-            <pre><code class="language-python"># Equivalent to writing:
+            <pre><code class="language-python"># Without dataclass - lots of boilerplate!
 class ToolCallEvent:
     def __init__(self, tool_name: str, tool_input: dict, call_id: str):
-        self.tool_name = tool_name
-        self.tool_input = tool_input
-        self.call_id = call_id
+        self.tool_name = tool_name      # Repeat each field 3 times
+        self.tool_input = tool_input    # in the signature, assignment,
+        self.call_id = call_id          # and as self.field
         self.type = "tool_call"
 
     def __repr__(self):
-        return f"ToolCallEvent(tool_name={self.tool_name!r}, ...)"
+        return f"ToolCallEvent(tool_name={self.tool_name!r}, tool_input={self.tool_input!r}, call_id={self.call_id!r})"
 
     def __eq__(self, other):
         if not isinstance(other, ToolCallEvent):
             return NotImplemented
-        return (self.tool_name == other.tool_name and ...)</code></pre>
+        return (self.tool_name == other.tool_name and
+                self.tool_input == other.tool_input and
+                self.call_id == other.call_id)</code></pre>
 
-            <h4>Key field() options:</h4>
+            <h4>The Solution: @dataclass Decorator</h4>
+            <p>With <code>@dataclass</code>, you just declare the fields and Python generates everything else:</p>
 
-            <pre><code class="language-python">@dataclass
+            <pre><code class="language-python"># bedsheet/events.py
+from dataclasses import dataclass, field
+from typing import Literal, Any
+
+@dataclass
+class ToolCallEvent:
+    """Emitted when the LLM requests a tool call."""
+    tool_name: str                # These are the fields
+    tool_input: dict[str, Any]    # Type hints define what each field holds
+    call_id: str
+    type: Literal["tool_call"] = field(default="tool_call", init=False)
+
+# That's it! Python auto-generates __init__, __repr__, __eq__ for you.
+# You can now do:
+event = ToolCallEvent(tool_name="get_weather", tool_input={"city": "NYC"}, call_id="123")
+print(event)  # ToolCallEvent(tool_name='get_weather', tool_input={'city': 'NYC'}, ...)</code></pre>
+
+            <h4>Understanding the <code>field()</code> Function</h4>
+            <p>The <code>field()</code> function gives you fine-grained control over how each field behaves:</p>
+
+            <pre><code class="language-python">from dataclasses import dataclass, field
+
+@dataclass
 class Example:
-    # Regular field - required in __init__
+    # Regular field - REQUIRED when creating an instance
     name: str
 
-    # Default value
+    # Field with default value - OPTIONAL when creating an instance
     count: int = 0
 
-    # Computed default (use field + default_factory for mutable defaults)
-    items: list = field(default_factory=list)
+    # field(default=...) - same as above but more explicit
+    status: str = field(default="pending")
 
-    # Excluded from __init__ but set after
-    computed: str = field(init=False)
+    # field(init=False) - NOT included in __init__, set automatically
+    # Useful for fields that should always have a fixed value
+    type: str = field(default="example", init=False)
+
+    # field(default_factory=...) - for MUTABLE defaults like lists/dicts
+    # ⚠️ NEVER do this: items: list = []  (all instances would share the same list!)
+    # ✓ DO this instead:
+    items: list = field(default_factory=list)  # Each instance gets its own list
+
+    # field(repr=False) - hide from string representation (good for large data)
+    raw_data: bytes = field(default=b"", repr=False)</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Common Mistake: Mutable Default Values</div>
+                <p>Never use <code>items: list = []</code> in a dataclass! All instances would share the same list object. Always use <code>field(default_factory=list)</code> for lists, dicts, or any mutable type.</p>
+            </div>
+
+            <h4>The <code>__post_init__</code> Hook</h4>
+            <p>Sometimes you need to compute a value based on other fields. Use <code>__post_init__</code> - it runs right after <code>__init__</code>:</p>
+
+            <pre><code class="language-python">@dataclass
+class Message:
+    role: str
+    content: str
+    timestamp: float = field(init=False)  # Not passed in, computed automatically
 
     def __post_init__(self):
-        self.computed = f"Hello {self.name}"</code></pre>
+        # This runs after __init__, so self.role and self.content are already set
+        import time
+        self.timestamp = time.time()
+
+# Usage:
+msg = Message(role="user", content="Hello")
+print(msg.timestamp)  # 1701234567.89 (automatically set)</code></pre>
+
+            <h4>Literal Type for Fixed Values</h4>
+            <p><code>Literal["tool_call"]</code> means "this field can ONLY be the string 'tool_call'". It's used for type discrimination:</p>
+
+            <pre><code class="language-python">from typing import Literal
+
+@dataclass
+class ToolCallEvent:
+    type: Literal["tool_call"] = field(default="tool_call", init=False)
+
+@dataclass
+class CompletionEvent:
+    type: Literal["completion"] = field(default="completion", init=False)
+
+# Now type checkers know: if event.type == "tool_call", it's a ToolCallEvent
+# This pattern is called a "discriminated union" or "tagged union"</code></pre>
         </section>
 
         <!-- Type Hints -->
         <section id="type-hints">
             <h2>Type Hints & Union Types</h2>
 
-            <h4>Modern Python typing (3.10+):</h4>
+            <div class="info-box note">
+                <div class="info-box-title">What it is</div>
+                <p>Type hints are annotations that tell Python (and developers) what types of values are expected. They don't affect runtime behavior but enable IDE autocompletion, catch bugs before running, and serve as documentation.</p>
+            </div>
 
-            <pre><code class="language-python"># Union types with | operator (Python 3.10+)
-def process(value: str | int | None) -> str | None:
+            <h4>Basic Type Hints</h4>
+            <p>Type hints go after a colon for variables and parameters, and after <code>-></code> for return types:</p>
+
+            <pre><code class="language-python"># Variable with type hint
+name: str = "Alice"
+count: int = 42
+prices: list[float] = [9.99, 19.99, 29.99]
+
+# Function with type hints
+def greet(name: str, times: int = 1) -> str:
+    return f"Hello, {name}! " * times
+
+# The -> str means "this function returns a string"</code></pre>
+
+            <h4>The <code>|</code> Operator: Union Types (Python 3.10+)</h4>
+            <p>When a value can be one of several types, use <code>|</code> (pipe) to combine them:</p>
+
+            <pre><code class="language-python"># This function accepts either a string OR an integer
+def process(value: str | int) -> str:
+    if isinstance(value, str):
+        return value.upper()
+    else:
+        return str(value * 2)
+
+process("hello")  # "HELLO"
+process(21)       # "42"
+
+# Optional values: can be the type OR None
+def find_user(id: int) -> User | None:
+    # Returns a User if found, None if not
     ...
 
-# Generic types without importing from typing
-def get_items() -> list[dict[str, Any]]:
-    ...
+# Before Python 3.10, you had to use Union:
+from typing import Union, Optional
+def old_style(value: Union[str, int]) -> Optional[str]:  # Same as str | None
+    ...</code></pre>
 
-# Literal types for exact values
-from typing import Literal
-mode: Literal["supervisor", "router"] = "supervisor"</code></pre>
+            <h4>Generic Types: list[...], dict[...], etc.</h4>
+            <p>Container types can specify what they contain using square brackets:</p>
 
-            <h4>Union type for events:</h4>
+            <pre><code class="language-python"># A list that contains strings
+names: list[str] = ["Alice", "Bob"]
+
+# A dictionary with string keys and integer values
+scores: dict[str, int] = {"Alice": 95, "Bob": 87}
+
+# A list of dictionaries (common in API responses)
+users: list[dict[str, Any]] = [
+    {"name": "Alice", "age": 30},
+    {"name": "Bob", "age": 25},
+]
+
+# Any means "any type" - use when type varies or is unknown
+from typing import Any
+data: Any = get_unknown_data()</code></pre>
+
+            <h4>Literal Types: Exact Values Only</h4>
+            <p><code>Literal</code> restricts a value to specific exact values - not just a type:</p>
+
+            <pre><code class="language-python">from typing import Literal
+
+# This can ONLY be "supervisor" or "router", nothing else
+mode: Literal["supervisor", "router"] = "supervisor"
+
+mode = "supervisor"  # ✓ OK
+mode = "router"      # ✓ OK
+mode = "other"       # ✗ Type error! "other" is not allowed
+
+# Useful for configuration options, states, modes
+def set_log_level(level: Literal["debug", "info", "warn", "error"]) -> None:
+    ...</code></pre>
+
+            <h4>Union Types for Events</h4>
+            <p>In Bedsheet, <code>Event</code> is a Union of all possible event types. This lets you handle different events with type safety:</p>
 
             <pre><code class="language-python"># bedsheet/events.py
 from typing import Union
 
-# All possible event types
+# Event can be ANY of these types
 Event = Union[
     ThinkingEvent,
     TextTokenEvent,
@@ -715,32 +869,44 @@ Event = Union[
     ToolResultEvent,
     CompletionEvent,
     ErrorEvent,
-    RoutingEvent,
     DelegationEvent,
     CollaboratorStartEvent,
     CollaboratorEvent,
     CollaboratorCompleteEvent,
 ]
 
-# Usage with isinstance for type narrowing
+# When you receive an Event, use isinstance to check which type it is
 async for event in agent.invoke(...):
     if isinstance(event, ToolCallEvent):
-        # Type checker knows event.tool_name exists here
-        print(event.tool_name)
+        # Inside this block, Python KNOWS event is a ToolCallEvent
+        # So event.tool_name and event.tool_input are available
+        print(f"Tool: {event.tool_name}")
+
+    elif isinstance(event, TextTokenEvent):
+        # Here, event is definitely a TextTokenEvent
+        print(event.token, end="")  # Print streaming tokens
+
     elif isinstance(event, CompletionEvent):
-        # Type checker knows event.response exists here
-        print(event.response)</code></pre>
+        # Here, event is definitely a CompletionEvent
+        print(f"Final: {event.response}")</code></pre>
 
-            <h4>Pattern matching (Python 3.10+):</h4>
+            <h4>Pattern Matching (Python 3.10+)</h4>
+            <p>An elegant alternative to <code>isinstance</code> chains. The <code>match</code> statement can destructure dataclasses:</p>
 
-            <pre><code class="language-python"># Alternative to isinstance chains
+            <pre><code class="language-python"># Instead of multiple if/elif/isinstance checks:
 match event:
     case ToolCallEvent(tool_name=name, tool_input=args):
+        # Extracts tool_name into 'name', tool_input into 'args'
         print(f"Calling {name} with {args}")
+
+    case TextTokenEvent(token=t):
+        print(t, end="")
+
     case CompletionEvent(response=text):
         print(f"Done: {text}")
+
     case _:
-        pass  # Other events</code></pre>
+        pass  # The underscore matches anything else</code></pre>
         </section>
 
         <!-- Async/Await -->
@@ -749,49 +915,114 @@ match event:
 
             <div class="info-box note">
                 <div class="info-box-title">What it is</div>
-                <p>Cooperative multitasking. Code voluntarily yields control at <code>await</code> points, allowing other tasks to run.</p>
+                <p>A way to write code that can pause while waiting for slow operations (like API calls) and do other work in the meantime. It's built into Python and doesn't require threads.</p>
             </div>
 
             <div class="info-box tip">
                 <div class="info-box-title">Key insight</div>
-                <p>Async is about <strong>concurrency</strong> (interleaving tasks), not <strong>parallelism</strong> (simultaneous execution). It's ideal for I/O-bound operations like API calls.</p>
+                <p>Async is about <strong>concurrency</strong> (interleaving tasks), not <strong>parallelism</strong> (simultaneous execution). Think of it like a chef who starts boiling water, then preps vegetables while waiting, rather than staring at the pot.</p>
             </div>
 
-            <pre><code class="language-python">import asyncio
+            <h4>The Problem: Waiting is Wasteful</h4>
+            <p>Without async, when you make an API call, your program just waits:</p>
 
-async def fetch_data(url: str) -> dict:
-    """An async function (coroutine)."""
-    # await pauses this function, lets others run
-    response = await http_client.get(url)
+            <pre><code class="language-python"># Synchronous (blocking) code - wastes time waiting
+import requests
+
+def get_weather():
+    response = requests.get("https://api.weather.com")  # Program WAITS here
+    return response.json()                              # Does nothing else
+
+def get_news():
+    response = requests.get("https://api.news.com")     # Program WAITS here too
     return response.json()
 
+# These run one after another - if each takes 2 seconds, total = 4 seconds
+weather = get_weather()  # Wait 2 seconds...
+news = get_news()        # Wait 2 more seconds...</code></pre>
+
+            <h4>The Solution: async/await</h4>
+            <p>With async, the program can do other things while waiting:</p>
+
+            <pre><code class="language-python">import asyncio
+import aiohttp  # Async HTTP library
+
+# 'async def' makes this a coroutine (an async function)
+async def get_weather():
+    async with aiohttp.ClientSession() as session:
+        # 'await' says "pause here, let other code run while waiting"
+        response = await session.get("https://api.weather.com")
+        return await response.json()
+
+async def get_news():
+    async with aiohttp.ClientSession() as session:
+        response = await session.get("https://api.news.com")
+        return await response.json()
+
 async def main():
-    # Sequential - one after another
-    data1 = await fetch_data("url1")  # Wait for completion
-    data2 = await fetch_data("url2")  # Then this runs
+    # asyncio.gather runs both at the "same time"
+    # If each takes 2 seconds, total = ~2 seconds (not 4!)
+    weather, news = await asyncio.gather(
+        get_weather(),
+        get_news(),
+    )
+    print(weather, news)
 
-    # Concurrent - interleaved execution
-    data1, data2 = await asyncio.gather(
-        fetch_data("url1"),
-        fetch_data("url2"),
-    )  # Both run "at the same time"
-
-# Run the async code
+# This is how you run async code from regular Python
 asyncio.run(main())</code></pre>
+
+            <h4>Key Concepts Explained</h4>
+
+            <pre><code class="language-python"># 1. async def - defines a COROUTINE (async function)
+async def my_function():
+    ...
+
+# 2. await - PAUSES the coroutine until the operation completes
+#    While paused, other coroutines can run
+result = await some_async_operation()
+
+# 3. You can ONLY use 'await' inside an 'async def' function
+def regular_function():
+    await something()  # ✗ SyntaxError!
+
+async def async_function():
+    await something()  # ✓ OK
+
+# 4. asyncio.run() - starts the async event loop from regular code
+asyncio.run(main())  # Entry point for async code
+
+# 5. asyncio.gather() - runs multiple coroutines concurrently
+results = await asyncio.gather(task1(), task2(), task3())</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Common Mistake</div>
+                <p>Calling an async function without <code>await</code> doesn't run it - it just creates a coroutine object. Always use <code>await</code> or <code>asyncio.gather()</code>.</p>
+                <pre><code class="language-python"># Wrong - this does nothing!
+get_weather()  # Returns coroutine object, doesn't execute
+
+# Right
+await get_weather()  # Actually runs the function</code></pre>
+            </div>
 
             <h4>Visual: Sequential vs Concurrent</h4>
 
-            <div class="diagram">Sequential:
-Task1: [====WAITING====]
-Task2:                   [====WAITING====]
-Time:  |----------------|----------------|
-       0s               1s               2s
+            <div class="mermaid">
+gantt
+    title Sequential vs Concurrent Execution
+    dateFormat X
+    axisFormat %s
 
-Concurrent (asyncio.gather):
-Task1: [====WAITING====]
-Task2: [====WAITING====]
-Time:  |----------------|
-       0s               1s  (half the time!)</div>
+    section Sequential
+    Task1 :a1, 0, 10
+    Task2 :a2, 10, 20
+
+    section Concurrent
+    Task1 :b1, 0, 10
+    Task2 :b2, 0, 10
+</div>
+<p style="text-align: center; color: var(--text-muted); font-size: 14px; margin-top: -10px;">
+    Sequential: 20 units total | Concurrent: 10 units total (half the time!)
+</p>
         </section>
 
         <!-- AsyncIterator -->
@@ -800,13 +1031,43 @@ Time:  |----------------|
 
             <div class="info-box note">
                 <div class="info-box-title">What it is</div>
-                <p>An async version of iterators. Instead of <code>__iter__</code> and <code>__next__</code>, you implement <code>__aiter__</code> and <code>__anext__</code>.</p>
+                <p>A way to produce values one at a time, where each value might require waiting (like getting data from an API). Instead of returning all results at once, you "yield" them as they become available.</p>
             </div>
 
             <div class="info-box tip">
                 <div class="info-box-title">Why use it</div>
-                <p>Perfect for streaming data - yields items as they become available without loading everything into memory.</p>
+                <p>Perfect for streaming data - like showing LLM responses word-by-word as they arrive instead of waiting for the complete response.</p>
             </div>
+
+            <h4>Regular vs Async Iteration</h4>
+            <p>First, let's understand regular iteration:</p>
+
+            <pre><code class="language-python"># Regular iterator - uses 'for'
+for item in [1, 2, 3]:
+    print(item)
+
+# Regular generator - uses 'yield' to produce values one at a time
+def count_up(n):
+    for i in range(n):
+        yield i  # Produces values one at a time
+
+for num in count_up(5):
+    print(num)  # 0, 1, 2, 3, 4</code></pre>
+
+            <p>Async iteration is the same concept, but each step can involve waiting:</p>
+
+            <pre><code class="language-python"># Async generator - uses 'async def' + 'yield'
+async def fetch_pages(urls):
+    for url in urls:
+        response = await http.get(url)  # Wait for each page
+        yield response.text             # Then yield it
+
+# Async iteration - uses 'async for'
+async for page in fetch_pages(["url1", "url2", "url3"]):
+    print(page)  # Processes each page as it arrives</code></pre>
+
+            <h4>How Bedsheet Uses AsyncIterator</h4>
+            <p>The agent's <code>invoke()</code> method is an async generator that yields events as they happen:</p>
 
             <pre><code class="language-python"># bedsheet/agent.py
 from typing import AsyncIterator
@@ -817,37 +1078,52 @@ class Agent:
         session_id: str,
         input_text: str,
         stream: bool = False,
-    ) -> AsyncIterator[Event]:  # Returns an async iterator
+    ) -> AsyncIterator[Event]:  # Return type: yields Event objects one at a time
         """Invoke agent, yielding events as they occur."""
 
-        # yield makes this an async generator
-        yield ToolCallEvent(...)  # Event 1
+        # When streaming, yield each token as it arrives
+        if stream:
+            async for token in self.model_client.chat_stream(...):
+                if isinstance(token, str):
+                    yield TextTokenEvent(token=token)  # Yield immediately!
 
-        # Can do async operations between yields
-        result = await self.execute_tool(...)
+        # Yield tool-related events
+        yield ToolCallEvent(...)   # "I'm about to call a tool"
+        result = await self.execute_tool(...)  # Actually call the tool
+        yield ToolResultEvent(...) # "Here's the result"
 
-        yield ToolResultEvent(...)  # Event 2
-        yield CompletionEvent(...)  # Event 3
+        # Final response
+        yield CompletionEvent(...)
 
-# Consumption with async for
-async for event in agent.invoke("session", "hello"):
-    print(event)  # Processes each event as it arrives</code></pre>
+# The caller processes events AS THEY ARRIVE - no waiting for everything
+async for event in agent.invoke("session", "hello", stream=True):
+    if isinstance(event, TextTokenEvent):
+        print(event.token, end="")  # Print each word as it arrives!</code></pre>
 
-            <h4>Streaming from LLM:</h4>
+            <h4>Streaming from Claude API</h4>
+            <p>Here's how we stream tokens from Claude's API:</p>
 
             <pre><code class="language-python"># bedsheet/llm/anthropic.py
 async def chat_stream(self, messages, system, tools=None) -> AsyncIterator[str | LLMResponse]:
-    """Stream tokens from Claude."""
+    """Stream tokens from Claude, yielding each word/character as it arrives."""
 
-    # Anthropic SDK provides async context manager for streaming
+    # Anthropic SDK provides 'messages.stream()' for streaming responses
     async with self._client.messages.stream(**kwargs) as stream:
-        # Yields tokens as they arrive from the API
-        async for text in stream.text_stream:
-            yield text  # Each token (word/character)
 
-        # After streaming completes, get final message for tool calls
+        # stream.text_stream yields each token (word or part of word) as it arrives
+        async for text in stream.text_stream:
+            yield text  # Immediately yield to caller - don't wait!
+            # Example yields: "Hello", " ", "world", "!", " ", "How", " ", "can", ...
+
+        # After all tokens are streamed, get the complete message
+        # (needed for tool calls which aren't streamed)
         final = await stream.get_final_message()
-        yield self._parse_response(final)</code></pre>
+        yield self._parse_response(final)  # Yield the final structured response</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Real-World Effect</div>
+                <p>This is why ChatGPT and Claude show responses word-by-word instead of making you wait 5 seconds for the complete answer. Each token is displayed the moment it arrives from the API.</p>
+            </div>
         </section>
 
         <!-- Parallel Execution -->
@@ -888,17 +1164,23 @@ async def _handle_parallel_delegation(self, delegations, session_id, stream):
 
             <h4>Visual: Parallel Delegation</h4>
 
-            <div class="diagram">Without gather (sequential):
-MarketAnalyst:  [=======WORKING=======]
-NewsResearcher:                         [=======WORKING=======]
-Total time:     |---------------------|---------------------|
-                0s                    10s                   20s
+            <div class="mermaid">
+gantt
+    title Parallel Delegation Comparison
+    dateFormat X
+    axisFormat %s
 
-With asyncio.gather (parallel):
-MarketAnalyst:  [=======WORKING=======]
-NewsResearcher: [=======WORKING=======]
-Total time:     |---------------------|
-                0s                    10s  (half the time!)</div>
+    section Sequential
+    MarketAnalyst   :a1, 0, 10
+    NewsResearcher  :a2, 10, 20
+
+    section Parallel (asyncio.gather)
+    MarketAnalyst   :b1, 0, 10
+    NewsResearcher  :b2, 0, 10
+</div>
+<p style="text-align: center; color: var(--text-muted); font-size: 14px; margin-top: -10px;">
+    Sequential: 20s | Parallel: 10s (half the time!)
+</p>
 
             <h4>Parallel tool execution:</h4>
 
@@ -924,82 +1206,138 @@ async def _execute_tools_parallel(self, tool_calls: list[ToolCall]) -> list[Tool
 
             <div class="info-box note">
                 <div class="info-box-title">What it is</div>
-                <p>A decorator that registers functions as tools and extracts metadata from them.</p>
+                <p>A decorator is a function that wraps another function to add behavior or register it somewhere. The <code>@action</code> decorator registers functions as "tools" that the LLM can call.</p>
             </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Why use it</div>
+                <p>Clean, declarative way to define tools. Just add <code>@action</code> above any function and it becomes available to the AI agent.</p>
+            </div>
+
+            <h4>Understanding Decorators Step by Step</h4>
+            <p>A decorator is just a function that takes a function and returns a function. The <code>@</code> syntax is shorthand:</p>
+
+            <pre><code class="language-python"># This decorator syntax...
+@my_decorator
+def my_function():
+    pass
+
+# ...is exactly equivalent to this:
+def my_function():
+    pass
+my_function = my_decorator(my_function)
+
+# The decorator receives the function and can:
+# 1. Modify it
+# 2. Wrap it with extra behavior
+# 3. Register it somewhere
+# 4. Replace it entirely</code></pre>
+
+            <h4>A Simple Decorator Example</h4>
+
+            <pre><code class="language-python"># This decorator logs when a function is called
+def log_calls(fn):
+    def wrapper(*args, **kwargs):
+        print(f"Calling {fn.__name__}...")
+        result = fn(*args, **kwargs)
+        print(f"{fn.__name__} returned {result}")
+        return result
+    return wrapper
+
+@log_calls
+def add(a, b):
+    return a + b
+
+add(2, 3)
+# Output:
+# Calling add...
+# add returned 5</code></pre>
+
+            <h4>Decorators WITH Arguments (Two Levels)</h4>
+            <p>When a decorator takes arguments like <code>@action(name="...", description="...")</code>, there's an extra level of nesting:</p>
+
+            <pre><code class="language-python"># @decorator_with_args("hello") is evaluated FIRST
+# It returns the actual decorator function
+
+def decorator_with_args(message):
+    # This outer function receives the decorator arguments
+
+    def actual_decorator(fn):
+        # This inner function receives the function to decorate
+
+        def wrapper(*args, **kwargs):
+            print(message)  # Uses the argument from outer function
+            return fn(*args, **kwargs)
+        return wrapper
+
+    return actual_decorator  # Return the decorator
+
+# Usage:
+@decorator_with_args("Hello!")
+def greet(name):
+    return f"Hi, {name}"
+
+# What happens:
+# 1. decorator_with_args("Hello!") is called -> returns actual_decorator
+# 2. actual_decorator(greet) is called -> returns wrapper
+# 3. greet now refers to wrapper</code></pre>
+
+            <h4>How @action Works in Bedsheet</h4>
 
             <pre><code class="language-python"># bedsheet/action_group.py
 class ActionGroup:
     def __init__(self, name: str):
         self.name = name
-        self.actions: dict[str, Action] = {}
+        self.actions: dict[str, Action] = {}  # Store registered actions
 
-    def action(
-        self,
-        name: str,
-        description: str,
-        parameters: dict | None = None,
-    ):
-        """Decorator to register a function as an action."""
+    def action(self, name: str, description: str, parameters: dict | None = None):
+        """Decorator factory - returns the actual decorator."""
 
         def decorator(fn: Callable) -> Callable:
-            # Infer schema from type hints if not provided
+            # Infer JSON schema from type hints if not provided
             schema = parameters if parameters is not None else generate_schema(fn)
 
-            # Store metadata
+            # Register this function in our actions dictionary
             self.actions[name] = Action(
                 name=name,
                 description=description,
                 parameters=schema,
-                handler=fn,  # The actual function
+                handler=fn,  # Store reference to the actual function
             )
 
-            return fn  # Return original function unchanged
+            return fn  # Return the original function unchanged
 
         return decorator</code></pre>
 
-            <h4>Usage:</h4>
+            <h4>Using @action to Define Tools</h4>
 
-            <pre><code class="language-python">tools = ActionGroup(name="MarketTools")
+            <pre><code class="language-python"># Create a group to hold related tools
+tools = ActionGroup(name="MarketTools")
 
+# Register a function as a tool the LLM can call
 @tools.action(name="get_stock_data", description="Get stock price and metrics")
 async def get_stock_data(symbol: str) -> dict:
-    """The docstring isn't used - description comes from decorator."""
-    return {"symbol": symbol, "price": 100.0}
+    """Fetch stock data from API."""
+    return {"symbol": symbol, "price": 100.0, "change": "+2.5%"}
 
-# What happened:
-# 1. @tools.action(...) called -> returns decorator function
-# 2. decorator(get_stock_data) called -> registers function, returns it
-# 3. get_stock_data is now registered in tools.actions["get_stock_data"]</code></pre>
+# What happened step by step:
+# 1. tools.action(name="get_stock_data", description="...") is called
+#    -> Returns the 'decorator' function
+# 2. decorator(get_stock_data) is called
+#    -> Extracts type hints from the function (symbol: str, returns dict)
+#    -> Creates an Action object with name, description, schema, and handler
+#    -> Stores it in tools.actions["get_stock_data"]
+#    -> Returns the original function (unchanged)
+# 3. get_stock_data can still be called normally
 
-            <h4>Decorator with arguments pattern:</h4>
+# Now the agent can use this tool:
+agent.add_action_group(tools)
+# The LLM sees: "get_stock_data: Get stock price and metrics. Args: symbol (string)"</code></pre>
 
-            <pre><code class="language-python"># Decorator WITHOUT arguments
-def simple_decorator(fn):
-    def wrapper(*args, **kwargs):
-        print("Before")
-        result = fn(*args, **kwargs)
-        print("After")
-        return result
-    return wrapper
-
-@simple_decorator
-def my_func():
-    pass
-# Equivalent to: my_func = simple_decorator(my_func)
-
-# Decorator WITH arguments (what @action uses)
-def decorator_with_args(arg1, arg2):
-    def decorator(fn):
-        def wrapper(*args, **kwargs):
-            print(f"Args were: {arg1}, {arg2}")
-            return fn(*args, **kwargs)
-        return wrapper
-    return decorator
-
-@decorator_with_args("hello", "world")
-def my_func():
-    pass
-# Equivalent to: my_func = decorator_with_args("hello", "world")(my_func)</code></pre>
+            <div class="info-box tip">
+                <div class="info-box-title">The Magic</div>
+                <p>By just adding <code>@tools.action(...)</code>, your function automatically becomes a tool the AI can use. The decorator extracts the parameter types from your type hints, so you don't have to write JSON schemas manually.</p>
+            </div>
         </section>
 
         <!-- Schema Inference -->
@@ -1008,8 +1346,57 @@ def my_func():
 
             <div class="info-box note">
                 <div class="info-box-title">What it is</div>
-                <p>Automatically generate JSON Schema from Python function signatures.</p>
+                <p>A technique that reads your Python function's parameter types and automatically generates a JSON Schema that tells the LLM what arguments the function accepts.</p>
             </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Why it matters</div>
+                <p>LLMs need to know what parameters a tool accepts. Instead of manually writing JSON schemas, Bedsheet extracts this information from your type hints automatically.</p>
+            </div>
+
+            <h4>The Problem: LLMs Need Schemas</h4>
+            <p>When you give an LLM access to tools, it needs to know exactly what arguments each tool accepts. This is typically done with JSON Schema:</p>
+
+            <pre><code class="language-python"># Without schema inference, you'd write this manually:
+tool_schema = {
+    "name": "search_news",
+    "description": "Search for news articles",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"},
+            "limit": {"type": "integer", "description": "Max results"}
+        },
+        "required": ["query"]
+    }
+}
+# This is tedious and error-prone - you repeat information already in your function!</code></pre>
+
+            <h4>The Solution: Use <code>inspect</code> and <code>get_type_hints</code></h4>
+            <p>Python's standard library lets you examine functions at runtime:</p>
+
+            <pre><code class="language-python">import inspect
+from typing import get_type_hints
+
+# Your function with type hints
+async def search_news(query: str, limit: int = 10) -> dict:
+    """Search for news articles."""
+    pass
+
+# inspect.signature() gives you parameter information
+sig = inspect.signature(search_news)
+for name, param in sig.parameters.items():
+    print(f"{name}: default={param.default}")
+# Output:
+# query: default=<empty>  (no default = required)
+# limit: default=10       (has default = optional)
+
+# get_type_hints() gives you the type annotations
+hints = get_type_hints(search_news)
+print(hints)
+# Output: {'query': <class 'str'>, 'limit': <class 'int'>, 'return': <class 'dict'>}</code></pre>
+
+            <h4>How Bedsheet Generates Schemas</h4>
 
             <pre><code class="language-python"># bedsheet/action_group.py
 import inspect
@@ -1018,17 +1405,17 @@ from typing import get_type_hints
 def generate_schema(fn: Callable) -> dict:
     """Generate JSON Schema from function type hints."""
 
-    hints = get_type_hints(fn)  # Get type annotations
-    sig = inspect.signature(fn)  # Get parameter info
+    hints = get_type_hints(fn)      # Get {'param_name': type, ...}
+    sig = inspect.signature(fn)     # Get signature with defaults
 
     properties = {}
     required = []
 
     for param_name, param in sig.parameters.items():
         if param_name == "return":
-            continue
+            continue  # Skip return type
 
-        param_type = hints.get(param_name, str)
+        param_type = hints.get(param_name, str)  # Default to string
 
         # Map Python types to JSON Schema types
         type_mapping = {
@@ -1043,7 +1430,7 @@ def generate_schema(fn: Callable) -> dict:
         json_type = type_mapping.get(param_type, "string")
         properties[param_name] = {"type": json_type}
 
-        # If no default value, it's required
+        # If parameter has no default value, it's required
         if param.default is inspect.Parameter.empty:
             required.append(param_name)
 
@@ -1053,21 +1440,34 @@ def generate_schema(fn: Callable) -> dict:
         "required": required,
     }</code></pre>
 
-            <h4>Example:</h4>
+            <h4>Example: From Function to Schema</h4>
 
-            <pre><code class="language-python">async def search_news(query: str, limit: int = 10) -> dict:
+            <pre><code class="language-python"># Your function
+async def search_news(query: str, limit: int = 10) -> dict:
+    """Search news articles by query."""
     pass
 
+# Bedsheet automatically generates this schema:
 schema = generate_schema(search_news)
-# Result:
-# {
-#     "type": "object",
-#     "properties": {
-#         "query": {"type": "string"},
-#         "limit": {"type": "integer"}
-#     },
-#     "required": ["query"]  # limit has default, so not required
-# }</code></pre>
+
+# Result - this is sent to the LLM:
+{
+    "type": "object",
+    "properties": {
+        "query": {"type": "string"},
+        "limit": {"type": "integer"}
+    },
+    "required": ["query"]  # limit has a default, so it's optional
+}
+
+# The LLM now knows:
+# - "query" is required and must be a string
+# - "limit" is optional and must be an integer</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Best Practice</div>
+                <p>Always add type hints to your tool functions. Not only does it enable schema inference, it also makes your code self-documenting and helps catch bugs with type checkers like mypy.</p>
+            </div>
         </section>
 
         <!-- Event Types -->
@@ -1160,94 +1560,95 @@ class RoutingEvent:
 
             <h4>Single Agent Flow:</h4>
 
-            <div class="diagram">User Input
-    │
-    ▼
-┌─────────────────────────────────────────────┐
-│                Agent.invoke()                │
-│                                              │
-│  ┌─────────────────────────────────────┐    │
-│  │         LLM Call (streaming)         │    │
-│  │  ┌─────────────────────────────────┐ │    │
-│  │  │ yield TextTokenEvent("Hello")   │ │    │
-│  │  │ yield TextTokenEvent(" world")  │ │    │
-│  │  │ ...                             │ │    │
-│  │  └─────────────────────────────────┘ │    │
-│  │         OR                           │    │
-│  │  ┌─────────────────────────────────┐ │    │
-│  │  │ Tool calls requested            │ │    │
-│  │  └─────────────────────────────────┘ │    │
-│  └─────────────────────────────────────┘    │
-│                     │                        │
-│         ┌───────────┴───────────┐           │
-│         ▼                       ▼           │
-│  ┌─────────────┐         ┌─────────────┐   │
-│  │ Tool Call 1 │         │ Tool Call 2 │   │
-│  │   (async)   │         │   (async)   │   │
-│  └─────────────┘         └─────────────┘   │
-│         │                       │           │
-│         ▼                       ▼           │
-│  yield ToolCallEvent    yield ToolCallEvent │
-│  yield ToolResultEvent  yield ToolResultEvent
-│                     │                        │
-│                     ▼                        │
-│            ┌──────────────┐                 │
-│            │ Next LLM Call │                 │
-│            │  (loop back)  │                 │
-│            └──────────────┘                 │
-│                     │                        │
-│                     ▼                        │
-│          yield CompletionEvent               │
-└─────────────────────────────────────────────┘</div>
+            <div class="mermaid">
+flowchart TD
+    subgraph Agent["Agent.invoke()"]
+        direction TB
+        UI[User Input] --> LLM[LLM Call]
+
+        LLM --> |streaming| STREAM["yield TextTokenEvent('Hello')<br/>yield TextTokenEvent(' world')<br/>..."]
+        LLM --> |tool use| TOOLS[Tool calls requested]
+
+        STREAM --> COMPLETE
+        TOOLS --> TC1["Tool Call 1<br/>(async)"]
+        TOOLS --> TC2["Tool Call 2<br/>(async)"]
+
+        TC1 --> TCE1[yield ToolCallEvent]
+        TC2 --> TCE2[yield ToolCallEvent]
+
+        TCE1 --> TRE1[yield ToolResultEvent]
+        TCE2 --> TRE2[yield ToolResultEvent]
+
+        TRE1 --> NEXT[Next LLM Call<br/>loop back]
+        TRE2 --> NEXT
+
+        NEXT --> LLM
+        NEXT --> COMPLETE[yield CompletionEvent]
+    end
+
+    style Agent fill:#e0f2fe,stroke:#0284c7,color:#1f2328
+    style LLM fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style STREAM fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style TOOLS fill:#fef3c7,stroke:#bf8700,color:#1f2328
+    style TC1 fill:#fef3c7,stroke:#bf8700,color:#1f2328
+    style TC2 fill:#fef3c7,stroke:#bf8700,color:#1f2328
+    style COMPLETE fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+            </div>
 
             <h4>Supervisor Flow with Parallel Delegation:</h4>
 
-            <div class="diagram">User Input
-    │
-    ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     Supervisor.invoke()                       │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                      LLM Call                            │ │
-│  │  "Delegate to MarketAnalyst AND NewsResearcher"          │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                           │                                   │
-│                           ▼                                   │
-│                yield DelegationEvent                          │
-│                           │                                   │
-│             ┌─────────────┴─────────────┐                    │
-│             ▼                           ▼                    │
-│  ┌─────────────────────┐      ┌─────────────────────┐       │
-│  │    MarketAnalyst    │      │    NewsResearcher   │       │
-│  │     (parallel)      │      │      (parallel)     │       │
-│  └──────────┬──────────┘      └──────────┬──────────┘       │
-│             │                            │                   │
-│  yield CollaboratorStartEvent    yield CollaboratorStartEvent│
-│             │                            │                   │
-│  ┌──────────▼──────────┐      ┌──────────▼──────────┐       │
-│  │   Agent.invoke()    │      │   Agent.invoke()    │       │
-│  │                     │      │                     │       │
-│  │ TextTokenEvent ─────┼──────┼───── TextTokenEvent │       │
-│  │ ToolCallEvent  ─────┼──────┼───── ToolCallEvent  │       │
-│  │ ToolResultEvent ────┼──────┼───── ToolResultEvent│       │
-│  │ CompletionEvent ────┼──────┼───── CompletionEvent│       │
-│  └──────────┬──────────┘      └──────────┬──────────┘       │
-│             │                            │                   │
-│             └────────────┬───────────────┘                   │
-│                          ▼                                   │
-│  yield CollaboratorCompleteEvent (for each)                  │
-│                          │                                   │
-│                          ▼                                   │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │              Supervisor LLM Call                         ││
-│  │        (synthesize collaborator results)                 ││
-│  └─────────────────────────────────────────────────────────┘│
-│                          │                                   │
-│                          ▼                                   │
-│              yield TextTokenEvent (streaming)                │
-│              yield CompletionEvent (final)                   │
-└──────────────────────────────────────────────────────────────┘</div>
+            <div class="mermaid">
+flowchart TD
+    subgraph Supervisor["Supervisor.invoke()"]
+        direction TB
+        UI[User Input] --> LLM1["LLM Call<br/>'Delegate to MarketAnalyst AND NewsResearcher'"]
+        LLM1 --> DEL[yield DelegationEvent]
+
+        DEL --> MA["MarketAnalyst<br/>(parallel)"]
+        DEL --> NR["NewsResearcher<br/>(parallel)"]
+
+        MA --> CSE1[yield CollaboratorStartEvent]
+        NR --> CSE2[yield CollaboratorStartEvent]
+
+        subgraph AGENT1["Agent.invoke()"]
+            direction TB
+            A1_TTE[TextTokenEvent]
+            A1_TCE[ToolCallEvent]
+            A1_TRE[ToolResultEvent]
+            A1_CE[CompletionEvent]
+        end
+
+        subgraph AGENT2["Agent.invoke()"]
+            direction TB
+            A2_TTE[TextTokenEvent]
+            A2_TCE[ToolCallEvent]
+            A2_TRE[ToolResultEvent]
+            A2_CE[CompletionEvent]
+        end
+
+        CSE1 --> AGENT1
+        CSE2 --> AGENT2
+
+        AGENT1 --> CCE["yield CollaboratorCompleteEvent<br/>(for each)"]
+        AGENT2 --> CCE
+
+        CCE --> LLM2["Supervisor LLM Call<br/>(synthesize collaborator results)"]
+
+        LLM2 --> STREAM[yield TextTokenEvent<br/>streaming]
+        STREAM --> FINAL[yield CompletionEvent<br/>final]
+    end
+
+    style Supervisor fill:#e0f2fe,stroke:#0284c7,color:#1f2328
+    style LLM1 fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style LLM2 fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style DEL fill:#fef3c7,stroke:#bf8700,color:#1f2328
+    style MA fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style NR fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style AGENT1 fill:#f0fdf4,stroke:#1a7f37,color:#1f2328
+    style AGENT2 fill:#f0fdf4,stroke:#1a7f37,color:#1f2328
+    style CCE fill:#fef3c7,stroke:#bf8700,color:#1f2328
+    style FINAL fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+            </div>
         </section>
 
         <!-- Supervisor Pattern -->
@@ -1776,6 +2177,20 @@ async def test_agent_calls_tool_and_returns_result():
     </main>
 
     <script>
+        // Initialize Mermaid with light theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#1f2328',
+                primaryBorderColor: '#0969da',
+                lineColor: '#57606a',
+                secondaryColor: '#f0fdf4',
+                tertiaryColor: '#fef3c7'
+            }
+        });
+
         // Initialize syntax highlighting
         hljs.highlightAll();
 

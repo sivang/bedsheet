@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - User Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-link .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            color: var(--text-muted);
+        }
+
+        .nav-link:hover .step {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            max-width: 1000px;
+            padding: 48px 64px;
+        }
+
+        /* Hero */
+        .hero {
+            margin-bottom: 48px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .hero .lead {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .hero .badge-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-purple { background: #f3e8ff; color: #6b21a8; }
+
+        /* Typography */
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-top: 64px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2 .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--accent-blue);
+            color: white;
+            border-radius: 50%;
+            font-size: 18px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Code */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 16px 0 24px 0;
+            font-size: 14px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        p code, li code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-purple);
+        }
+
+        /* Info boxes */
+        .info-box {
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.tip {
+            background: #f0fdf4;
+            border-color: var(--accent-green);
+        }
+
+        .info-box.note {
+            background: #eff6ff;
+            border-color: var(--accent-blue);
+        }
+
+        .info-box.warning {
+            background: #fefce8;
+            border-color: var(--accent-orange);
+        }
+
+        .info-box.important {
+            background: #fef2f2;
+            border-color: var(--accent-red);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .important .info-box-title { color: var(--accent-red); }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Output blocks */
+        .output {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        .output .comment {
+            color: #6b7280;
+        }
+
+        /* What's happening boxes */
+        .whats-happening {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .whats-happening h4 {
+            margin-top: 0;
+            color: var(--accent-purple);
+        }
+
+        .whats-happening ol, .whats-happening ul {
+            margin-left: 24px;
+            margin-bottom: 0;
+        }
+
+        .whats-happening li {
+            margin-bottom: 8px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Progress indicator */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 32px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .progress-indicator .step {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-indicator .step.active {
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        /* Comparison tables */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .comparison-item h4 {
+            margin-top: 0;
+        }
+
+        .comparison-item.good h4 { color: var(--accent-green); }
+        .comparison-item.bad h4 { color: var(--accent-red); }
+
+        /* Mermaid diagrams */
+        .mermaid {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 24px;
+            }
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Bedsheet Agents</h1>
+            <div class="subtitle">User Guide</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Introduction</div>
+            <a href="#origin-story" class="nav-link" style="font-style: italic;">Why "Bedsheet"?</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Getting Started</div>
+            <a href="#getting-started" class="nav-link"><span class="step">1</span>Installation</a>
+            <a href="#first-agent" class="nav-link"><span class="step">2</span>Your First Agent</a>
+            <a href="#adding-tools" class="nav-link"><span class="step">3</span>Adding Tools</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Core Concepts</div>
+            <a href="#events" class="nav-link"><span class="step">4</span>Understanding Events</a>
+            <a href="#streaming" class="nav-link"><span class="step">5</span>Streaming</a>
+            <a href="#memory" class="nav-link"><span class="step">6</span>Conversation Memory</a>
+            <a href="#multiple-tools" class="nav-link"><span class="step">7</span>Multiple Tools</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Multi-Agent</div>
+            <a href="#first-multi-agent" class="nav-link"><span class="step">8</span>First Multi-Agent</a>
+            <a href="#parallel" class="nav-link"><span class="step">9</span>Parallel Delegation</a>
+            <a href="#hierarchies" class="nav-link"><span class="step">10</span>Deep Hierarchies</a>
+            <a href="#router" class="nav-link"><span class="step">11</span>Router Mode</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Reference</div>
+            <a href="#best-practices" class="nav-link"><span class="step">12</span>Best Practices</a>
+            <a href="technical-guide.html" class="nav-link">Technical Guide</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="hero">
+            <h1>Bedsheet User Guide</h1>
+            <p class="lead">A progressive tutorial from your first agent to complex multi-agent orchestration.</p>
+            <div class="badge-row">
+                <span class="badge badge-blue">12 Lessons</span>
+                <span class="badge badge-green">Hands-on Examples</span>
+                <span class="badge badge-purple">Beginner Friendly</span>
+            </div>
+        </div>
+
+        <!-- Origin Story -->
+        <section id="origin-story" style="margin-bottom: 48px;">
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 28px; border-left: 5px solid #d97706;">
+                <h3 style="margin-top: 0; color: #92400e; font-size: 20px;">Why "Bedsheet"? A Frustrated Developer's Tale</h3>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    After 25+ years of writing code, I've learned that the best tools are the ones that <em>get out of your way</em>.
+                    I still use Vim in a terminal. I define infrastructure as code. I believe clicking through web UIs is for people who enjoy suffering.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    So when I tried AWS Bedrock Agents... let's just say the experience was counterintuitive.
+                    The web console is cluttered. Click here, then there, configure this dropdown, wait for deployment.
+                    Every time I wanted to tweak an agent's behavior, I had to navigate through multiple screens.
+                    It felt like fighting the UI instead of building agents.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    I wanted to define my agents in <strong>code</strong>. Version-controlled, reviewable, debuggable code.
+                    I wanted to run them locally during development. I wanted to actually <em>see</em> what was happening inside.
+                    And when I'm ready for production, I want to deploy to AWS, GCP, or my own servers - my choice, not Amazon's.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    So I built Bedsheet. The name? It "covers" the same concepts as Bedrock (agents, action groups, orchestration) while being completely cloud-agnostic.
+                    Like a bedsheet that fits any bed regardless of brand, Bedsheet fits any cloud - or no cloud at all.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 0; font-style: italic; color: #78350f;">
+                    Plus, agent frameworks shouldn't take themselves too seriously. Life's too short for that.
+                </p>
+
+                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px dashed #d97706;">
+                    <p style="font-size: 14px; color: #92400e; margin: 0;">
+                        <strong>Planned:</strong> Export your Bedsheet agents to AWS Bedrock or Google Cloud Vertex AI with a single command.
+                        Define locally, deploy anywhere. <em>(Coming in v0.6)</em>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: Getting Started -->
+        <section id="getting-started">
+            <h2><span class="step-number">1</span>Getting Started</h2>
+
+            <h3>Installation</h3>
+            <pre><code class="language-bash">pip install bedsheet-agents</code></pre>
+
+            <h3>Set Your API Key</h3>
+            <p>Bedsheet uses Claude by default. Get your API key from <a href="https://console.anthropic.com">console.anthropic.com</a>:</p>
+            <pre><code class="language-bash">export ANTHROPIC_API_KEY=your-key-here</code></pre>
+
+            <h3>Verify Installation</h3>
+            <pre><code class="language-bash">python -m bedsheet</code></pre>
+            <p>This runs a demo showing multi-agent collaboration. If it works, you're ready!</p>
+        </section>
+
+        <!-- Section 2: First Agent -->
+        <section id="first-agent">
+            <h2><span class="step-number">2</span>Your First Agent</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why start simple?</div>
+                <p>Before adding tools, multi-agent orchestration, and fancy features, let's make sure you understand the core concept: an Agent is just a wrapper around an LLM with a personality (instruction) and a way to track conversations. That's it. Everything else builds on this foundation.</p>
+            </div>
+
+            <p>Let's create the simplest possible agent - one that just responds to messages without any tools:</p>
+
+            <pre><code class="language-python">import asyncio
+from bedsheet import Agent
+from bedsheet.llm import AnthropicClient
+from bedsheet.events import CompletionEvent
+
+async def main():
+    # Create an agent
+    agent = Agent(
+        name="Assistant",
+        instruction="You are a helpful assistant. Be concise.",
+        model_client=AnthropicClient(),
+    )
+
+    # Invoke the agent and get events
+    async for event in agent.invoke(
+        session_id="my-session",
+        input_text="What is Python?"
+    ):
+        if isinstance(event, CompletionEvent):
+            print(event.response)
+
+asyncio.run(main())</code></pre>
+
+            <div class="whats-happening">
+                <h4>What's happening</h4>
+                <ol>
+                    <li><code>Agent</code> - The core class that talks to an LLM</li>
+                    <li><code>name</code> - A name for your agent (used in logs and multi-agent setups)</li>
+                    <li><code>instruction</code> - The system prompt that defines behavior</li>
+                    <li><code>model_client</code> - The LLM to use (Claude by default)</li>
+                    <li><code>invoke()</code> - Runs the agent and yields events</li>
+                    <li><code>session_id</code> - Groups messages into a conversation</li>
+                    <li><code>CompletionEvent</code> - The final response</li>
+                </ol>
+            </div>
+
+            <h4>Output</h4>
+            <div class="output">Python is a high-level, interpreted programming language known for its readable syntax and versatility. It's widely used for web development, data science, automation, and AI/ML applications.</div>
+        </section>
+
+        <!-- Section 3: Adding Tools -->
+        <section id="adding-tools">
+            <h2><span class="step-number">3</span>Adding Tools</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why tools matter</div>
+                <p>An LLM by itself can only generate text based on its training data. But what if you want it to check today's weather? Look up a database? Send an email? That's where <strong>tools</strong> come in. You define Python functions, and the LLM can decide when to call them. This is what transforms a chatbot into an <em>agent</em> that can actually do things in the world.</p>
+            </div>
+
+            <p>Agents become powerful when they can use tools. Let's give our agent the ability to check the weather:</p>
+
+            <pre><code class="language-python">import asyncio
+from bedsheet import Agent, ActionGroup
+from bedsheet.llm import AnthropicClient
+from bedsheet.events import CompletionEvent, ToolCallEvent, ToolResultEvent
+
+# Step 1: Create an ActionGroup to hold tools
+tools = ActionGroup(name="WeatherTools")
+
+# Step 2: Define a tool using the @action decorator
+@tools.action(
+    name="get_weather",
+    description="Get the current weather for a city"
+)
+async def get_weather(city: str) -> dict:
+    """In a real app, this would call a weather API."""
+    weather_data = {
+        "New York": {"temp": 72, "condition": "Sunny"},
+        "London": {"temp": 58, "condition": "Cloudy"},
+        "Tokyo": {"temp": 68, "condition": "Partly cloudy"},
+    }
+    return weather_data.get(city, {"temp": 70, "condition": "Unknown"})
+
+async def main():
+    # Step 3: Create an agent
+    agent = Agent(
+        name="WeatherBot",
+        instruction="You help users check the weather. Use get_weather when asked.",
+        model_client=AnthropicClient(),
+    )
+
+    # Step 4: Attach the tools to the agent
+    agent.add_action_group(tools)
+
+    # Step 5: Invoke
+    async for event in agent.invoke("session-1", "What's the weather in Tokyo?"):
+        if isinstance(event, ToolCallEvent):
+            print(f"[Tool Call] {event.tool_name}({event.tool_input})")
+        elif isinstance(event, ToolResultEvent):
+            print(f"[Tool Result] {event.result}")
+        elif isinstance(event, CompletionEvent):
+            print(f"\n{event.response}")
+
+asyncio.run(main())</code></pre>
+
+            <h4>Output</h4>
+            <div class="output">[Tool Call] get_weather({'city': 'Tokyo'})
+[Tool Result] {'temp': 68, 'condition': 'Partly cloudy'}
+
+The weather in Tokyo is currently 68°F and partly cloudy.</div>
+
+            <div class="whats-happening">
+                <h4>What's happening</h4>
+                <ol>
+                    <li>The LLM sees your message and the available tools</li>
+                    <li>It decides to call <code>get_weather</code> with <code>city="Tokyo"</code></li>
+                    <li>Bedsheet executes your function and sends the result back</li>
+                    <li>The LLM generates a natural language response</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Section 4: Events -->
+        <section id="events">
+            <h2><span class="step-number">4</span>Understanding Events</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why events instead of just returning a response?</div>
+                <p>This is where Bedsheet fundamentally differs from "black box" agent frameworks. Instead of waiting for a final answer (and having no idea what's happening inside), you get a <strong>stream of events</strong> as they happen. Tool call? You see it. Result came back? You see it. Error occurred? You see it immediately. This is essential for debugging ("why did it call that tool?"), building UIs with progress indicators, and understanding agent behavior. No more "it worked... but I have no idea why."</p>
+            </div>
+
+            <p>Bedsheet uses an <strong>event-driven architecture</strong>. Instead of returning a single response, <code>invoke()</code> yields events as things happen. This gives you full visibility into the agent's behavior.</p>
+
+            <h3>All Event Types</h3>
+            <pre><code class="language-python">from bedsheet.events import (
+    # Single agent events
+    TextTokenEvent,      # A token from streaming response
+    ToolCallEvent,       # LLM wants to call a tool
+    ToolResultEvent,     # Tool execution completed
+    CompletionEvent,     # Agent finished with final response
+    ErrorEvent,          # Something went wrong
+    ThinkingEvent,       # Extended thinking content
+
+    # Multi-agent events
+    DelegationEvent,          # Supervisor delegating to agents
+    CollaboratorStartEvent,   # A collaborator agent is starting
+    CollaboratorEvent,        # Wraps events from collaborators
+    CollaboratorCompleteEvent,# A collaborator finished
+    RoutingEvent,             # Router picked an agent
+)</code></pre>
+
+            <h3>Event Handling Pattern</h3>
+            <pre><code class="language-python">async for event in agent.invoke(session_id, user_input):
+    match event:
+        case ToolCallEvent(tool_name=name, tool_input=args):
+            print(f"Calling {name} with {args}")
+
+        case ToolResultEvent(result=result, error=error):
+            if error:
+                print(f"Tool failed: {error}")
+            else:
+                print(f"Tool returned: {result}")
+
+        case CompletionEvent(response=text):
+            print(f"Final: {text}")
+
+        case ErrorEvent(error=err):
+            print(f"Error: {err}")</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Why Events?</div>
+                <p>Events let you see exactly what's happening inside the agent - every tool call, every decision. This is essential for debugging and building UIs that show real-time progress.</p>
+            </div>
+        </section>
+
+        <!-- Section 5: Streaming -->
+        <section id="streaming">
+            <h2><span class="step-number">5</span>Streaming Responses</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why streaming?</div>
+                <p>LLMs can take several seconds to generate a full response. Without streaming, your user stares at a blank screen wondering if the app is frozen. With streaming, they see words appearing in real-time - it feels faster and more engaging, even though the total time is the same. It's a small change that dramatically improves the user experience.</p>
+            </div>
+
+            <p>By default, you get the complete response in <code>CompletionEvent</code>. But you can stream token-by-token for a better UX:</p>
+
+            <pre><code class="language-python">async for event in agent.invoke(session_id, user_input, stream=True):
+    if isinstance(event, TextTokenEvent):
+        # Print each word as it arrives
+        print(event.token, end="", flush=True)
+    elif isinstance(event, CompletionEvent):
+        print()  # Newline after streaming completes</code></pre>
+
+            <div class="info-box note">
+                <div class="info-box-title">Real-World Effect</div>
+                <p>This is how ChatGPT and Claude show responses word-by-word instead of making you wait for the complete answer. Each token is displayed the moment it arrives from the API.</p>
+            </div>
+        </section>
+
+        <!-- Section 6: Memory -->
+        <section id="memory">
+            <h2><span class="step-number">6</span>Conversation Memory</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why memory?</div>
+                <p>By default, each call to <code>invoke()</code> is stateless - the agent has no idea what you said before. That's fine for one-off questions, but most real applications need context. "What was my last order?" requires knowing who "my" is. Memory stores conversation history so the agent can maintain context across multiple interactions. The <code>session_id</code> groups related messages together - same session means continued conversation, different session means fresh start.</p>
+            </div>
+
+            <p>Agents can remember previous messages in a session using <strong>Memory</strong>:</p>
+
+            <pre><code class="language-python">from bedsheet import Agent
+from bedsheet.memory import InMemory
+
+agent = Agent(
+    name="Assistant",
+    instruction="You are helpful.",
+    model_client=AnthropicClient(),
+    memory=InMemory(),  # Enable conversation memory
+)
+
+# First message
+async for event in agent.invoke("session-1", "My name is Alice"):
+    if isinstance(event, CompletionEvent):
+        print(event.response)
+# Output: "Nice to meet you, Alice!"
+
+# Second message - agent remembers!
+async for event in agent.invoke("session-1", "What's my name?"):
+    if isinstance(event, CompletionEvent):
+        print(event.response)
+# Output: "Your name is Alice."
+
+# Different session - no memory
+async for event in agent.invoke("session-2", "What's my name?"):
+    if isinstance(event, CompletionEvent):
+        print(event.response)
+# Output: "I don't know your name yet."</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Session IDs Matter!</div>
+                <p>Same session ID = continued conversation. Different session ID = fresh start.</p>
+            </div>
+
+            <h3>Memory Backends</h3>
+            <pre><code class="language-python">from bedsheet.memory import InMemory, RedisMemory
+
+# Development: Simple in-memory (lost when app restarts)
+memory = InMemory()
+
+# Production: Redis (persistent across restarts)
+memory = RedisMemory(url="redis://localhost:6379")</code></pre>
+        </section>
+
+        <!-- Section 7: Multiple Tools -->
+        <section id="multiple-tools">
+            <h2><span class="step-number">7</span>Multiple Tools</h2>
+
+            <p>Agents can have many tools. The LLM decides which to use:</p>
+
+            <pre><code class="language-python">tools = ActionGroup(name="ResearchTools")
+
+@tools.action(name="search_web", description="Search the web for information")
+async def search_web(query: str) -> list:
+    return [{"title": "Result 1", "snippet": "..."}]
+
+@tools.action(name="get_page", description="Fetch content from a URL")
+async def get_page(url: str) -> str:
+    return "&lt;html>...&lt;/html>"
+
+@tools.action(name="summarize", description="Summarize long text")
+async def summarize(text: str, max_words: int = 100) -> str:
+    return "Summary..."
+
+agent = Agent(
+    name="Researcher",
+    instruction="""You help users research topics.
+    1. Search for relevant information
+    2. Fetch pages if needed
+    3. Summarize findings""",
+    model_client=AnthropicClient(),
+)
+agent.add_action_group(tools)</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Parallel Tool Execution</div>
+                <p>If the LLM requests multiple tools at once, Bedsheet executes them <strong>concurrently</strong>. Two search queries run at the same time, not one after another!</p>
+            </div>
+        </section>
+
+        <!-- Section 8: First Multi-Agent -->
+        <section id="first-multi-agent">
+            <h2><span class="step-number">8</span>Your First Multi-Agent System</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why multiple agents?</div>
+                <p>As your system grows, a single agent trying to do everything becomes unwieldy. Its instruction gets huge, it has dozens of tools, and debugging becomes a nightmare. The solution? <strong>Specialization</strong>. Create focused agents that each do one thing well (translation, research, analysis), then use a <strong>Supervisor</strong> to coordinate them. This is the same principle behind microservices - small, focused units that are easier to build, test, and maintain.</p>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">The real-world parallel</div>
+                <p>Think of it like a company. The CEO (Supervisor) doesn't personally write code, run marketing campaigns, AND handle accounting. They delegate to specialists (agents) who each have deep expertise in their domain. The CEO's job is to coordinate, synthesize, and make sure the right person handles the right task.</p>
+            </div>
+
+            <p>Now let's coordinate multiple agents. A <strong>Supervisor</strong> can delegate tasks to specialized agents:</p>
+
+            <pre><code class="language-python">from bedsheet import Agent, Supervisor, ActionGroup
+from bedsheet.llm import AnthropicClient
+from bedsheet.memory import InMemory
+from bedsheet.events import (
+    CompletionEvent, DelegationEvent,
+    CollaboratorStartEvent, CollaboratorCompleteEvent
+)
+
+# === Agent 1: Translator ===
+translator = Agent(
+    name="Translator",
+    instruction="You translate text. Respond with just the translation.",
+    model_client=AnthropicClient(),
+)
+
+# === Agent 2: Summarizer ===
+summarizer = Agent(
+    name="Summarizer",
+    instruction="You summarize text. Respond with just the summary.",
+    model_client=AnthropicClient(),
+)
+
+# === Supervisor: Coordinator ===
+coordinator = Supervisor(
+    name="Coordinator",
+    instruction="""You coordinate text processing.
+
+    Collaborators:
+    - Translator: For translation tasks
+    - Summarizer: For summarization tasks
+
+    Delegate to the appropriate agent based on the user's request.""",
+    model_client=AnthropicClient(),
+    memory=InMemory(),
+    collaborators=[translator, summarizer],
+    collaboration_mode="supervisor",
+)
+
+async def main():
+    async for event in coordinator.invoke("s1", "Translate 'Hello' to Spanish"):
+        if isinstance(event, DelegationEvent):
+            agents = [d["agent_name"] for d in event.delegations]
+            print(f"Delegating to: {agents}")
+
+        elif isinstance(event, CollaboratorStartEvent):
+            print(f"  [{event.agent_name}] Starting...")
+
+        elif isinstance(event, CollaboratorCompleteEvent):
+            print(f"  [{event.agent_name}] Done")
+
+        elif isinstance(event, CompletionEvent):
+            print(f"\nFinal: {event.response}")</code></pre>
+
+            <h4>Output</h4>
+            <div class="output">Delegating to: ['Translator']
+  [Translator] Starting...
+  [Translator] Done
+
+Final: "Hello" in Spanish is "Hola".</div>
+
+            <div class="mermaid">
+flowchart LR
+    User[User Request] --> Coordinator
+    Coordinator --> |delegate| Translator
+    Coordinator --> |delegate| Summarizer
+    Translator --> |response| Coordinator
+    Summarizer --> |response| Coordinator
+    Coordinator --> |synthesize| Final[Final Response]
+
+    style Coordinator fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style Translator fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style Summarizer fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+            </div>
+        </section>
+
+        <!-- Section 9: Parallel Delegation -->
+        <section id="parallel">
+            <h2><span class="step-number">9</span>Parallel Delegation</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why parallel matters</div>
+                <p>When you ask for stock analysis, you need both market data AND news sentiment. These are independent - one doesn't need the other's output. Running them sequentially means waiting for one to finish before starting the other. <strong>Parallel delegation</strong> runs them at the same time, often cutting response time in half. In real applications with multiple API calls, this can turn a 10-second response into a 3-second response. Users notice.</p>
+            </div>
+
+            <p>The real power: running multiple agents <strong>simultaneously</strong>.</p>
+
+            <pre><code class="language-python"># Supervisor with Parallel Delegation
+advisor = Supervisor(
+    name="InvestmentAdvisor",
+    instruction="""You coordinate investment research.
+
+    For stock analysis, delegate to BOTH agents IN PARALLEL:
+
+    delegate(delegations=[
+        {"agent_name": "MarketAnalyst", "task": "Analyze price data"},
+        {"agent_name": "NewsResearcher", "task": "Find recent news"}
+    ])
+
+    Then synthesize their findings.""",
+    model_client=AnthropicClient(),
+    memory=InMemory(),
+    collaborators=[market_analyst, news_researcher],
+    collaboration_mode="supervisor",
+)</code></pre>
+
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>With Parallel Delegation</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code>0s  MarketAnalyst starts
+0s  NewsResearcher starts  ← Both start!
+2s  MarketAnalyst done
+2s  NewsResearcher done
+3s  Synthesis complete
+─────────────────────────
+Total: 3 seconds</code></pre>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Without (Sequential)</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code>0s  MarketAnalyst starts
+2s  MarketAnalyst done
+2s  NewsResearcher starts  ← Waits!
+4s  NewsResearcher done
+5s  Synthesis complete
+─────────────────────────
+Total: 5 seconds</code></pre>
+                </div>
+            </div>
+
+            <div class="mermaid">
+gantt
+    title Parallel vs Sequential Delegation
+    dateFormat X
+    axisFormat %s
+
+    section Parallel
+    MarketAnalyst :a1, 0, 20
+    NewsResearcher :a2, 0, 20
+
+    section Sequential
+    MarketAnalyst :b1, 0, 20
+    NewsResearcher :b2, 20, 40
+            </div>
+        </section>
+
+        <!-- Section 10: Deep Hierarchies -->
+        <section id="hierarchies">
+            <h2><span class="step-number">10</span>Deep Agent Hierarchies</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why hierarchies?</div>
+                <p>Just like real organizations have managers of managers, complex AI systems benefit from layered supervision. A Project Manager doesn't directly coordinate 20 individual workers - they work through team leads. Each layer handles coordination at its level, keeping the complexity manageable. The Project Manager says "build feature X", the Dev Lead breaks that into code + review tasks, and individual agents do the actual work. This also means you can reuse team compositions - the same "DevTeam" supervisor can work for different projects.</p>
+            </div>
+
+            <p>Supervisors can contain other Supervisors, creating deep hierarchies:</p>
+
+            <pre><code class="language-python"># Level 3: Specialist agents
+code_writer = Agent(name="CodeWriter", ...)
+code_reviewer = Agent(name="CodeReviewer", ...)
+test_writer = Agent(name="TestWriter", ...)
+
+# Level 2: Team leads (Supervisors containing agents)
+dev_lead = Supervisor(
+    name="DevLead",
+    instruction="Coordinate code writing and review.",
+    collaborators=[code_writer, code_reviewer],
+    ...
+)
+
+qa_lead = Supervisor(
+    name="QALead",
+    instruction="Coordinate testing efforts.",
+    collaborators=[test_writer],
+    ...
+)
+
+# Level 1: Project manager (Supervisor containing supervisors!)
+project_manager = Supervisor(
+    name="ProjectManager",
+    instruction="""Manage software projects.
+    - DevLead for implementation
+    - QALead for testing""",
+    collaborators=[dev_lead, qa_lead],  # Other supervisors!
+    ...
+)</code></pre>
+
+            <div class="mermaid">
+flowchart TB
+    PM[ProjectManager<br/>Supervisor]
+    PM --> DL[DevLead<br/>Supervisor]
+    PM --> QA[QALead<br/>Supervisor]
+    DL --> CW[CodeWriter<br/>Agent]
+    DL --> CR[CodeReviewer<br/>Agent]
+    QA --> TW[TestWriter<br/>Agent]
+
+    style PM fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style DL fill:#e0f2fe,stroke:#0284c7,color:#1f2328
+    style QA fill:#e0f2fe,stroke:#0284c7,color:#1f2328
+    style CW fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style CR fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style TW fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+            </div>
+
+            <div class="info-box note">
+                <div class="info-box-title">Nested Events</div>
+                <p>For deep hierarchies, you'll see <code>CollaboratorEvent</code> wrapping <code>CollaboratorEvent</code>. Each level adds a wrapper showing which agent emitted the event.</p>
+            </div>
+        </section>
+
+        <!-- Section 11: Router Mode -->
+        <section id="router">
+            <h2><span class="step-number">11</span>Router Mode</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">When to use Router vs Supervisor</div>
+                <p>Not every multi-agent scenario needs coordination and synthesis. Sometimes you just need to route the user to the right expert. A help desk doesn't need to combine answers from Python and JavaScript experts - it needs to figure out which one can help and hand off the conversation. <strong>Router mode</strong> is for this: pick one agent and pass through its response directly. It's simpler, faster, and often exactly what you need.</p>
+            </div>
+
+            <p>Sometimes you don't need synthesis - just route to the right specialist:</p>
+
+            <pre><code class="language-python"># Router just picks one and hands off
+help_desk = Supervisor(
+    name="HelpDesk",
+    instruction="""Route programming questions to the right expert:
+    - Python questions → PythonExpert
+    - JavaScript questions → JavaScriptExpert
+    - Database questions → DatabaseExpert
+
+    Pick ONE expert that best matches.""",
+    collaborators=[python_expert, javascript_expert, database_expert],
+    collaboration_mode="router",  # Just route, don't synthesize
+    ...
+)</code></pre>
+
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>Supervisor Mode (default)</h4>
+                    <ul style="margin-left: 20px;">
+                        <li>Orchestrates multiple agents</li>
+                        <li>Synthesizes their responses</li>
+                        <li>Good for complex tasks</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <h4>Router Mode</h4>
+                    <ul style="margin-left: 20px;">
+                        <li>Picks one agent</li>
+                        <li>Passes through directly</li>
+                        <li>Good for simple triage</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 12: Best Practices -->
+        <section id="best-practices">
+            <h2><span class="step-number">12</span>Best Practices</h2>
+
+            <h3>Agent Design</h3>
+
+            <h4>1. Single Responsibility</h4>
+            <p>Each agent should do one thing well:</p>
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>Good: Focused agents</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code class="language-python">code_writer = Agent(
+    name="CodeWriter",
+    instruction="Write code."
+)
+code_reviewer = Agent(
+    name="CodeReviewer",
+    instruction="Review code."
+)</code></pre>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Bad: Kitchen sink</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code class="language-python">do_everything = Agent(
+    name="DoEverything",
+    instruction="Write, review,
+    test, deploy, monitor..."
+)</code></pre>
+                </div>
+            </div>
+
+            <h4>2. Clear Instructions</h4>
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>Good: Specific</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code>You summarize text.
+- Under 100 words
+- Focus on key points
+- Use bullet points</code></pre>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Bad: Vague</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code>Help with text stuff</code></pre>
+                </div>
+            </div>
+
+            <h4>3. Tool Descriptions Matter</h4>
+            <p>The LLM uses descriptions to decide when to call tools:</p>
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>Good: Descriptive</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code class="language-python">@tools.action(
+    name="get_weather",
+    description="Get current weather
+    for a city. Returns temperature
+    in Fahrenheit and conditions."
+)</code></pre>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Bad: Vague</h4>
+                    <pre style="margin: 0; border: 0; padding: 10px;"><code class="language-python">@tools.action(
+    name="get_weather",
+    description="Weather stuff"
+)</code></pre>
+                </div>
+            </div>
+
+            <h3>Multi-Agent Design</h3>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Use Parallel Delegation</div>
+                <p>When tasks are independent, run them together. Don't make agents wait for each other unnecessarily.</p>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Gate Expensive Operations</div>
+                <p>Check prerequisites (ethics, permissions) before running expensive research tasks.</p>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Let Supervisors Synthesize</div>
+                <p>Don't just concatenate agent outputs. Have the supervisor create a unified, coherent response.</p>
+            </div>
+
+            <h3>Error Handling</h3>
+
+            <pre><code class="language-python">@tools.action(name="get_data", description="Fetch data")
+async def get_data(id: str) -> dict:
+    try:
+        return await fetch(id)
+    except NotFoundError:
+        return {"error": f"No data found for id: {id}"}
+    except Exception as e:
+        return {"error": f"Failed to fetch: {str(e)}"}</code></pre>
+
+            <h3>Production Readiness</h3>
+
+            <pre><code class="language-python"># Use Redis for production
+from bedsheet.memory import RedisMemory
+memory = RedisMemory(url="redis://your-redis:6379")
+
+# Set iteration limits
+supervisor = Supervisor(..., max_iterations=10)
+
+# Log events for observability
+async for event in agent.invoke(...):
+    logger.info(f"Event: {event.type}", extra={"event": event})</code></pre>
+        </section>
+
+        <footer>
+            <p>Bedsheet Agents &copy; 2024 &middot; Apache 2.0 License</p>
+            <p style="margin-top: 8px;">
+                <a href="technical-guide.html">Technical Guide</a> &middot;
+                <a href="https://github.com/vitakka/bedsheet-agents">GitHub</a>
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid with light theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#1f2328',
+                primaryBorderColor: '#0969da',
+                lineColor: '#57606a',
+                secondaryColor: '#f0fdf4',
+                tertiaryColor: '#fef3c7'
+            }
+        });
+
+        // Initialize syntax highlighting
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
