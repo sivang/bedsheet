@@ -313,7 +313,7 @@ async def run_demo():
     emit("=" * 60)
     emit("  Demo complete!")
     emit("")
-    emit("  Docs: https://github.com/vitakka/bedsheet-agents")
+    emit("  Docs: https://github.com/sivang/bedsheet")
     emit("=" * 60)
     emit("")
 

@@ -52,5 +52,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Max Iterations Safety** - Prevents infinite loops
 - **MockLLMClient** - Testing utilities
 
-[0.2.0]: https://github.com/vitakka/bedsheet-agents/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/vitakka/bedsheet-agents/releases/tag/v0.1.0
+[0.2.0]: https://github.com/sivang/bedsheet/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/sivang/bedsheet/releases/tag/v0.1.0
