@@ -4,6 +4,8 @@
 
 <p align="center">
   <i>No PhD required. We checked.</i>
+  <br>
+  <i>For developers who value simplicity.</i>
 </p>
 
 <p align="center">
@@ -371,7 +373,7 @@ Apache 2.0 - see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-<b>Copyright © 2024-2025 Sivan Grünberg, Vitakka Consulting</b>
+<b>Copyright © 2025-2026 Sivan Grünberg, Vitakka Consulting</b>
 <br><br>
 <sub>Star if it helped. Issue if it didn't. Either way, we're listening.</sub>
 </p>
