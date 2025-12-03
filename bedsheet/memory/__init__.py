@@ -6,7 +6,7 @@ __all__ = ["Memory", "Message", "InMemory"]
 
 # Optional Redis support - only available if redis is installed
 try:
-    from bedsheet.memory.redis import RedisMemory
+    from bedsheet.memory.redis import RedisMemory  # noqa: F401
     __all__.append("RedisMemory")
 except ImportError:
     pass
