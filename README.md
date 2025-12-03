@@ -320,9 +320,9 @@ Total: ~1,000 lines. Coffee break reading.
 
 ## Documentation
 
-- **[User Guide](docs/user-guide.html)** — Beginner to advanced, 12 lessons
-- **[Technical Guide](docs/technical-guide.html)** — Python patterns explained
-- **[Multi-Agent Guide](docs/multi-agent-guide.md)** — Supervisor deep dive
+- **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
+- **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
+- **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.md)** — Supervisor deep dive
 
 ---
 
