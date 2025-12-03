@@ -1,8 +1,8 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.2.0 🚀 Release Ready
+## Current Version: v0.2.1 🚀 Published on PyPI
 
-**Last Session:** 2024-12-01
+**Last Session:** 2025-12-03
 
 ### Release Artifacts
 
@@ -11,7 +11,7 @@
 | Source Code | ✅ Complete |
 | Test Suite | ✅ 99 tests passing |
 | README.md | ✅ Comprehensive with examples |
-| CHANGELOG.md | ✅ v0.1.0 and v0.2.0 documented |
+| CHANGELOG.md | ✅ v0.1.0, v0.2.0, and v0.2.1 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
 | LICENSE | ✅ Apache 2.0 |
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
