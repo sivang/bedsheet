@@ -1,6 +1,12 @@
 """Memory implementations for conversation persistence."""
 from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
-from bedsheet.memory.redis import RedisMemory
 
-__all__ = ["Memory", "Message", "InMemory", "RedisMemory"]
+__all__ = ["Memory", "Message", "InMemory"]
+
+# Optional Redis support - only available if redis is installed
+try:
+    from bedsheet.memory.redis import RedisMemory
+    __all__.append("RedisMemory")
+except ImportError:
+    pass
