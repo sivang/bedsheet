@@ -514,3 +514,9 @@ When an error occurs:
 - Implement real tool integrations (market data APIs, news APIs)
 - Add memory persistence with RedisMemory for conversation continuity
 - Build a web UI that streams events in real-time
+
+---
+
+**Copyright © 2025-2026 Sivan Grünberg, [Vitakka Consulting](https://vitakka.co/)**
+
+Licensed under the Apache 2.0 License.

@@ -138,3 +138,7 @@ pytest --cov=bedsheet -v
 ## License
 
 By contributing, you agree that your contributions will be licensed under the Apache 2.0 License.
+
+---
+
+**Copyright © 2025-2026 Sivan Grünberg, [Vitakka Consulting](https://vitakka.co/)**
