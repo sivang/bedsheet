@@ -1,10 +1,14 @@
 """Anthropic Claude LLM client implementation."""
+import json
 from typing import Any, AsyncIterator
 
 import anthropic
 
-from bedsheet.llm.base import LLMResponse, ToolCall, ToolDefinition
+from bedsheet.llm.base import LLMResponse, OutputSchema, ToolCall, ToolDefinition
 from bedsheet.memory.base import Message
+
+# Beta header for structured outputs
+STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
 
 
 class AnthropicClient:
@@ -25,6 +29,7 @@ class AnthropicClient:
         messages: list[Message],
         system: str,
         tools: list[ToolDefinition] | None = None,
+        output_schema: OutputSchema | None = None,
     ) -> LLMResponse:
         """Send messages to Claude and get a response."""
         # Convert messages to Anthropic format
@@ -42,33 +47,52 @@ class AnthropicClient:
                 for tool in tools
             ]
 
-        # Make API call
+        # Build base kwargs
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system,
+            "messages": anthropic_messages,
+        }
+
         if anthropic_tools:
-            response = await self._client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                system=system,
-                messages=anthropic_messages,  # type: ignore[arg-type]
-                tools=anthropic_tools,  # type: ignore[arg-type]
-            )
+            kwargs["tools"] = anthropic_tools
+
+        # Handle structured outputs (beta feature)
+        if output_schema:
+            # Use beta client for structured outputs
+            kwargs["betas"] = [STRUCTURED_OUTPUTS_BETA]
+            kwargs["output_format"] = {
+                "type": "json_schema",
+                "schema": output_schema.schema,
+            }
+            response = await self._client.beta.messages.create(**kwargs)  # type: ignore[arg-type]
         else:
-            response = await self._client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                system=system,
-                messages=anthropic_messages,  # type: ignore[arg-type]
-            )
+            response = await self._client.messages.create(**kwargs)  # type: ignore[arg-type]
 
         # Parse response
-        return self._parse_response(response)
+        return self._parse_response(response, output_schema)
 
     async def chat_stream(
         self,
         messages: list[Message],
         system: str,
         tools: list[ToolDefinition] | None = None,
+        output_schema: OutputSchema | None = None,
     ) -> AsyncIterator[str | LLMResponse]:
-        """Stream response from Claude."""
+        """Stream response from Claude.
+
+        Note: Structured outputs with output_schema use non-streaming for now,
+        as the beta API streaming support may be limited.
+        """
+        # For structured outputs, fall back to non-streaming
+        if output_schema:
+            response = await self.chat(messages, system, tools, output_schema)
+            if response.text:
+                yield response.text
+            yield response
+            return
+
         anthropic_messages = self._convert_messages(messages)
 
         # Convert tools to Anthropic format
@@ -139,10 +163,13 @@ class AnthropicClient:
 
         return result
 
-    def _parse_response(self, response) -> LLMResponse:
+    def _parse_response(
+        self, response, output_schema: OutputSchema | None = None
+    ) -> LLMResponse:
         """Parse Anthropic response to internal format."""
         text = None
         tool_calls = []
+        parsed_output = None
 
         for block in response.content:
             if block.type == "text":
@@ -156,8 +183,22 @@ class AnthropicClient:
                     )
                 )
 
+        # Parse structured output if schema was provided
+        if output_schema and text:
+            try:
+                parsed_data = json.loads(text)
+                # If we have a Pydantic model, validate and instantiate
+                if output_schema._pydantic_model:
+                    parsed_output = output_schema._pydantic_model.model_validate(parsed_data)
+                else:
+                    parsed_output = parsed_data
+            except (json.JSONDecodeError, Exception):
+                # If parsing fails, keep parsed_output as None
+                pass
+
         return LLMResponse(
             text=text,
             tool_calls=tool_calls,
             stop_reason=response.stop_reason,
+            parsed_output=parsed_output,
         )
