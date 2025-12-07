@@ -429,21 +429,22 @@
             <div class="nav-section-title">Core Concepts</div>
             <a href="#events" class="nav-link"><span class="step">4</span>Understanding Events</a>
             <a href="#streaming" class="nav-link"><span class="step">5</span>Streaming</a>
-            <a href="#memory" class="nav-link"><span class="step">6</span>Conversation Memory</a>
-            <a href="#multiple-tools" class="nav-link"><span class="step">7</span>Multiple Tools</a>
+            <a href="#structured-outputs" class="nav-link"><span class="step">6</span>Structured Outputs</a>
+            <a href="#memory" class="nav-link"><span class="step">7</span>Conversation Memory</a>
+            <a href="#multiple-tools" class="nav-link"><span class="step">8</span>Multiple Tools</a>
         </div>
 
         <div class="nav-section">
             <div class="nav-section-title">Multi-Agent</div>
-            <a href="#first-multi-agent" class="nav-link"><span class="step">8</span>First Multi-Agent</a>
-            <a href="#parallel" class="nav-link"><span class="step">9</span>Parallel Delegation</a>
-            <a href="#hierarchies" class="nav-link"><span class="step">10</span>Deep Hierarchies</a>
-            <a href="#router" class="nav-link"><span class="step">11</span>Router Mode</a>
+            <a href="#first-multi-agent" class="nav-link"><span class="step">9</span>First Multi-Agent</a>
+            <a href="#parallel" class="nav-link"><span class="step">10</span>Parallel Delegation</a>
+            <a href="#hierarchies" class="nav-link"><span class="step">11</span>Deep Hierarchies</a>
+            <a href="#router" class="nav-link"><span class="step">12</span>Router Mode</a>
         </div>
 
         <div class="nav-section">
             <div class="nav-section-title">Reference</div>
-            <a href="#best-practices" class="nav-link"><span class="step">12</span>Best Practices</a>
+            <a href="#best-practices" class="nav-link"><span class="step">13</span>Best Practices</a>
             <a href="technical-guide.html" class="nav-link">Technical Guide</a>
         </div>
     </nav>
@@ -454,7 +455,7 @@
             <h1>Bedsheet User Guide</h1>
             <p class="lead">A progressive tutorial from your first agent to complex multi-agent orchestration.</p>
             <div class="badge-row">
-                <span class="badge badge-blue">12 Lessons</span>
+                <span class="badge badge-blue">13 Lessons</span>
                 <span class="badge badge-green">Hands-on Examples</span>
                 <span class="badge badge-purple">Beginner Friendly</span>
             </div>
@@ -717,9 +718,100 @@ The weather in Tokyo is currently 68°F and partly cloudy.</div>
             </div>
         </section>
 
-        <!-- Section 6: Memory -->
+        <!-- Section 6: Structured Outputs -->
+        <section id="structured-outputs">
+            <h2><span class="step-number">6</span>Structured Outputs</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why structured outputs?</div>
+                <p>LLMs are great at generating text, but sometimes you need <strong>predictable, machine-readable data</strong>. Maybe you need a JSON object to store in a database, or a specific format for your UI to render. Without constraints, LLMs might add extra text, miss required fields, or format things inconsistently. <strong>Structured outputs</strong> guarantee the response matches your exact schema - zero chance of malformed JSON.</p>
+            </div>
+
+            <p>Bedsheet supports Anthropic's native structured outputs feature. You define a schema, and Claude's constrained decoding ensures 100% compliance:</p>
+
+            <h3>Option 1: Raw JSON Schema (No Dependencies)</h3>
+
+            <pre><code class="language-python">from bedsheet.llm import AnthropicClient, OutputSchema
+
+# Define your schema as a JSON Schema dict
+schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "symbol": {"type": "string"},
+        "recommendation": {
+            "type": "string",
+            "enum": ["buy", "sell", "hold"]
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+        },
+        "reasoning": {"type": "string"}
+    },
+    "required": ["symbol", "recommendation", "confidence", "reasoning"]
+})
+
+# Use it with the LLM client
+client = AnthropicClient()
+response = await client.chat(
+    messages=[{"role": "user", "content": "Analyze NVDA stock"}],
+    system="You are a stock analyst.",
+    output_schema=schema,
+)
+
+# Access the validated data - guaranteed to match your schema!
+print(response.parsed_output)
+# {"symbol": "NVDA", "recommendation": "buy", "confidence": 0.85, "reasoning": "..."}</code></pre>
+
+            <h3>Option 2: Pydantic Models (If You Prefer)</h3>
+
+            <p>If you're already using Pydantic in your project, you can create schemas from your models:</p>
+
+            <pre><code class="language-python">from pydantic import BaseModel
+from bedsheet.llm import OutputSchema
+
+class StockAnalysis(BaseModel):
+    symbol: str
+    recommendation: str
+    confidence: float
+    reasoning: str
+
+schema = OutputSchema.from_pydantic(StockAnalysis)
+
+response = await client.chat(
+    messages=[{"role": "user", "content": "Analyze AAPL"}],
+    system="You are a stock analyst.",
+    output_schema=schema,
+)
+
+# parsed_output is a dict matching your schema
+print(response.parsed_output["recommendation"])  # "hold"</code></pre>
+
+            <div class="whats-happening">
+                <h4>What's happening under the hood</h4>
+                <ol>
+                    <li>Your schema is sent to Claude's API with the <code>structured-outputs-2025-11-13</code> beta</li>
+                    <li>Claude uses <strong>constrained decoding</strong> - it literally cannot generate tokens that would violate your schema</li>
+                    <li>The response is guaranteed to be valid JSON matching your exact structure</li>
+                    <li><code>parsed_output</code> contains the validated, parsed data</li>
+                </ol>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Works WITH Tools!</div>
+                <p>Unlike some frameworks (looking at you, Google ADK), Bedsheet's structured outputs work alongside tool use. You can have an agent that calls tools AND returns structured data.</p>
+            </div>
+
+            <div class="info-box note">
+                <div class="info-box-title">Pydantic is Optional</div>
+                <p>You don't need Pydantic installed. Raw JSON schemas work perfectly fine. Use whichever approach fits your project.</p>
+            </div>
+        </section>
+
+        <!-- Section 7: Memory -->
         <section id="memory">
-            <h2><span class="step-number">6</span>Conversation Memory</h2>
+            <h2><span class="step-number">7</span>Conversation Memory</h2>
 
             <div class="info-box note">
                 <div class="info-box-title">Why memory?</div>
@@ -771,9 +863,9 @@ memory = InMemory()
 memory = RedisMemory(url="redis://localhost:6379")</code></pre>
         </section>
 
-        <!-- Section 7: Multiple Tools -->
+        <!-- Section 8: Multiple Tools -->
         <section id="multiple-tools">
-            <h2><span class="step-number">7</span>Multiple Tools</h2>
+            <h2><span class="step-number">8</span>Multiple Tools</h2>
 
             <p>Agents can have many tools. The LLM decides which to use:</p>
 
@@ -807,9 +899,9 @@ agent.add_action_group(tools)</code></pre>
             </div>
         </section>
 
-        <!-- Section 8: First Multi-Agent -->
+        <!-- Section 9: First Multi-Agent -->
         <section id="first-multi-agent">
-            <h2><span class="step-number">8</span>Your First Multi-Agent System</h2>
+            <h2><span class="step-number">9</span>Your First Multi-Agent System</h2>
 
             <div class="info-box note">
                 <div class="info-box-title">Why multiple agents?</div>
@@ -898,9 +990,9 @@ flowchart LR
             </div>
         </section>
 
-        <!-- Section 9: Parallel Delegation -->
+        <!-- Section 10: Parallel Delegation -->
         <section id="parallel">
-            <h2><span class="step-number">9</span>Parallel Delegation</h2>
+            <h2><span class="step-number">10</span>Parallel Delegation</h2>
 
             <div class="info-box note">
                 <div class="info-box-title">Why parallel matters</div>
@@ -967,9 +1059,9 @@ gantt
             </div>
         </section>
 
-        <!-- Section 10: Deep Hierarchies -->
+        <!-- Section 11: Deep Hierarchies -->
         <section id="hierarchies">
-            <h2><span class="step-number">10</span>Deep Agent Hierarchies</h2>
+            <h2><span class="step-number">11</span>Deep Agent Hierarchies</h2>
 
             <div class="info-box note">
                 <div class="info-box-title">Why hierarchies?</div>
@@ -1031,9 +1123,9 @@ flowchart TB
             </div>
         </section>
 
-        <!-- Section 11: Router Mode -->
+        <!-- Section 12: Router Mode -->
         <section id="router">
-            <h2><span class="step-number">11</span>Router Mode</h2>
+            <h2><span class="step-number">12</span>Router Mode</h2>
 
             <div class="info-box note">
                 <div class="info-box-title">When to use Router vs Supervisor</div>
@@ -1076,9 +1168,9 @@ help_desk = Supervisor(
             </div>
         </section>
 
-        <!-- Section 12: Best Practices -->
+        <!-- Section 13: Best Practices -->
         <section id="best-practices">
-            <h2><span class="step-number">12</span>Best Practices</h2>
+            <h2><span class="step-number">13</span>Best Practices</h2>
 
             <h3>Agent Design</h3>
 

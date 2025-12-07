@@ -214,6 +214,52 @@ async for event in agent.invoke(session_id, user_input):
 | `supervisor` | Coordinates agents, synthesizes results | Complex tasks |
 | `router` | Picks one agent, hands off completely | Simple routing |
 
+### Structured Outputs (v0.3+)
+
+**Guarantee** your agent returns valid JSON matching your schema. Uses Anthropic's native constrained decoding—the model literally cannot produce invalid output.
+
+```python
+from bedsheet.llm import AnthropicClient, OutputSchema
+
+# Option 1: Raw JSON schema (no dependencies)
+schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "symbol": {"type": "string"},
+        "recommendation": {"type": "string", "enum": ["buy", "sell", "hold"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["symbol", "recommendation", "confidence"]
+})
+
+# Option 2: Pydantic model (if you prefer)
+from pydantic import BaseModel
+
+class StockAnalysis(BaseModel):
+    symbol: str
+    recommendation: str
+    confidence: float
+
+schema = OutputSchema.from_pydantic(StockAnalysis)
+
+# Use with any LLM call
+client = AnthropicClient()
+response = await client.chat(
+    messages=[{"role": "user", "content": "Analyze NVDA"}],
+    system="You are a stock analyst.",
+    output_schema=schema,  # 100% guaranteed valid JSON
+)
+
+# Access the validated data
+print(response.parsed_output)  # {"symbol": "NVDA", "recommendation": "buy", "confidence": 0.85}
+```
+
+**Key points:**
+- ✅ Works WITH tools (unlike Google ADK which disables tools with schemas)
+- ✅ Pydantic is optional—raw JSON schemas work fine
+- ✅ Uses Anthropic's beta `structured-outputs-2025-11-13` under the hood
+- ✅ Zero chance of malformed JSON—constrained at token generation
+
 ---
 
 ## Real Example: Todo Assistant
@@ -329,11 +375,11 @@ Total: ~1,000 lines. Coffee break reading.
 ## Roadmap
 
 - [x] v0.1 — Single agents, tools, streaming
-- [x] v0.2 — Multi-agent, parallel delegation ← *you are here*
-- [ ] v0.3 — Knowledge bases, RAG
-- [ ] v0.4 — Guardrails, safety
-- [ ] v0.5 — MCP integration
-- [ ] v0.6 — Export to AWS/GCP
+- [x] v0.2 — Multi-agent, parallel delegation
+- [x] v0.3 — Structured outputs ← *you are here*
+- [ ] v0.4 — Knowledge bases, RAG
+- [ ] v0.5 — Guardrails, safety
+- [ ] v0.6 — MCP integration
 
 ---
 

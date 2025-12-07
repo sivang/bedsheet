@@ -455,6 +455,7 @@
             <div class="nav-section-title">LLM Integration</div>
             <a href="#streaming" class="nav-link">Streaming vs Non-Streaming</a>
             <a href="#tool-calling" class="nav-link">Tool Calling</a>
+            <a href="#structured-outputs" class="nav-link">Structured Outputs</a>
         </div>
 
         <div class="nav-section">
@@ -1942,6 +1943,192 @@ async def invoke(self, session_id, input_text, stream=False):
 
             # Add results to memory and loop back for next LLM call
             await self._add_tool_results_to_memory(session_id, results)</code></pre>
+        </section>
+
+        <!-- Structured Outputs -->
+        <section id="structured-outputs">
+            <h2>Structured Outputs</h2>
+
+            <div class="info-box note">
+                <div class="info-box-title">What it is</div>
+                <p>A mechanism to guarantee that LLM responses conform to a specific JSON schema. Uses Anthropic's native constrained decoding - the model literally cannot generate tokens that would violate your schema.</p>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Why use it</div>
+                <p>When you need machine-readable data, not prose. API responses, database records, UI components - anything that must be parsed reliably.</p>
+            </div>
+
+            <h4>The OutputSchema Class</h4>
+            <p>A simple dataclass that wraps a JSON schema with optional Pydantic model reference:</p>
+
+            <pre><code class="language-python"># bedsheet/llm/base.py
+from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass
+class OutputSchema:
+    """Schema for structured output.
+    Can be initialized with a Pydantic model or a JSON schema dict.
+    """
+    schema: dict[str, Any]
+    _pydantic_model: Any = field(default=None, repr=False)
+
+    @classmethod
+    def from_pydantic(cls, model: Any) -> "OutputSchema":
+        """Create from a Pydantic BaseModel class."""
+        schema = model.model_json_schema()
+        return cls(schema=schema, _pydantic_model=model)
+
+    @classmethod
+    def from_dict(cls, schema: dict[str, Any]) -> "OutputSchema":
+        """Create from a JSON schema dict."""
+        return cls(schema=schema)</code></pre>
+
+            <h4>How It Works with Anthropic's API</h4>
+            <p>When an output schema is provided, the client uses Anthropic's beta structured outputs API:</p>
+
+            <pre><code class="language-python"># bedsheet/llm/anthropic.py
+STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
+
+async def chat(self, messages, system, tools=None, output_schema=None):
+    kwargs = {
+        "model": self.model,
+        "max_tokens": self.max_tokens,
+        "system": system,
+        "messages": messages,
+    }
+
+    if tools:
+        kwargs["tools"] = tools
+
+    if output_schema:
+        # Use beta endpoint with structured outputs
+        kwargs["betas"] = [STRUCTURED_OUTPUTS_BETA]
+        kwargs["output_format"] = {
+            "type": "json_schema",
+            "schema": output_schema.schema,
+        }
+        # Use beta client for structured outputs
+        response = await self._client.beta.messages.create(**kwargs)
+    else:
+        # Standard API call
+        response = await self._client.messages.create(**kwargs)
+
+    return self._parse_response(response, output_schema)</code></pre>
+
+            <h4>Response Parsing with Structured Outputs</h4>
+            <p>The response text is parsed as JSON and stored in <code>parsed_output</code>:</p>
+
+            <pre><code class="language-python">def _parse_response(self, response, output_schema=None) -> LLMResponse:
+    text = None
+    tool_calls = []
+    parsed_output = None
+
+    for block in response.content:
+        if block.type == "text":
+            text = block.text
+
+            # Parse JSON if structured output was requested
+            if output_schema and text:
+                parsed_output = json.loads(text)
+
+        elif block.type == "tool_use":
+            tool_calls.append(ToolCall(
+                id=block.id,
+                name=block.name,
+                input=block.input
+            ))
+
+    return LLMResponse(
+        text=text,
+        tool_calls=tool_calls,
+        stop_reason=response.stop_reason,
+        parsed_output=parsed_output,  # Validated JSON data
+    )</code></pre>
+
+            <h4>Usage Patterns</h4>
+
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h5>Raw JSON Schema</h5>
+                    <pre><code class="language-python"># No external dependencies
+schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "score": {"type": "number"}
+    },
+    "required": ["name", "score"]
+})
+
+response = await client.chat(
+    messages=[...],
+    system="...",
+    output_schema=schema,
+)
+print(response.parsed_output)
+# {"name": "test", "score": 0.95}</code></pre>
+                </div>
+                <div class="comparison-item">
+                    <h5>Pydantic Model</h5>
+                    <pre><code class="language-python"># If using Pydantic in your project
+from pydantic import BaseModel
+
+class Result(BaseModel):
+    name: str
+    score: float
+
+schema = OutputSchema.from_pydantic(Result)
+
+response = await client.chat(
+    messages=[...],
+    system="...",
+    output_schema=schema,
+)
+print(response.parsed_output)
+# {"name": "test", "score": 0.95}</code></pre>
+                </div>
+            </div>
+
+            <h4>Key Advantages</h4>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Bedsheet</th>
+                        <th>Other Frameworks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Works with tools</td>
+                        <td>Yes - tools and schema together</td>
+                        <td>Often mutually exclusive</td>
+                    </tr>
+                    <tr>
+                        <td>Pydantic required</td>
+                        <td>No - optional</td>
+                        <td>Often mandatory</td>
+                    </tr>
+                    <tr>
+                        <td>100% schema compliance</td>
+                        <td>Yes - constrained decoding</td>
+                        <td>Varies (some use post-validation)</td>
+                    </tr>
+                    <tr>
+                        <td>Native API integration</td>
+                        <td>Yes - Anthropic beta</td>
+                        <td>Varies</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Testing Structured Outputs</div>
+                <p>The <code>MockLLMClient</code> supports <code>parsed_output</code> in <code>MockResponse</code>, making it easy to test agents that use structured outputs without calling the real API.</p>
+            </div>
         </section>
 
         <!-- MockLLMClient -->
