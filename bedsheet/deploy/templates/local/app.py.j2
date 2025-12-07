@@ -1,0 +1,28 @@
+"""FastAPI wrapper for {{ config.name }}."""
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI(title="{{ config.name }}")
+
+
+class InvokeRequest(BaseModel):
+    """Request model for agent invocation."""
+    message: str
+
+
+class InvokeResponse(BaseModel):
+    """Response model for agent invocation."""
+    response: str
+
+
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {"status": "ok", "agent": "{{ agent.name }}"}
+
+
+@app.post("/invoke")
+async def invoke(request: InvokeRequest) -> InvokeResponse:
+    """Invoke the agent with a message."""
+    # TODO: Implement actual agent invocation
+    return InvokeResponse(response=f"Echo: {request.message}")
