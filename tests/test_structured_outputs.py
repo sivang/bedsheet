@@ -1,5 +1,4 @@
 """Tests for structured outputs (OutputSchema)."""
-import json
 import pytest
 from bedsheet.llm.base import OutputSchema, LLMResponse
 
