@@ -508,12 +508,89 @@ When an error occurs:
 4. **Keep collaborator instructions focused** - each agent should have a clear specialty
 5. **Let the supervisor synthesize** - don't just concatenate agent outputs
 
+## Structured Outputs for Multi-Agent Systems
+
+When building multi-agent systems, **structured outputs** become especially powerful. Instead of parsing free-form text from collaborators, you can guarantee each agent returns data in a predictable format.
+
+### Use Case: Portfolio Analysis Dashboard
+
+Imagine a dashboard that displays analysis from multiple agents. Each agent returns structured JSON that your UI can render directly:
+
+```python
+from bedsheet.llm import AnthropicClient, OutputSchema
+
+# Define schemas for each agent's output
+market_schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "symbol": {"type": "string"},
+        "price": {"type": "number"},
+        "trend": {"type": "string", "enum": ["bullish", "bearish", "neutral"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "key_levels": {
+            "type": "object",
+            "properties": {
+                "support": {"type": "number"},
+                "resistance": {"type": "number"}
+            }
+        }
+    },
+    "required": ["symbol", "price", "trend", "confidence"]
+})
+
+news_schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "sentiment": {"type": "string", "enum": ["bullish", "bearish", "neutral"]},
+        "headline_count": {"type": "integer"},
+        "top_headlines": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "risk_factors": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["sentiment", "headline_count"]
+})
+```
+
+### Why This Matters for Multi-Agent
+
+1. **Reliable Synthesis**: The supervisor can programmatically combine structured data from multiple agents
+2. **UI-Ready Output**: Frontend can render agent results without parsing markdown
+3. **Type Safety**: Your code knows exactly what shape the data will be
+4. **Error Prevention**: No more "agent returned unexpected format" bugs
+
+```python
+# Supervisor can now work with predictable data
+market_data = market_response.parsed_output  # Guaranteed structure
+news_data = news_response.parsed_output      # Guaranteed structure
+
+# Combine programmatically
+combined_score = (
+    market_data["confidence"] * 0.6 +
+    (1.0 if news_data["sentiment"] == "bullish" else 0.5) * 0.4
+)
+```
+
+### Pro Tip: Schema Per Agent Role
+
+Define a schema that matches each agent's specialty:
+- **MarketAnalyst**: Price, technicals, trend direction
+- **NewsResearcher**: Sentiment, headlines, risk factors
+- **RiskAnalyst**: Risk score, volatility metrics, warnings
+
+This turns your multi-agent system from a "chat with experts" into a **structured data pipeline** that happens to use LLMs.
+
 ## Next Steps
 
 - Add more specialized agents (RiskAnalyst, CompetitorTracker, etc.)
 - Implement real tool integrations (market data APIs, news APIs)
 - Add memory persistence with RedisMemory for conversation continuity
 - Build a web UI that streams events in real-time
+- Use structured outputs for dashboard-ready agent responses
 
 ---
 
