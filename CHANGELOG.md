@@ -5,7 +5,18 @@ All notable changes to Bedsheet Agents will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.2] - 2025-12-03
+## [0.3.0] - 2025-12-03
+
+### Added
+
+- **Structured Outputs** - New `OutputSchema` class for enforcing JSON schema compliance
+  - `OutputSchema.from_pydantic(Model)` - Create from Pydantic BaseModel
+  - `OutputSchema.from_dict(schema)` - Create from JSON schema dict
+- **Anthropic Structured Outputs Beta** - Integration with Claude's constrained decoding
+  - Uses `structured-outputs-2025-11-13` beta header
+  - Guarantees 100% schema compliance via constrained token generation
+- **LLMResponse.parsed_output** - New field for validated structured data
+- **MockLLMClient structured output support** - For testing agents with output schemas
 
 ### Fixed
 
@@ -59,6 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Max Iterations Safety** - Prevents infinite loops
 - **MockLLMClient** - Testing utilities
 
-[0.2.2]: https://github.com/sivang/bedsheet/compare/v0.2.0...v0.2.2
+[0.3.0]: https://github.com/sivang/bedsheet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sivang/bedsheet/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sivang/bedsheet/releases/tag/v0.1.0

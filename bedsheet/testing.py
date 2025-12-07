@@ -1,8 +1,9 @@
 """Testing utilities for Bedsheet Agents."""
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import Any
 
-from bedsheet.llm.base import LLMResponse, ToolCall, ToolDefinition
+from bedsheet.llm.base import LLMResponse, OutputSchema, ToolCall, ToolDefinition
 from bedsheet.memory.base import Message
 
 
@@ -12,6 +13,7 @@ class MockResponse:
     text: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
     thinking: str | None = None
+    parsed_output: Any = None  # For structured output testing
 
 
 class MockLLMClient:
@@ -29,6 +31,7 @@ class MockLLMClient:
         messages: list[Message],
         system: str,
         tools: list[ToolDefinition] | None = None,
+        output_schema: OutputSchema | None = None,
     ) -> LLMResponse:
         """Return the next mock response."""
         response = self._get_next_response()
@@ -40,6 +43,7 @@ class MockLLMClient:
             tool_calls=response.tool_calls,
             stop_reason=stop_reason,
             thinking=response.thinking,
+            parsed_output=response.parsed_output,
         )
 
     async def chat_stream(
@@ -47,6 +51,7 @@ class MockLLMClient:
         messages: list,
         system: str,
         tools: list | None = None,
+        output_schema: OutputSchema | None = None,
     ) -> AsyncIterator[str | LLMResponse]:
         """Stream mock response - yields tokens then final LLMResponse."""
         response = self._get_next_response()
@@ -64,4 +69,5 @@ class MockLLMClient:
             text=response.text,
             tool_calls=response.tool_calls or [],
             stop_reason="end_turn",
+            parsed_output=response.parsed_output,
         )
