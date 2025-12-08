@@ -1880,35 +1880,32 @@ flowchart TB
             <h2><span class="step-number" style="background: #8250df;">A</span>Build the Agent</h2>
 
             <h3>Step A.1: Create Project Structure</h3>
-            <pre><code class="language-bash"># Create project directory
-mkdir investment-advisor && cd investment-advisor
+            <pre><code class="language-bash"># Initialize a new project (creates full scaffold)
+bedsheet init investment-advisor
+cd investment-advisor
 
-# Create Python package structure
-mkdir -p agents tools tests
-touch agents/__init__.py tools/__init__.py tests/__init__.py
+# Add tools directory for our custom tools
+mkdir tools
+touch tools/__init__.py tools/stock_tools.py
 
-# Create agent files
-touch agents/advisor.py agents/analysts.py tools/stock_tools.py
+# Add additional agent files
+touch agents/analysts.py</code></pre>
 
-# Initialize bedsheet configuration
-bedsheet init --name investment-advisor \
-    --module agents.advisor \
-    --class InvestmentAdvisor \
-    --target local</code></pre>
+            <p>The <code>bedsheet init</code> command creates a complete project scaffold:</p>
 
-            <p>This creates a <code>bedsheet.yaml</code> with sensible defaults. You can also initialize for cloud targets:</p>
+            <pre><code class="language-bash">Created project: investment-advisor
+├── bedsheet.yaml      # Configuration
+├── agents/            # Your agent code
+│   └── assistant.py   # Example agent (we'll replace this)
+└── requirements.txt   # Dependencies</code></pre>
+
+            <p>You can also initialize with a specific target:</p>
 
             <pre><code class="language-bash"># For GCP deployment (prompts for project ID)
-bedsheet init --name investment-advisor \
-    --module agents.advisor \
-    --class InvestmentAdvisor \
-    --target gcp
+bedsheet init investment-advisor --target gcp
 
 # For AWS deployment (prompts for region)
-bedsheet init --name investment-advisor \
-    --module agents.advisor \
-    --class InvestmentAdvisor \
-    --target aws</code></pre>
+bedsheet init investment-advisor --target aws</code></pre>
 
             <h3>Step A.2: Define the Tools</h3>
             <p>First, create the tools our agents will use. These simulate real API calls:</p>
@@ -2211,10 +2208,9 @@ targets:
     bedrock_model: anthropic.claude-sonnet-4-5-v2:0
     style: serverless</code></pre>
 
-            <h3>Step A.6: Create Requirements</h3>
-            <pre><code class="language-bash"># requirements.txt
-bedsheet-agents>=0.3.0
-anthropic>=0.18.0</code></pre>
+            <h3>Step A.6: Install Dependencies</h3>
+            <p>The <code>bedsheet init</code> command already created <code>requirements.txt</code>. Install the dependencies:</p>
+            <pre><code class="language-bash">pip install -r requirements.txt</code></pre>
 
             <h3>Step A.7: Test the Agent Locally (Python)</h3>
             <pre><code class="language-python"># test_advisor.py
