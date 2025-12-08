@@ -177,8 +177,10 @@ async def test_local_target_generate_dockerfile_content(mock_config, mock_agent_
         # Check for expected Dockerfile elements
         assert "FROM python:3.11" in content
         assert "WORKDIR /app" in content
-        assert "COPY pyproject.toml" in content
+        assert "COPY deploy/local/pyproject.toml" in content
         assert "uv pip install" in content
+        assert "COPY agents/" in content
+        assert "COPY deploy/local/app.py" in content
         assert "EXPOSE 8080" in content  # From mock_config port
         assert 'CMD ["uvicorn"' in content
 
@@ -201,9 +203,11 @@ async def test_local_target_generate_docker_compose_content(mock_config, mock_ag
         assert "test_agent:" in content  # Project name with underscores
         assert "8080:8080" in content  # Port mapping
         assert "ANTHROPIC_API_KEY" in content
+        assert "context: ../.." in content  # Build context is project root
+        assert "dockerfile: deploy/local/Dockerfile" in content
         # Since hot_reload is True in mock_config, should have volumes
         assert "volumes:" in content
-        assert ".:/app" in content
+        assert "../..:/app" in content
 
 
 @pytest.mark.asyncio
@@ -221,8 +225,10 @@ async def test_local_target_generate_app_py_content(mock_config, mock_agent_meta
         # Check for expected FastAPI app elements
         assert "from fastapi import FastAPI" in content
         assert 'title="test-agent"' in content  # Config name
-        assert '"agent": "TestAgent"' in content  # Agent name from metadata
+        assert "from agents.assistant import assistant as agent" in content  # Agent import
+        assert "agent.name" in content  # Dynamic agent name
         assert "/invoke" in content
+        assert "agent.invoke" in content  # Actually invokes the agent
 
 
 @pytest.mark.asyncio

@@ -6,11 +6,14 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Install dependencies from pyproject.toml (not as installable package)
-COPY pyproject.toml .
+COPY deploy/local/pyproject.toml .
 RUN uv pip install --system --prerelease allow -r pyproject.toml
 
-# Copy application code
-COPY . .
+# Copy agent code
+COPY agents/ ./agents/
+
+# Copy FastAPI app
+COPY deploy/local/app.py .
 
 EXPOSE {{ local.port }}
 
