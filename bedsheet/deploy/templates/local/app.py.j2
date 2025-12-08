@@ -1,4 +1,6 @@
 """FastAPI wrapper for {{ config.name }}."""
+import uuid
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -13,11 +15,13 @@ app = FastAPI(title="{{ config.name }}")
 class InvokeRequest(BaseModel):
     """Request model for agent invocation."""
     message: str
+    session_id: str | None = None
 
 
 class InvokeResponse(BaseModel):
     """Response model for agent invocation."""
     response: str
+    session_id: str
 
 
 @app.get("/")
@@ -29,10 +33,11 @@ async def root():
 @app.post("/invoke")
 async def invoke(request: InvokeRequest) -> InvokeResponse:
     """Invoke the agent with a message."""
+    session_id = request.session_id or str(uuid.uuid4())
     response_text = ""
-    async for event in agent.invoke(request.message):
+    async for event in agent.invoke(session_id, request.message):
         if isinstance(event, TextTokenEvent):
             response_text += event.token
         elif isinstance(event, CompletionEvent):
-            response_text = event.text
-    return InvokeResponse(response=response_text)
+            response_text = event.response
+    return InvokeResponse(response=response_text, session_id=session_id)

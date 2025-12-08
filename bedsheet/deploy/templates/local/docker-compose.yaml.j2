@@ -11,5 +11,6 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     {% if local.hot_reload %}
     volumes:
-      - ../..:/app
+      # Mount agent code for hot reload (rebuild needed for app.py changes)
+      - ../../agents:/app/agents:ro
     {% endif %}
