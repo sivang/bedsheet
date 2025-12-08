@@ -298,7 +298,7 @@ assistant = create_assistant()
 '''
     (agents_dir / "assistant.py").write_text(assistant_code)
 
-    # Create pyproject.toml
+    # Create pyproject.toml (no build-system - this is not a distributable package)
     pyproject = f'''[project]
 name = "{project_name}"
 version = "0.1.0"
@@ -308,10 +308,6 @@ dependencies = [
     "bedsheet-agents>=0.4.0rc1",
     "anthropic>=0.18.0",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 '''
     (project_dir / "pyproject.toml").write_text(pyproject)
 

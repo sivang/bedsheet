@@ -207,7 +207,7 @@ async def test_local_target_generate_docker_compose_content(mock_config, mock_ag
         assert "dockerfile: deploy/local/Dockerfile" in content
         # Since hot_reload is True in mock_config, should have volumes
         assert "volumes:" in content
-        assert "../..:/app" in content
+        assert "../../agents:/app/agents" in content
 
 
 @pytest.mark.asyncio
