@@ -1,15 +1,15 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.3.0 🚀 Published on PyPI
+## Current Version: v0.4.0rc4 🧪 Testing on PyPI
 
-**Last Session:** 2025-12-08
+**Last Session:** 2025-12-08 (Evening)
 
 ### Release Status
 
 | Version | Status | Branch |
 |---------|--------|--------|
 | v0.3.0 | ✅ Released on PyPI | main |
-| v0.4.0 | 🚧 In Development | development/v0.4-deploy-anywhere |
+| v0.4.0rc4 | 🧪 Testing on PyPI | development/v0.4-deploy-anywhere |
 
 ### Release Artifacts
 
@@ -29,7 +29,34 @@
 
 ---
 
-## Session Summary (2025-12-08)
+## Session Summary (2025-12-08 Evening)
+
+### What Was Done
+
+1. **Published v0.4.0rc4 to PyPI** - End-to-end tested and working!
+   - `bedsheet init myagent` scaffolds complete project
+   - `bedsheet generate --target local` creates Docker deployment
+   - `make build && make run` deploys working agent with real LLM calls
+
+2. **Fixed Local Deploy Template Issues**
+   - Dockerfile: Use `uv pip install -r pyproject.toml` (not editable install)
+   - docker-compose: Build context from project root, proper volume mounts
+   - app.py: Correct `agent.invoke(session_id, message)` signature
+   - app.py: Use `CompletionEvent.response` (not `.text`)
+
+3. **Removed build-system from Scaffolded Projects**
+   - Agent projects aren't installable packages, just dependency declarations
+   - Fixes `uv sync` / `uv run` errors with hatchling
+
+4. **Release Candidates Published**
+   - rc1: Initial CLI deps fix
+   - rc2: CLI deps in main dependencies
+   - rc3: Wired up agent invocation
+   - rc4: Fixed session_id, event attributes, volume mounts
+
+---
+
+## Session Summary (2025-12-08 Morning)
 
 ### What Was Done
 
