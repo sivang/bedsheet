@@ -294,7 +294,7 @@ async def test_gcp_target_generate_creates_all_files(mock_gcp_config, mock_singl
         files = target.generate(mock_gcp_config, mock_single_agent_metadata, output_dir)
 
         # Check we got all expected files
-        assert len(files) == 7
+        assert len(files) == 11
 
         file_names = [f.path.name for f in files]
         assert "agent.py" in [f.path.name for f in files if f.path.parent.name == "agent"]
@@ -502,7 +502,7 @@ async def test_gcp_target_generate_with_default_config(mock_single_agent_metadat
         files = target.generate(config, mock_single_agent_metadata, output_dir)
 
         # Should still generate all files with defaults
-        assert len(files) == 7
+        assert len(files) == 11
 
         # Check that default model is used (claude-sonnet-4-5@20250929 from GCPTargetConfig)
         agent_file = next(f for f in files if f.path.name == "agent.py")

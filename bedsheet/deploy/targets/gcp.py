@@ -51,11 +51,19 @@ class GCPTarget(DeploymentTarget):
 
         # Generate each file
         templates = [
+            # ADK agent code
             ("agent.py.j2", "agent/agent.py", False),
             ("__init__.py.j2", "agent/__init__.py", False),
+            # Docker/Cloud Build
             ("requirements.txt.j2", "requirements.txt", False),
             ("Dockerfile.j2", "Dockerfile", False),
             ("cloudbuild.yaml.j2", "cloudbuild.yaml", False),
+            # Terraform IaC
+            ("main.tf.j2", "terraform/main.tf", False),
+            ("variables.tf.j2", "terraform/variables.tf", False),
+            ("outputs.tf.j2", "terraform/outputs.tf", False),
+            ("terraform.tfvars.example.j2", "terraform/terraform.tfvars.example", False),
+            # Development
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
         ]
