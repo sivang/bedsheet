@@ -683,7 +683,11 @@
             <h2><span class="step-number">1</span>Installation</h2>
 
             <h3>Install Bedsheet with CLI</h3>
-            <pre><code class="language-bash">pip install bedsheet-agents</code></pre>
+            <pre><code class="language-bash"># Using uv (recommended)
+uv add bedsheet-agents --prerelease allow
+
+# Or with pip
+pip install bedsheet-agents</code></pre>
 
             <h3>Verify CLI Installation</h3>
             <pre><code class="language-bash">bedsheet --help</code></pre>
@@ -740,29 +744,40 @@ cd my-agent</code></pre>
             <div class="output">
 <span class="success">Created project: my-agent</span>
 <span class="comment">├── bedsheet.yaml      # Configuration</span>
-<span class="comment">├── agents/            # Your agent code</span>
-<span class="comment">│   └── assistant.py   # Example agent</span>
-<span class="comment">└── requirements.txt   # Dependencies</span>
+<span class="comment">├── pyproject.toml     # Dependencies</span>
+<span class="comment">└── agents/            # Your agent code</span>
+<span class="comment">    └── assistant.py   # Example agent</span>
             </div>
 
-            <h3>Step 2: Generate for Local Development</h3>
-            <pre><code class="language-bash">bedsheet generate --target local</code></pre>
+            <h3>Step 2: Install Dependencies &amp; Generate</h3>
+            <pre><code class="language-bash"># Install dependencies (using uv - recommended)
+uv sync --prerelease allow
+
+# Or with pip
+pip install -e .
+
+# Generate deployment artifacts
+uv run bedsheet generate --target local</code></pre>
 
             <div class="output">
-<span class="success">Generated 7 files for target: local</span>
-<span class="comment">├── docker-compose.yaml</span>
+<span class="success">Generated 6 files in deploy/local/</span>
 <span class="comment">├── Dockerfile</span>
+<span class="comment">├── docker-compose.yaml</span>
 <span class="comment">├── app.py</span>
 <span class="comment">├── Makefile</span>
-<span class="comment">└── ...</span>
+<span class="comment">├── pyproject.toml</span>
+<span class="comment">└── .env.example</span>
             </div>
 
-            <h3>Step 3: Run Locally</h3>
-            <pre><code class="language-bash">make run</code></pre>
+            <h3>Step 3: Build &amp; Run Locally</h3>
+            <pre><code class="language-bash">cd deploy/local
+cp .env.example .env   # Add your ANTHROPIC_API_KEY
+make build
+make run</code></pre>
 
             <div class="output">
 <span class="success">Starting my-agent...</span>
-Agent running at http://localhost:8080
+Agent running at http://localhost:8000
 <span class="comment">Press Ctrl+C to stop</span>
             </div>
 
