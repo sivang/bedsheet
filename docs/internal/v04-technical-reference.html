@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v0.4 Technical Reference - Internal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --border: #30363d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: var(--accent-red);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 48px;
+        }
+
+        .toc h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+
+        .toc ul {
+            list-style: none;
+            columns: 2;
+            gap: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        section {
+            margin-bottom: 64px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        h4 {
+            font-size: 15px;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--accent-purple);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        p code, li code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-purple);
+        }
+
+        .callout {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .callout.warning {
+            border-color: var(--accent-orange);
+        }
+
+        .callout.important {
+            border-color: var(--accent-red);
+        }
+
+        .callout.tip {
+            border-color: var(--accent-green);
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+
+        .callout.warning .callout-title { color: var(--accent-orange); }
+        .callout.important .callout-title { color: var(--accent-red); }
+        .callout.tip .callout-title { color: var(--accent-green); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+        }
+
+        .file-path {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent-green);
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .mermaid {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .toc ul { columns: 1; }
+            .two-col { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>v0.4 Technical Reference</h1>
+            <p class="subtitle">Build Once, Deploy Anywhere - Implementation Deep Dive</p>
+            <span class="badge">INTERNAL - NOT FOR PUBLICATION</span>
+        </div>
+
+        <nav class="toc">
+            <h2>Table of Contents</h2>
+            <ul>
+                <li><a href="#architecture">1. Architecture Overview</a></li>
+                <li><a href="#cli">2. CLI Module</a></li>
+                <li><a href="#config">3. Configuration System</a></li>
+                <li><a href="#introspection">4. Agent Introspection</a></li>
+                <li><a href="#targets">5. Deployment Targets</a></li>
+                <li><a href="#templates">6. Jinja2 Templates</a></li>
+                <li><a href="#local">7. Local Target</a></li>
+                <li><a href="#gcp">8. GCP Target</a></li>
+                <li><a href="#aws">9. AWS Target</a></li>
+                <li><a href="#cicd">10. GitHub Actions</a></li>
+                <li><a href="#testing">11. Testing Strategy</a></li>
+                <li><a href="#decisions">12. Design Decisions</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Architecture -->
+        <section id="architecture">
+            <h2>1. Architecture Overview</h2>
+
+            <p>The v0.4 deployment system follows a <strong>compilation model</strong>: Bedsheet agents are "compiled" into cloud-native artifacts for the target platform.</p>
+
+            <div class="mermaid">
+flowchart TB
+    subgraph Input
+        Agent[Your Bedsheet Agent]
+        Config[bedsheet.yaml]
+    end
+
+    subgraph CLI
+        Parse[Parse Config]
+        Introspect[Introspect Agent]
+        Validate[Validate]
+    end
+
+    subgraph Generation
+        Target[Target Generator]
+        Templates[Jinja2 Templates]
+    end
+
+    subgraph Output
+        Local[Docker + FastAPI]
+        GCP[Terraform + ADK]
+        AWS[CDK + Bedrock]
+    end
+
+    Agent --> Introspect
+    Config --> Parse
+    Parse --> Validate
+    Introspect --> Target
+    Validate --> Target
+    Target --> Templates
+    Templates --> Local
+    Templates --> GCP
+    Templates --> AWS
+
+    style Agent fill:#58a6ff,color:#0d1117
+    style Target fill:#a371f7,color:#0d1117
+            </div>
+
+            <h3>Module Structure</h3>
+            <pre><code class="language-bash">bedsheet/
+├── cli/
+│   ├── __init__.py
+│   └── main.py              # Typer CLI app (init, generate, validate, deploy)
+└── deploy/
+    ├── __init__.py          # Public exports
+    ├── config.py            # Pydantic config models
+    ├── introspect.py        # Agent metadata extraction
+    └── targets/
+        ├── __init__.py      # Target exports
+        ├── base.py          # DeploymentTarget protocol
+        ├── local.py         # Docker/FastAPI generator
+        ├── gcp.py           # Terraform/ADK generator
+        └── aws.py           # CDK/Bedrock generator
+    └── templates/
+        ├── local/           # 7 Jinja2 templates
+        ├── gcp/             # 13 Jinja2 templates
+        └── aws/             # 12 Jinja2 templates</code></pre>
+
+            <h3>Data Flow</h3>
+            <table>
+                <tr>
+                    <th>Stage</th>
+                    <th>Input</th>
+                    <th>Output</th>
+                    <th>Module</th>
+                </tr>
+                <tr>
+                    <td>1. Parse</td>
+                    <td>bedsheet.yaml</td>
+                    <td>BedsheetConfig</td>
+                    <td>config.py</td>
+                </tr>
+                <tr>
+                    <td>2. Introspect</td>
+                    <td>Agent module path</td>
+                    <td>AgentMetadata</td>
+                    <td>introspect.py</td>
+                </tr>
+                <tr>
+                    <td>3. Validate</td>
+                    <td>Config + Target</td>
+                    <td>List of errors</td>
+                    <td>targets/*.py</td>
+                </tr>
+                <tr>
+                    <td>4. Generate</td>
+                    <td>Config + Metadata</td>
+                    <td>GeneratedFile[]</td>
+                    <td>targets/*.py</td>
+                </tr>
+                <tr>
+                    <td>5. Write</td>
+                    <td>GeneratedFile[]</td>
+                    <td>Files on disk</td>
+                    <td>cli/main.py</td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- Section 2: CLI -->
+        <section id="cli">
+            <h2>2. CLI Module</h2>
+
+            <p class="file-path">bedsheet/cli/main.py</p>
+
+            <p>The CLI is built with <strong>Typer</strong> and uses <strong>Rich</strong> for pretty output.</p>
+
+            <h3>Commands</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Purpose</th>
+                    <th>Key Options</th>
+                </tr>
+                <tr>
+                    <td><code>init</code></td>
+                    <td>Create bedsheet.yaml</td>
+                    <td>--name, --module, --target</td>
+                </tr>
+                <tr>
+                    <td><code>validate</code></td>
+                    <td>Check config validity</td>
+                    <td>--config</td>
+                </tr>
+                <tr>
+                    <td><code>generate</code></td>
+                    <td>Create deployment files</td>
+                    <td>--target, --output, --dry-run</td>
+                </tr>
+                <tr>
+                    <td><code>deploy</code></td>
+                    <td>Deploy to target (stub)</td>
+                    <td>--target, --dry-run</td>
+                </tr>
+                <tr>
+                    <td><code>version</code></td>
+                    <td>Show version</td>
+                    <td>-</td>
+                </tr>
+            </table>
+
+            <h3>The Generate Command Flow</h3>
+            <pre><code class="language-python"># bedsheet/cli/main.py - generate command (simplified)
+
+@app.command()
+def generate(target: str, config_file: Path, output_dir: Path, dry_run: bool):
+    # 1. Load config
+    config = load_config(config_file)
+
+    # 2. Get target generator
+    target_generator = TARGETS[target_name]()  # LocalTarget, GCPTarget, or AWSTarget
+
+    # 3. Validate config for this target
+    errors = target_generator.validate(config)
+    if errors:
+        raise typer.Exit(1)
+
+    # 4. Introspect the agent (NEW in this session!)
+    agent_metadata, error = _load_and_introspect_agent(agent_config, console)
+
+    # 5. Generate files
+    generated_files = target_generator.generate(config, agent_metadata, output_dir)
+
+    # 6. Write to disk
+    for gf in generated_files:
+        gf.path.parent.mkdir(parents=True, exist_ok=True)
+        gf.path.write_text(gf.content)</code></pre>
+
+            <h3>Agent Introspection in CLI</h3>
+
+            <div class="callout important">
+                <div class="callout-title">Critical Fix Made This Session</div>
+                <p>Previously, the CLI created empty AgentMetadata from config. Now it actually imports and introspects the real agent.</p>
+            </div>
+
+            <pre><code class="language-python"># _load_and_introspect_agent() - Key function
+
+def _load_and_introspect_agent(agent_config, console):
+    """
+    1. Add cwd to sys.path
+    2. importlib.import_module(agent_config.module)
+    3. Find agent class or instance
+    4. Instantiate with MockLLMClient (no API calls!)
+    5. extract_agent_metadata(agent_instance)
+    """
+
+    # Why MockLLMClient?
+    # - Agent.__init__ requires model_client
+    # - We don't want to make real API calls
+    # - We just need the object to exist for introspection
+    # - Tools are registered during __init__, not during API calls
+
+    mock_client = MockLLMClient([MockResponse(text="introspection")])
+    agent = AgentClass(model_client=mock_client)
+    return extract_agent_metadata(agent), None</code></pre>
+
+            <h4>Instantiation Strategies</h4>
+            <p>The CLI tries multiple strategies to instantiate the agent:</p>
+            <ol>
+                <li><strong>Module-level instance</strong> - Look for <code>agent</code>, <code>advisor</code>, <code>root_agent</code></li>
+                <li><strong>Class with model_client</strong> - <code>AgentClass(model_client=mock)</code></li>
+                <li><strong>No-arg factory</strong> - <code>create_agent()</code></li>
+            </ol>
+        </section>
+
+        <!-- Section 3: Config -->
+        <section id="config">
+            <h2>3. Configuration System</h2>
+
+            <p class="file-path">bedsheet/deploy/config.py</p>
+
+            <p>Configuration uses <strong>Pydantic v2</strong> for validation and serialization.</p>
+
+            <h3>Config Hierarchy</h3>
+            <pre><code class="language-python">class BedsheetConfig(BaseModel):
+    """Root configuration."""
+    version: str = "1.0"
+    name: str                          # Project name
+    agents: list[AgentConfig]          # Agent definitions
+    target: str                        # Active target (local/gcp/aws)
+    targets: dict[str, TargetConfig]   # Target-specific configs
+    environments: list[str] = []       # dev, staging, prod
+    enhancements: EnhancementsConfig   # Optional features
+
+class AgentConfig(BaseModel):
+    """Single agent definition."""
+    name: str
+    module: str        # e.g., "agents.advisor"
+    class_name: str    # e.g., "InvestmentAdvisor"
+    description: str | None = None
+
+class LocalTargetConfig(BaseModel):
+    port: int = 8000
+    hot_reload: bool = True
+    redis_url: str | None = None
+
+class GCPTargetConfig(BaseModel):
+    project: str                       # GCP project ID
+    region: str = "us-central1"
+    model: str = "claude-sonnet-4-5@20250929"
+    cloud_run_memory: str = "512Mi"
+    style: GCPDeploymentStyle = GCPDeploymentStyle.CLOUD_RUN
+
+class AWSTargetConfig(BaseModel):
+    region: str = "us-east-1"
+    lambda_memory: int = 256           # 128-10240 MB
+    bedrock_model: str = "anthropic.claude-sonnet-4-5-v2:0"
+    style: AWSDeploymentStyle = AWSDeploymentStyle.SERVERLESS</code></pre>
+
+            <h3>Validation</h3>
+            <pre><code class="language-python"># Pydantic validators in config.py
+
+class AWSTargetConfig(BaseModel):
+    region: str = "us-east-1"
+    lambda_memory: int = Field(default=256, ge=128, le=10240)
+
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v: str) -> str:
+        pattern = r"^[a-z]{2}-[a-z]+-\d+$"  # e.g., us-east-1
+        if not re.match(pattern, v):
+            raise ValueError(f"Invalid AWS region format: {v}")
+        return v</code></pre>
+
+            <h3>Loading and Saving</h3>
+            <pre><code class="language-python"># Helper functions
+
+def load_config(path: Path) -> BedsheetConfig:
+    """Load and validate config from YAML file."""
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return BedsheetConfig(**data)
+
+def save_config(config: BedsheetConfig, path: Path) -> None:
+    """Save config to YAML file."""
+    data = config.model_dump(exclude_none=True)
+    with open(path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)</code></pre>
+        </section>
+
+        <!-- Section 4: Introspection -->
+        <section id="introspection">
+            <h2>4. Agent Introspection</h2>
+
+            <p class="file-path">bedsheet/deploy/introspect.py</p>
+
+            <p>Introspection extracts metadata from a live agent instance without making API calls.</p>
+
+            <h3>Data Classes</h3>
+            <pre><code class="language-python">@dataclass
+class ToolMetadata:
+    name: str                      # Tool name from @action
+    description: str               # Description from @action
+    parameters_schema: dict        # JSON Schema from type hints
+
+@dataclass
+class AgentMetadata:
+    name: str                      # Agent.name
+    instruction: str               # Agent.instruction
+    tools: list[ToolMetadata]      # From action groups
+    collaborators: list[AgentMetadata]  # Recursive for supervisors
+    is_supervisor: bool            # isinstance(agent, Supervisor)</code></pre>
+
+            <h3>Extraction Logic</h3>
+            <pre><code class="language-python">def extract_agent_metadata(agent: Agent) -> AgentMetadata:
+    # Basic info
+    name = agent.name
+    instruction = agent.instruction
+    is_supervisor = isinstance(agent, Supervisor)
+
+    # Extract tools from ALL action groups
+    tools = []
+    for action_group in agent._action_groups:  # Private attribute!
+        for action in action_group.get_actions():
+            tools.append(ToolMetadata(
+                name=action.name,
+                description=action.description,
+                parameters_schema=action.input_schema,  # JSON Schema
+            ))
+
+    # Extract collaborators (recursive!)
+    collaborators = []
+    if is_supervisor:
+        for collab in agent.collaborators.values():
+            collaborators.append(extract_agent_metadata(collab))
+
+    return AgentMetadata(...)</code></pre>
+
+            <h3>Where Schema Comes From</h3>
+            <pre><code class="language-python"># In action_group.py - @action decorator
+
+@group.action(name="get_price", description="Get stock price")
+async def get_price(symbol: str, include_history: bool = False) -> dict:
+    ...
+
+# The decorator inspects type hints and builds JSON Schema:
+# {
+#     "type": "object",
+#     "properties": {
+#         "symbol": {"type": "string"},
+#         "include_history": {"type": "boolean"}
+#     },
+#     "required": ["symbol"]  # include_history has default
+# }</code></pre>
+
+            <div class="callout tip">
+                <div class="callout-title">Why This Matters</div>
+                <p>The extracted schema is used to generate:</p>
+                <ul>
+                    <li><strong>OpenAPI specs</strong> for AWS Bedrock action groups</li>
+                    <li><strong>FunctionTool definitions</strong> for Google ADK</li>
+                    <li><strong>Lambda router</strong> with correct parameter parsing</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 5: Targets -->
+        <section id="targets">
+            <h2>5. Deployment Targets</h2>
+
+            <p class="file-path">bedsheet/deploy/targets/base.py</p>
+
+            <h3>DeploymentTarget Protocol</h3>
+            <pre><code class="language-python">class DeploymentTarget(Protocol):
+    """Protocol for deployment target generators."""
+
+    @property
+    def name(self) -> str:
+        """Target name (local, gcp, aws)."""
+        ...
+
+    def validate(self, config: BedsheetConfig) -> list[str]:
+        """Validate config. Return list of error messages."""
+        ...
+
+    def generate(
+        self,
+        config: BedsheetConfig,
+        agent_metadata: AgentMetadata,
+        output_dir: Path,
+    ) -> list[GeneratedFile]:
+        """Generate deployment files."""
+        ...
+
+@dataclass
+class GeneratedFile:
+    path: Path        # Where to write
+    content: str      # File content
+    executable: bool = False  # chmod +x?</code></pre>
+
+            <h3>Target Registry</h3>
+            <pre><code class="language-python"># In cli/main.py
+
+TARGETS: dict[str, type[DeploymentTarget]] = {
+    "local": LocalTarget,
+    "gcp": GCPTarget,
+    "aws": AWSTarget,
+}
+
+# Usage
+target = TARGETS["gcp"]()  # Instantiate GCPTarget</code></pre>
+
+            <h3>Common Pattern in All Targets</h3>
+            <pre><code class="language-python">class SomeTarget(DeploymentTarget):
+    def __init__(self):
+        # Load Jinja2 templates
+        self.env = Environment(
+            loader=PackageLoader("bedsheet.deploy", "templates/some"),
+            autoescape=select_autoescape(),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+
+    def generate(self, config, metadata, output_dir):
+        files = []
+
+        # Build template context
+        context = {
+            "config": config,
+            "agent": metadata,
+            "project_name": config.name,
+            # ... target-specific vars
+        }
+
+        # Render each template
+        for template_name, output_name in TEMPLATES:
+            template = self.env.get_template(template_name)
+            content = template.render(**context)
+            files.append(GeneratedFile(
+                path=output_dir / output_name,
+                content=content,
+            ))
+
+        return files</code></pre>
+        </section>
+
+        <!-- Section 6: Templates -->
+        <section id="templates">
+            <h2>6. Jinja2 Templates</h2>
+
+            <p class="file-path">bedsheet/deploy/templates/</p>
+
+            <h3>Template Organization</h3>
+            <pre><code class="language-bash">templates/
+├── local/
+│   ├── docker_compose.yaml.j2
+│   ├── Dockerfile.j2
+│   ├── app.py.j2
+│   ├── requirements.txt.j2
+│   ├── Makefile.j2
+│   ├── env.example.j2
+│   └── github_workflows_ci.yaml.j2
+├── gcp/
+│   ├── agent.py.j2              # ADK agent code
+│   ├── __init__.py.j2
+│   ├── Dockerfile.j2
+│   ├── cloudbuild.yaml.j2
+│   ├── requirements.txt.j2
+│   ├── main.tf.j2               # Terraform
+│   ├── variables.tf.j2
+│   ├── outputs.tf.j2
+│   ├── terraform.tfvars.example.j2
+│   ├── Makefile.j2
+│   ├── env.example.j2
+│   ├── github_workflows_ci.yaml.j2
+│   └── github_workflows_deploy.yaml.j2
+└── aws/
+    ├── cdk_app.py.j2            # CDK app
+    ├── cdk_json.j2
+    ├── cdk_stack.py.j2          # CDK stack
+    ├── stacks_init.py.j2
+    ├── lambda_handler.py.j2     # Lambda handler
+    ├── lambda_requirements.txt.j2
+    ├── openapi.yaml.j2          # OpenAPI schema
+    ├── requirements.txt.j2
+    ├── Makefile.j2
+    ├── env.example.j2
+    ├── github_workflows_ci.yaml.j2
+    └── github_workflows_deploy.yaml.j2</code></pre>
+
+            <h3>Template Context Variables</h3>
+            <table>
+                <tr>
+                    <th>Variable</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>config</code></td>
+                    <td>BedsheetConfig</td>
+                    <td>Full config object</td>
+                </tr>
+                <tr>
+                    <td><code>agent</code></td>
+                    <td>AgentMetadata</td>
+                    <td>Introspected agent data</td>
+                </tr>
+                <tr>
+                    <td><code>project_name</code></td>
+                    <td>str</td>
+                    <td>Sanitized name (underscores)</td>
+                </tr>
+                <tr>
+                    <td><code>gcp</code> / <code>aws</code></td>
+                    <td>TargetConfig</td>
+                    <td>Target-specific config</td>
+                </tr>
+                <tr>
+                    <td><code>orchestration</code></td>
+                    <td>str</td>
+                    <td>GCP: single/sequential/parallel</td>
+                </tr>
+                <tr>
+                    <td><code>style</code></td>
+                    <td>str</td>
+                    <td>AWS: serverless/bedrock_native/containers</td>
+                </tr>
+            </table>
+
+            <h3>Example Template</h3>
+            <pre><code class="language-jinja2">{# openapi.yaml.j2 #}
+openapi: 3.0.0
+info:
+  title: {{ config.name }} Actions
+  version: 1.0.0
+
+paths:
+{% for tool in agent.tools %}
+{% if tool.name != "delegate" %}
+  /{{ tool.name }}:
+    post:
+      operationId: {{ tool.name }}
+      summary: {{ tool.description }}
+      parameters:
+{% for param_name, param_schema in tool.parameters_schema.properties.items() %}
+        - name: {{ param_name }}
+          in: query
+          required: {{ param_name in tool.parameters_schema.get('required', []) }}
+          schema:
+            type: {{ param_schema.type }}
+{% endfor %}
+      responses:
+        '200':
+          description: Success
+{% endif %}
+{% endfor %}</code></pre>
+        </section>
+
+        <!-- Section 7: Local -->
+        <section id="local">
+            <h2>7. Local Target</h2>
+
+            <p class="file-path">bedsheet/deploy/targets/local.py</p>
+
+            <h3>What It Generates</h3>
+            <ul>
+                <li><strong>docker-compose.yaml</strong> - Container orchestration with Redis</li>
+                <li><strong>Dockerfile</strong> - Python 3.11 slim image</li>
+                <li><strong>app.py</strong> - FastAPI wrapper with /invoke endpoint</li>
+                <li><strong>Makefile</strong> - run, build, logs, clean commands</li>
+            </ul>
+
+            <h3>Architecture</h3>
+            <div class="mermaid">
+flowchart LR
+    Client[HTTP Client] --> FastAPI[FastAPI App]
+    FastAPI --> Agent[Bedsheet Agent]
+    Agent --> Memory[Redis/InMemory]
+
+    style FastAPI fill:#3fb950,color:#0d1117
+            </div>
+
+            <h3>Key Template: app.py.j2</h3>
+            <pre><code class="language-python"># Generated app.py structure
+from fastapi import FastAPI
+from bedsheet import Agent  # or Supervisor
+from bedsheet.llm import AnthropicClient
+
+app = FastAPI(title="{{ config.name }}")
+
+# Import your agent
+from {{ agent_config.module }} import {{ agent_config.class_name }}
+
+@app.post("/invoke")
+async def invoke(session_id: str, input: str):
+    agent = get_agent()
+    events = []
+    async for event in agent.invoke(session_id, input):
+        events.append(event)
+    return {"response": events[-1].response, "events_count": len(events)}</code></pre>
+
+            <h3>Hot Reload</h3>
+            <pre><code class="language-yaml"># docker-compose.yaml with hot reload
+services:
+  agent:
+    build: .
+    volumes:
+      - .:/app  # Mount source for hot reload
+    command: uvicorn app:app --host 0.0.0.0 --port 8080 --reload</code></pre>
+        </section>
+
+        <!-- Section 8: GCP -->
+        <section id="gcp">
+            <h2>8. GCP Target</h2>
+
+            <p class="file-path">bedsheet/deploy/targets/gcp.py</p>
+
+            <h3>Architecture</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph "Generated Code"
+        ADK[agent.py<br/>ADK Compatible]
+        TF[Terraform<br/>IaC]
+        GHA[GitHub Actions<br/>CI/CD]
+    end
+
+    subgraph "GCP Resources"
+        CR[Cloud Run]
+        SA[Service Account]
+        SM[Secret Manager]
+    end
+
+    ADK --> CR
+    TF --> CR
+    TF --> SA
+    TF --> SM
+    GHA --> TF
+
+    style ADK fill:#a371f7,color:#0d1117
+    style TF fill:#58a6ff,color:#0d1117
+            </div>
+
+            <h3>Orchestration Detection</h3>
+            <pre><code class="language-python"># In gcp.py
+
+def _determine_orchestration(self, metadata: AgentMetadata) -> str:
+    """Map Bedsheet agent to ADK orchestration type."""
+    if not metadata.collaborators:
+        return "single"      # LlmAgent
+    # Supervisor with collaborators
+    return "sequential"      # SequentialAgent
+
+# ADK equivalents:
+# - single → LlmAgent (standalone)
+# - sequential → SequentialAgent (one after another)
+# - parallel → ParallelAgent (concurrent, not yet implemented)</code></pre>
+
+            <h3>Generated ADK Code</h3>
+            <pre><code class="language-python"># agent/agent.py (generated)
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import FunctionTool
+
+{% if orchestration == "single" %}
+root_agent = LlmAgent(
+    name="{{ agent.name }}",
+    model="{{ gcp.model }}",
+    instruction="""{{ agent.instruction }}""",
+    tools=[{% for tool in agent.tools %}
+        FunctionTool(func={{ tool.name }}),
+    {% endfor %}],
+)
+{% else %}
+# Collaborator agents
+{% for collab in agent.collaborators %}
+{{ collab.name | lower }}_agent = LlmAgent(...)
+{% endfor %}
+
+# Supervisor as SequentialAgent
+root_agent = SequentialAgent(
+    name="{{ agent.name }}",
+    sub_agents=[{% for c in agent.collaborators %}{{ c.name | lower }}_agent, {% endfor %}],
+)
+{% endif %}</code></pre>
+
+            <h3>Terraform Resources</h3>
+            <pre><code class="language-hcl"># main.tf (generated)
+
+# Cloud Run service
+resource "google_cloud_run_v2_service" "agent" {
+  name     = "{{ config.name }}"
+  location = var.region
+
+  template {
+    containers {
+      image = "gcr.io/${var.project_id}/{{ config.name }}"
+
+      env {
+        name = "ANTHROPIC_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.anthropic_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+    service_account = google_service_account.agent_sa.email
+  }
+}
+
+# Service account
+resource "google_service_account" "agent_sa" {
+  account_id   = "{{ config.name }}-sa"
+  display_name = "Service account for {{ config.name }}"
+}
+
+# Secret for API key
+resource "google_secret_manager_secret" "anthropic_key" {
+  secret_id = "anthropic-api-key"
+  replication { auto {} }
+}</code></pre>
+
+            <h3>Multi-Environment via Workspaces</h3>
+            <pre><code class="language-bash"># Terraform workspaces for environments
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new prod
+
+# Each workspace has isolated state
+terraform workspace select staging
+terraform apply -var-file=environments/staging.tfvars</code></pre>
+        </section>
+
+        <!-- Section 9: AWS -->
+        <section id="aws">
+            <h2>9. AWS Target</h2>
+
+            <p class="file-path">bedsheet/deploy/targets/aws.py</p>
+
+            <h3>Architecture</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph "Generated Code"
+        CDK[CDK Stack<br/>Python]
+        Lambda[Lambda Handler<br/>Powertools]
+        Schema[OpenAPI Schema<br/>From @action]
+        GHA[GitHub Actions<br/>CI/CD]
+    end
+
+    subgraph "AWS Resources"
+        Agent[Bedrock Agent]
+        LF[Lambda Function]
+        IAM[IAM Roles]
+        S3[S3 Bucket<br/>Schemas]
+    end
+
+    CDK --> Agent
+    CDK --> LF
+    CDK --> IAM
+    Lambda --> LF
+    Schema --> S3
+    S3 --> Agent
+    GHA --> CDK
+
+    style CDK fill:#a371f7,color:#0d1117
+    style Agent fill:#d29922,color:#0d1117
+            </div>
+
+            <h3>Why CDK Instead of Terraform?</h3>
+            <div class="callout">
+                <div class="callout-title">Design Decision</div>
+                <ul>
+                    <li>CDK is Pythonic (same language as Bedsheet)</li>
+                    <li>Native Bedrock L2 constructs</li>
+                    <li>Generates CloudFormation (ejectable)</li>
+                    <li>GCP has no Python CDK equivalent, hence Terraform there</li>
+                </ul>
+            </div>
+
+            <h3>Generated CDK Stack</h3>
+            <pre><code class="language-python"># stacks/agent_stack.py (generated)
+from aws_cdk import Stack, aws_bedrock as bedrock, aws_lambda as lambda_
+
+class {{ project_name }}Stack(Stack):
+    def __init__(self, scope, id, **kwargs):
+        super().__init__(scope, id, **kwargs)
+
+        # Lambda for action groups (tools)
+        action_handler = lambda_.Function(
+            self, "ActionHandler",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="handler.handler",
+            code=lambda_.Code.from_asset("lambda"),
+            memory_size={{ aws.lambda_memory }},
+        )
+
+        # Bedrock Agent
+        agent = bedrock.CfnAgent(
+            self, "{{ agent.name }}",
+            agent_name="{{ config.name }}",
+            instruction="""{{ agent.instruction }}""",
+            foundation_model="{{ aws.bedrock_model }}",
+        )
+
+        # Action Group (tools)
+        bedrock.CfnAgentActionGroup(
+            self, "Tools",
+            agent_id=agent.attr_agent_id,
+            action_group_name="Tools",
+            action_group_executor=...,  # Lambda ARN
+            api_schema=...,  # S3 path to openapi.yaml
+        )</code></pre>
+
+            <h3>Lambda Handler with Powertools</h3>
+            <pre><code class="language-python"># lambda/handler.py (generated)
+from aws_lambda_powertools import Logger, Tracer
+
+logger = Logger()
+tracer = Tracer()
+
+# Tool implementations from your @action decorators
+{% for tool in agent.tools %}
+{% if tool.name != "delegate" %}
+def {{ tool.name }}({{ tool.parameters_schema.properties | params_signature }}):
+    """{{ tool.description }}"""
+    # Implementation goes here
+    pass
+{% endif %}
+{% endfor %}
+
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
+def handler(event, context):
+    """Route Bedrock action requests to tool functions."""
+    api_path = event.get("apiPath")
+
+    {% for tool in agent.tools %}
+    {% if tool.name != "delegate" %}
+    if api_path == "/{{ tool.name }}":
+        params = {p["name"]: p["value"] for p in event.get("parameters", [])}
+        result = {{ tool.name }}(**params)
+        return format_bedrock_response(result)
+    {% endif %}
+    {% endfor %}
+
+    return {"error": f"Unknown action: {api_path}"}</code></pre>
+
+            <h3>OpenAPI Schema Generation</h3>
+            <pre><code class="language-yaml"># schemas/openapi.yaml (generated from introspection)
+openapi: 3.0.0
+info:
+  title: {{ config.name }} Actions
+  version: 1.0.0
+paths:
+{% for tool in agent.tools %}
+{% if tool.name != "delegate" %}
+  /{{ tool.name }}:
+    post:
+      operationId: {{ tool.name }}
+      summary: {{ tool.description }}
+      # Parameters from tool.parameters_schema
+      # Response schema inferred
+{% endif %}
+{% endfor %}</code></pre>
+
+            <h3>Multi-Environment via CDK Contexts</h3>
+            <pre><code class="language-json">// cdk.json
+{
+  "context": {
+    "environments": {
+      "dev": {
+        "lambda_memory": 256,
+        "log_level": "DEBUG"
+      },
+      "prod": {
+        "lambda_memory": 1024,
+        "log_level": "WARN"
+      }
+    }
+  }
+}</code></pre>
+            <pre><code class="language-bash"># Deploy to specific environment
+cdk deploy --context environment=dev
+cdk deploy --context environment=prod</code></pre>
+        </section>
+
+        <!-- Section 10: CI/CD -->
+        <section id="cicd">
+            <h2>10. GitHub Actions CI/CD</h2>
+
+            <h3>Generated Workflows</h3>
+            <div class="two-col">
+                <div>
+                    <h4>CI Workflow</h4>
+                    <pre><code class="language-yaml"># .github/workflows/ci.yaml
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: pip install -r requirements.txt
+      - run: pytest</code></pre>
+                </div>
+                <div>
+                    <h4>Deploy Workflow</h4>
+                    <pre><code class="language-yaml"># .github/workflows/deploy.yaml
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-dev:
+    ...
+  deploy-staging:
+    needs: deploy-dev
+    environment: staging
+    ...
+  deploy-prod:
+    needs: deploy-staging
+    environment: production
+    ...</code></pre>
+                </div>
+            </div>
+
+            <h3>Authentication (No Long-Lived Keys!)</h3>
+            <table>
+                <tr>
+                    <th>Platform</th>
+                    <th>Method</th>
+                    <th>How It Works</th>
+                </tr>
+                <tr>
+                    <td>GCP</td>
+                    <td>Workload Identity Federation</td>
+                    <td>GitHub OIDC → GCP IAM</td>
+                </tr>
+                <tr>
+                    <td>AWS</td>
+                    <td>OIDC Provider</td>
+                    <td>GitHub OIDC → AWS STS</td>
+                </tr>
+            </table>
+
+            <h3>GCP Auth in Workflow</h3>
+            <pre><code class="language-yaml">- uses: google-github-actions/auth@v2
+  with:
+    workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+    service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}</code></pre>
+
+            <h3>AWS Auth in Workflow</h3>
+            <pre><code class="language-yaml">- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+    aws-region: us-east-1</code></pre>
+        </section>
+
+        <!-- Section 11: Testing -->
+        <section id="testing">
+            <h2>11. Testing Strategy</h2>
+
+            <h3>Test Files</h3>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Tests</th>
+                </tr>
+                <tr>
+                    <td><code>test_introspect.py</code></td>
+                    <td>Metadata extraction from agents, supervisors, nested hierarchies</td>
+                </tr>
+                <tr>
+                    <td><code>test_deploy_config.py</code></td>
+                    <td>Config loading, validation, Pydantic models</td>
+                </tr>
+                <tr>
+                    <td><code>test_deploy_targets.py</code></td>
+                    <td>Base target protocol, GeneratedFile</td>
+                </tr>
+                <tr>
+                    <td><code>test_deploy_targets_local.py</code></td>
+                    <td>LocalTarget validation, file generation</td>
+                </tr>
+                <tr>
+                    <td><code>test_deploy_targets_gcp.py</code></td>
+                    <td>GCPTarget validation, Terraform/ADK generation</td>
+                </tr>
+                <tr>
+                    <td><code>test_deploy_targets_aws.py</code></td>
+                    <td>AWSTarget validation, CDK/Lambda/OpenAPI generation</td>
+                </tr>
+            </table>
+
+            <h3>Test Pattern: Generate and Verify</h3>
+            <pre><code class="language-python"># Common test pattern
+@pytest.mark.asyncio
+async def test_target_generates_all_files(mock_config, mock_metadata):
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(mock_config, mock_metadata, output_dir)
+
+        # Check file count
+        assert len(files) == 13
+
+        # Check specific files exist
+        file_names = [f.path.name for f in files]
+        assert "agent.py" in file_names
+        assert "main.tf" in file_names
+
+        # Check content
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        assert "LlmAgent" in agent_file.content</code></pre>
+
+            <h3>Current Test Coverage</h3>
+            <pre><code class="language-bash">$ pytest tests/ -v
+============================= 179 passed in 11.10s =============================
+
+# Deployment-specific tests: 52
+# - test_introspect.py: 5
+# - test_deploy_config.py: 12
+# - test_deploy_targets.py: 3
+# - test_deploy_targets_local.py: 8
+# - test_deploy_targets_gcp.py: 12
+# - test_deploy_targets_aws.py: 12</code></pre>
+        </section>
+
+        <!-- Section 12: Design Decisions -->
+        <section id="decisions">
+            <h2>12. Design Decisions</h2>
+
+            <h3>Why Compilation Model?</h3>
+            <div class="callout">
+                <div class="callout-title">Decision</div>
+                <p>Generate cloud-native artifacts instead of runtime adapters.</p>
+                <ul>
+                    <li><strong>Pro:</strong> Generated code is debuggable, ejectable, customizable</li>
+                    <li><strong>Pro:</strong> No Bedsheet dependency in deployed code</li>
+                    <li><strong>Pro:</strong> Users can modify generated IaC</li>
+                    <li><strong>Con:</strong> Need to re-generate after agent changes</li>
+                </ul>
+            </div>
+
+            <h3>Why Terraform for GCP?</h3>
+            <div class="callout">
+                <div class="callout-title">Decision</div>
+                <p>Use Terraform instead of gcloud CLI or Deployment Manager.</p>
+                <ul>
+                    <li>GCP has no Python CDK equivalent</li>
+                    <li>Terraform is industry standard</li>
+                    <li>Terraform workspaces for multi-environment</li>
+                    <li>Can integrate with ASP modules later (deferred)</li>
+                </ul>
+            </div>
+
+            <h3>Why CDK for AWS?</h3>
+            <div class="callout">
+                <div class="callout-title">Decision</div>
+                <p>Use AWS CDK instead of Terraform or CloudFormation.</p>
+                <ul>
+                    <li>CDK is Pythonic (same language as Bedsheet)</li>
+                    <li>Native Bedrock L2 constructs</li>
+                    <li>Generates CloudFormation (ejectable)</li>
+                    <li>CDK contexts for multi-environment</li>
+                </ul>
+            </div>
+
+            <h3>Why MockLLMClient for Introspection?</h3>
+            <div class="callout">
+                <div class="callout-title">Decision</div>
+                <p>Use mock client instead of requiring real API key.</p>
+                <ul>
+                    <li>No API calls during generation</li>
+                    <li>Works without ANTHROPIC_API_KEY</li>
+                    <li>Agent structure is set in __init__, not during calls</li>
+                    <li>Same pattern as testing</li>
+                </ul>
+            </div>
+
+            <h3>Deferred Decisions</h3>
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th>Reason Deferred</th>
+                </tr>
+                <tr>
+                    <td>ASP Terraform Modules</td>
+                    <td>Good idea, but adds dependency; implement as optional</td>
+                </tr>
+                <tr>
+                    <td>Azure Target</td>
+                    <td>Lower priority than GCP/AWS</td>
+                </tr>
+                <tr>
+                    <td>Observability Templates</td>
+                    <td>Nice to have, not critical for v0.4</td>
+                </tr>
+                <tr>
+                    <td>Load Testing</td>
+                    <td>Can add later with Locust templates</td>
+                </tr>
+            </table>
+        </section>
+
+        <footer style="margin-top: 80px; padding-top: 40px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted);">
+            <p>Internal Technical Reference - Bedsheet v0.4</p>
+            <p style="margin-top: 8px;">Last updated: December 2024</p>
+            <p style="margin-top: 8px; font-size: 13px;">Sivan Grünberg, Vitakka Consulting</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#58a6ff',
+                primaryTextColor: '#e6edf3',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#21262d',
+                tertiaryColor: '#161b22'
+            }
+        });
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
