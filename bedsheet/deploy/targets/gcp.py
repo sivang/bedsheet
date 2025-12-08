@@ -63,6 +63,9 @@ class GCPTarget(DeploymentTarget):
             ("variables.tf.j2", "terraform/variables.tf", False),
             ("outputs.tf.j2", "terraform/outputs.tf", False),
             ("terraform.tfvars.example.j2", "terraform/terraform.tfvars.example", False),
+            # GitHub Actions CI/CD
+            ("github_workflows_ci.yaml.j2", ".github/workflows/ci.yaml", False),
+            ("github_workflows_deploy.yaml.j2", ".github/workflows/deploy.yaml", False),
             # Development
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
