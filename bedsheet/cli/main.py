@@ -23,6 +23,8 @@ from bedsheet.deploy.config import (
     load_config,
     save_config,
 )
+from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata
+from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, DeploymentTarget
 
 # Initialize Typer app
 app = typer.Typer(
@@ -36,6 +38,20 @@ console = Console()
 
 # Version from pyproject.toml
 __version__ = "0.3.0"
+
+# Target mapping
+TARGETS: dict[str, type[DeploymentTarget]] = {
+    "local": LocalTarget,
+    "gcp": GCPTarget,
+    "aws": AWSTarget,
+}
+
+
+def _get_target(target_name: str) -> DeploymentTarget:
+    """Get a target instance by name."""
+    if target_name not in TARGETS:
+        raise ValueError(f"Unknown target: {target_name}")
+    return TARGETS[target_name]()
 
 
 @app.command()
@@ -397,6 +413,175 @@ def validate(
         rprint(f"[bold red]✗[/bold red] Configuration validation failed:")
         rprint(f"  {e}")
         raise typer.Exit(1)
+
+
+@app.command()
+def generate(
+    target: Optional[str] = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml"
+    ),
+    config_file: Path = typer.Option(
+        "bedsheet.yaml",
+        "--config",
+        "-c",
+        help="Path to bedsheet.yaml configuration file"
+    ),
+    output_dir: Path = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for generated files. Defaults to deploy/<target>/"
+    ),
+    agent_name: Optional[str] = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Name of a specific agent to generate for (from bedsheet.yaml)"
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be generated without writing files"
+    ),
+):
+    """Generate deployment artifacts for the specified target.
+
+    This command generates all the files needed to deploy your Bedsheet
+    agent to a specific platform (local Docker, GCP, or AWS).
+
+    Example:
+        bedsheet generate --target local
+        bedsheet generate --target gcp --output my-deploy/
+        bedsheet generate --target aws --dry-run
+    """
+    # Check if config file exists
+    if not config_file.exists():
+        rprint(f"[bold red]Error:[/bold red] Configuration file not found: {config_file}")
+        rprint("Run [bold cyan]bedsheet init[/bold cyan] to create one.")
+        raise typer.Exit(1)
+
+    # Load and validate configuration
+    try:
+        config = load_config(config_file)
+    except Exception as e:
+        rprint(f"[bold red]Error:[/bold red] Invalid configuration: {e}")
+        raise typer.Exit(1)
+
+    # Determine target
+    target_name = target or config.target
+    if target_name not in TARGETS:
+        rprint(f"[bold red]Error:[/bold red] Invalid target '{target_name}'")
+        rprint(f"Valid targets: {', '.join(TARGETS.keys())}")
+        raise typer.Exit(1)
+
+    # Set output directory
+    if output_dir is None:
+        output_dir = Path("deploy") / target_name
+
+    # Get target generator
+    target_generator = _get_target(target_name)
+
+    # Validate configuration for this target
+    validation_errors = target_generator.validate(config)
+    if validation_errors:
+        rprint(f"[bold red]Error:[/bold red] Configuration validation failed:")
+        for error in validation_errors:
+            rprint(f"  - {error}")
+        raise typer.Exit(1)
+
+    # Get or create agent metadata
+    # For now, use mock metadata based on config
+    # TODO: In future, actually import and introspect the agent
+    if config.agents:
+        agent_config = config.agents[0]
+        if agent_name:
+            matching = [a for a in config.agents if a.name == agent_name]
+            if not matching:
+                rprint(f"[bold red]Error:[/bold red] Agent '{agent_name}' not found in config")
+                rprint(f"Available agents: {', '.join(a.name for a in config.agents)}")
+                raise typer.Exit(1)
+            agent_config = matching[0]
+
+        # Create metadata from config (simplified - real impl would introspect)
+        agent_metadata = AgentMetadata(
+            name=agent_config.name,
+            instruction=agent_config.description or f"Agent: {agent_config.name}",
+            tools=[],  # Would be extracted from actual agent
+            collaborators=[],  # Would be extracted from actual supervisor
+            is_supervisor=False,
+        )
+    else:
+        # Default metadata
+        agent_metadata = AgentMetadata(
+            name=config.name,
+            instruction=f"Bedsheet agent: {config.name}",
+            tools=[],
+            collaborators=[],
+            is_supervisor=False,
+        )
+
+    # Show generation info
+    console.print()
+    console.print(Panel.fit(
+        f"[bold cyan]Project:[/bold cyan] {config.name}\n"
+        f"[bold cyan]Target:[/bold cyan] {target_name}\n"
+        f"[bold cyan]Output:[/bold cyan] {output_dir}",
+        title="[bold]Code Generation[/bold]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Generate files
+    try:
+        generated_files = target_generator.generate(config, agent_metadata, output_dir)
+    except Exception as e:
+        rprint(f"[bold red]Error:[/bold red] Generation failed: {e}")
+        raise typer.Exit(1)
+
+    if dry_run:
+        console.print("[bold yellow]DRY RUN MODE[/bold yellow] - Files that would be generated:")
+        console.print()
+        for gf in generated_files:
+            console.print(f"  [cyan]{gf.path}[/cyan]")
+        console.print()
+        console.print(f"Total: {len(generated_files)} files")
+        return
+
+    # Write files to disk
+    files_written = 0
+    for gf in generated_files:
+        # Create parent directories
+        gf.path.parent.mkdir(parents=True, exist_ok=True)
+        # Write content
+        gf.path.write_text(gf.content)
+        # Set executable if needed
+        if gf.executable:
+            gf.path.chmod(gf.path.stat().st_mode | 0o111)
+        files_written += 1
+        console.print(f"  [green]✓[/green] {gf.path}")
+
+    console.print()
+    console.print(Panel.fit(
+        f"[bold green]✓[/bold green] Generated {files_written} files in {output_dir}/",
+        border_style="green",
+    ))
+    console.print()
+
+    # Show next steps based on target
+    console.print("[bold]Next steps:[/bold]")
+    if target_name == "local":
+        console.print(f"  cd {output_dir}")
+        console.print("  docker-compose up")
+    elif target_name == "gcp":
+        console.print(f"  cd {output_dir}")
+        console.print("  make setup && make deploy")
+    elif target_name == "aws":
+        console.print(f"  cd {output_dir}")
+        console.print("  make setup && make deploy")
+    console.print()
 
 
 def main():
