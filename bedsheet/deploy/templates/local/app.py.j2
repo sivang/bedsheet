@@ -2,6 +2,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from bedsheet.events import TextTokenEvent, CompletionEvent
+
+# Import the agent from the scaffolded project
+from agents.assistant import assistant as agent
+
 app = FastAPI(title="{{ config.name }}")
 
 
@@ -18,11 +23,16 @@ class InvokeResponse(BaseModel):
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "agent": "{{ agent.name }}"}
+    return {"status": "ok", "agent": agent.name}
 
 
 @app.post("/invoke")
 async def invoke(request: InvokeRequest) -> InvokeResponse:
     """Invoke the agent with a message."""
-    # TODO: Implement actual agent invocation
-    return InvokeResponse(response=f"Echo: {request.message}")
+    response_text = ""
+    async for event in agent.invoke(request.message):
+        if isinstance(event, TextTokenEvent):
+            response_text += event.token
+        elif isinstance(event, CompletionEvent):
+            response_text = event.text
+    return InvokeResponse(response=response_text)
