@@ -3,6 +3,7 @@
 This module provides the command-line interface for managing Bedsheet
 agent deployments. Use `bedsheet --help` to see available commands.
 """
+import importlib
 import sys
 from pathlib import Path
 from typing import Optional
@@ -23,7 +24,7 @@ from bedsheet.deploy.config import (
     load_config,
     save_config,
 )
-from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata
+from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata, extract_agent_metadata
 from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, DeploymentTarget
 
 # Initialize Typer app
@@ -52,6 +53,134 @@ def _get_target(target_name: str) -> DeploymentTarget:
     if target_name not in TARGETS:
         raise ValueError(f"Unknown target: {target_name}")
     return TARGETS[target_name]()
+
+
+def _load_and_introspect_agent(
+    agent_config: AgentConfig,
+    console: Console,
+) -> tuple[AgentMetadata | None, str | None]:
+    """Dynamically load an agent module and introspect it.
+
+    Args:
+        agent_config: The agent configuration from bedsheet.yaml
+        console: Rich console for output
+
+    Returns:
+        Tuple of (AgentMetadata, None) on success, or (None, error_message) on failure.
+    """
+    module_path = agent_config.module
+    class_name = agent_config.class_name
+
+    # Add current directory to path for local imports
+    cwd = str(Path.cwd())
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
+
+    try:
+        # Import the module
+        console.print(f"  [dim]Importing {module_path}...[/dim]")
+        module = importlib.import_module(module_path)
+
+        # Get the agent class or instance
+        if not hasattr(module, class_name):
+            # Try to find an agent instance (common pattern: module-level agent)
+            # Look for common names like 'agent', 'advisor', or the lowercase class name
+            agent_instance = None
+            for attr_name in [class_name.lower(), 'agent', 'advisor', 'root_agent']:
+                if hasattr(module, attr_name):
+                    attr = getattr(module, attr_name)
+                    # Check if it's an Agent instance
+                    from bedsheet.agent import Agent
+                    if isinstance(attr, Agent):
+                        agent_instance = attr
+                        console.print(f"  [dim]Found agent instance: {attr_name}[/dim]")
+                        break
+
+            if agent_instance is None:
+                return None, f"Class '{class_name}' not found in module '{module_path}'"
+
+            # Introspect the existing instance
+            metadata = extract_agent_metadata(agent_instance)
+            return metadata, None
+
+        agent_class = getattr(module, class_name)
+
+        # Check if it's already an instance (module-level agent)
+        from bedsheet.agent import Agent
+        if isinstance(agent_class, Agent):
+            console.print(f"  [dim]Found agent instance: {class_name}[/dim]")
+            metadata = extract_agent_metadata(agent_class)
+            return metadata, None
+
+        # It's a class - we need to instantiate it
+        # Check if it's a callable (class or factory function)
+        if not callable(agent_class):
+            return None, f"'{class_name}' in module '{module_path}' is not callable"
+
+        # Try to instantiate with a mock LLM client
+        console.print(f"  [dim]Instantiating {class_name}...[/dim]")
+
+        # Import MockLLMClient for introspection
+        from bedsheet.testing import MockLLMClient, MockResponse
+
+        # Create a mock client that returns empty responses
+        mock_client = MockLLMClient([MockResponse(text="introspection")])
+
+        # Try different instantiation strategies
+        agent_instance = None
+
+        # Strategy 1: Check if it's a factory function (returns an agent)
+        import inspect
+        sig = inspect.signature(agent_class)
+        params = sig.parameters
+
+        if len(params) == 0:
+            # No-arg factory function
+            try:
+                result = agent_class()
+                if isinstance(result, Agent):
+                    agent_instance = result
+            except Exception:
+                pass
+
+        # Strategy 2: Try with model_client parameter
+        if agent_instance is None and 'model_client' in params:
+            try:
+                agent_instance = agent_class(model_client=mock_client)
+            except Exception:
+                pass
+
+        # Strategy 3: Try with common parameter patterns
+        if agent_instance is None:
+            common_patterns = [
+                {'model_client': mock_client},
+                {'llm_client': mock_client},
+                {'client': mock_client},
+            ]
+            for kwargs in common_patterns:
+                try:
+                    agent_instance = agent_class(**kwargs)
+                    if isinstance(agent_instance, Agent):
+                        break
+                except Exception:
+                    continue
+
+        if agent_instance is None or not isinstance(agent_instance, Agent):
+            return None, (
+                f"Could not instantiate '{class_name}'. "
+                "Ensure your agent class accepts a 'model_client' parameter, "
+                "or export an agent instance at module level."
+            )
+
+        # Introspect the agent
+        console.print(f"  [dim]Introspecting agent...[/dim]")
+        metadata = extract_agent_metadata(agent_instance)
+        return metadata, None
+
+    except ImportError as e:
+        return None, f"Failed to import module '{module_path}': {e}"
+    except Exception as e:
+        return None, f"Error introspecting agent: {e}"
 
 
 @app.command()
@@ -492,36 +621,50 @@ def generate(
             rprint(f"  - {error}")
         raise typer.Exit(1)
 
-    # Get or create agent metadata
-    # For now, use mock metadata based on config
-    # TODO: In future, actually import and introspect the agent
-    if config.agents:
-        agent_config = config.agents[0]
-        if agent_name:
-            matching = [a for a in config.agents if a.name == agent_name]
-            if not matching:
-                rprint(f"[bold red]Error:[/bold red] Agent '{agent_name}' not found in config")
-                rprint(f"Available agents: {', '.join(a.name for a in config.agents)}")
-                raise typer.Exit(1)
-            agent_config = matching[0]
+    # Get agent configuration
+    if not config.agents:
+        rprint("[bold red]Error:[/bold red] No agents defined in bedsheet.yaml")
+        raise typer.Exit(1)
 
-        # Create metadata from config (simplified - real impl would introspect)
+    agent_config = config.agents[0]
+    if agent_name:
+        matching = [a for a in config.agents if a.name == agent_name]
+        if not matching:
+            rprint(f"[bold red]Error:[/bold red] Agent '{agent_name}' not found in config")
+            rprint(f"Available agents: {', '.join(a.name for a in config.agents)}")
+            raise typer.Exit(1)
+        agent_config = matching[0]
+
+    # Try to introspect the actual agent
+    console.print("[bold]Introspecting agent...[/bold]")
+    agent_metadata, error = _load_and_introspect_agent(agent_config, console)
+
+    if error:
+        # Introspection failed - fall back to config-based metadata with warning
+        console.print(f"[bold yellow]Warning:[/bold yellow] {error}")
+        console.print("[dim]Falling back to config-based metadata (tools will be empty)[/dim]")
+        console.print()
+
         agent_metadata = AgentMetadata(
             name=agent_config.name,
             instruction=agent_config.description or f"Agent: {agent_config.name}",
-            tools=[],  # Would be extracted from actual agent
-            collaborators=[],  # Would be extracted from actual supervisor
-            is_supervisor=False,
-        )
-    else:
-        # Default metadata
-        agent_metadata = AgentMetadata(
-            name=config.name,
-            instruction=f"Bedsheet agent: {config.name}",
             tools=[],
             collaborators=[],
             is_supervisor=False,
         )
+    else:
+        # Show what we found
+        tool_count = len(agent_metadata.tools)
+        collab_count = len(agent_metadata.collaborators)
+        agent_type = "Supervisor" if agent_metadata.is_supervisor else "Agent"
+
+        console.print(f"  [green]✓[/green] Found {agent_type}: [cyan]{agent_metadata.name}[/cyan]")
+        console.print(f"  [green]✓[/green] Tools: [cyan]{tool_count}[/cyan]")
+        if agent_metadata.is_supervisor:
+            console.print(f"  [green]✓[/green] Collaborators: [cyan]{collab_count}[/cyan]")
+            for collab in agent_metadata.collaborators:
+                console.print(f"      - {collab.name} ({len(collab.tools)} tools)")
+        console.print()
 
     # Show generation info
     console.print()
