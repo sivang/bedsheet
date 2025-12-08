@@ -191,23 +191,9 @@ def version():
 
 @app.command()
 def init(
-    project_name: str = typer.Option(
+    project_name: str = typer.Argument(
         None,
-        "--name",
-        "-n",
-        help="Name of your agent project"
-    ),
-    agent_module: str = typer.Option(
-        "agents.main",
-        "--module",
-        "-m",
-        help="Python module path to your agent"
-    ),
-    agent_class: str = typer.Option(
-        "Agent",
-        "--class",
-        "-c",
-        help="Agent class name"
+        help="Name of your agent project (creates a directory)"
     ),
     target: str = typer.Option(
         "local",
@@ -219,28 +205,26 @@ def init(
         False,
         "--force",
         "-f",
-        help="Overwrite existing bedsheet.yaml"
+        help="Overwrite existing project"
     ),
 ):
     """Initialize a new Bedsheet agent project.
 
-    Creates a bedsheet.yaml configuration file in the current directory
-    with sensible defaults for your deployment target.
+    Creates a new project directory with a complete scaffold including
+    bedsheet.yaml, sample agent code, and requirements.
 
     Example:
-        bedsheet init --name my-agent --module agents.customer_support --target gcp
+        bedsheet init my-agent
+        bedsheet init my-agent --target gcp
     """
-    config_path = Path("bedsheet.yaml")
-
-    # Check if config already exists
-    if config_path.exists() and not force:
-        rprint("[bold red]Error:[/bold red] bedsheet.yaml already exists!")
-        rprint("Use --force to overwrite, or edit the existing file.")
-        raise typer.Exit(1)
-
     # Prompt for project name if not provided
     if not project_name:
         project_name = typer.prompt("Project name")
+
+    # Validate project name (no spaces, valid directory name)
+    if " " in project_name or "/" in project_name:
+        rprint("[bold red]Error:[/bold red] Project name cannot contain spaces or slashes")
+        raise typer.Exit(1)
 
     # Validate target
     if target not in ["local", "gcp", "aws"]:
@@ -248,13 +232,77 @@ def init(
         rprint("Valid targets: local, gcp, aws")
         raise typer.Exit(1)
 
-    # Create agent config
-    agent_config = AgentConfig(
-        name="main",
-        module=agent_module,
-        class_name=agent_class,
-        description="Main agent"
+    # Create project directory
+    project_dir = Path(project_name)
+    if project_dir.exists() and not force:
+        rprint(f"[bold red]Error:[/bold red] Directory '{project_name}' already exists!")
+        rprint("Use --force to overwrite.")
+        raise typer.Exit(1)
+
+    # Create directory structure
+    project_dir.mkdir(exist_ok=True)
+    agents_dir = project_dir / "agents"
+    agents_dir.mkdir(exist_ok=True)
+
+    # Create agents/__init__.py
+    (agents_dir / "__init__.py").write_text("")
+
+    # Create agents/assistant.py with sample agent
+    assistant_code = '''"""Sample assistant agent."""
+from bedsheet import Agent, ActionGroup
+from bedsheet.llm import AnthropicClient
+
+
+# Create tools for the assistant
+tools = ActionGroup(
+    name="AssistantTools",
+    description="Tools for the assistant agent"
+)
+
+
+@tools.action(
+    name="greet",
+    description="Greet the user by name"
+)
+async def greet(name: str) -> str:
+    """Greet a user."""
+    return f"Hello, {name}! How can I help you today?"
+
+
+@tools.action(
+    name="get_time",
+    description="Get the current time"
+)
+async def get_time() -> str:
+    """Get current time."""
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def create_assistant() -> Agent:
+    """Create and configure the assistant agent."""
+    agent = Agent(
+        name="Assistant",
+        instruction="""You are a helpful assistant.
+
+Use your tools to help users with their requests.
+Be friendly and concise in your responses.""",
+        model_client=AnthropicClient(),
     )
+    agent.add_action_group(tools)
+    return agent
+
+
+# Export for bedsheet introspection
+assistant = create_assistant()
+'''
+    (agents_dir / "assistant.py").write_text(assistant_code)
+
+    # Create requirements.txt
+    requirements = """bedsheet-agents>=0.3.0
+anthropic>=0.18.0
+"""
+    (project_dir / "requirements.txt").write_text(requirements)
 
     # Create target configurations
     targets = {}
@@ -277,6 +325,14 @@ def init(
             bedrock_model="anthropic.claude-sonnet-4-5-v2:0",
         )
 
+    # Create agent config pointing to the sample assistant
+    agent_config = AgentConfig(
+        name="assistant",
+        module="agents.assistant",
+        class_name="Assistant",
+        description="Sample assistant agent"
+    )
+
     # Create main config
     config = BedsheetConfig(
         version="1.0",
@@ -287,29 +343,23 @@ def init(
     )
 
     # Save config to YAML
+    config_path = project_dir / "bedsheet.yaml"
     save_config(config, config_path)
 
-    # Show success message
+    # Show success message with tree structure
     console.print()
-    console.print(Panel.fit(
-        f"[bold green]✓[/bold green] Created bedsheet.yaml",
-        title="[bold]Initialization Complete[/bold]",
-        border_style="green",
-    ))
+    console.print(f"[bold green]Created project: {project_name}[/bold green]")
+    console.print("[dim]├── bedsheet.yaml      # Configuration[/dim]")
+    console.print("[dim]├── agents/            # Your agent code[/dim]")
+    console.print("[dim]│   └── assistant.py   # Example agent[/dim]")
+    console.print("[dim]└── requirements.txt   # Dependencies[/dim]")
     console.print()
 
-    # Show the generated config
-    with open(config_path) as f:
-        config_content = f.read()
-
-    syntax = Syntax(config_content, "yaml", theme="monokai", line_numbers=True)
-    console.print(Panel(syntax, title="[bold]bedsheet.yaml[/bold]", border_style="cyan"))
-
-    console.print()
     console.print("[bold]Next steps:[/bold]")
-    console.print("  1. Edit bedsheet.yaml to customize your deployment")
-    console.print("  2. Implement your agent in the specified module")
-    console.print(f"  3. Run: [bold cyan]bedsheet deploy --target {target}[/bold cyan]")
+    console.print(f"  1. [cyan]cd {project_name}[/cyan]")
+    console.print("  2. [cyan]pip install -r requirements.txt[/cyan]")
+    console.print("  3. Edit agents/assistant.py to customize your agent")
+    console.print(f"  4. [cyan]bedsheet generate --target {target}[/cyan]")
     console.print()
 
 
