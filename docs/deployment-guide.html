@@ -240,6 +240,7 @@
             overflow-x: auto;
             margin: 16px 0 24px 0;
             font-size: 14px;
+            white-space: pre;
         }
 
         code {
@@ -1886,9 +1887,28 @@ mkdir investment-advisor && cd investment-advisor
 mkdir -p agents tools tests
 touch agents/__init__.py tools/__init__.py tests/__init__.py
 
-# Create main files
+# Create agent files
 touch agents/advisor.py agents/analysts.py tools/stock_tools.py
-touch bedsheet.yaml requirements.txt</code></pre>
+
+# Initialize bedsheet configuration
+bedsheet init --name investment-advisor \
+    --module agents.advisor \
+    --class InvestmentAdvisor \
+    --target local</code></pre>
+
+            <p>This creates a <code>bedsheet.yaml</code> with sensible defaults. You can also initialize for cloud targets:</p>
+
+            <pre><code class="language-bash"># For GCP deployment (prompts for project ID)
+bedsheet init --name investment-advisor \
+    --module agents.advisor \
+    --class InvestmentAdvisor \
+    --target gcp
+
+# For AWS deployment (prompts for region)
+bedsheet init --name investment-advisor \
+    --module agents.advisor \
+    --class InvestmentAdvisor \
+    --target aws</code></pre>
 
             <h3>Step A.2: Define the Tools</h3>
             <p>First, create the tools our agents will use. These simulate real API calls:</p>
@@ -2153,8 +2173,11 @@ For stock analysis requests:
 # Export for deployment introspection
 advisor = create_investment_advisor()</code></pre>
 
-            <h3>Step A.5: Create the Configuration</h3>
-            <pre><code class="language-yaml"># bedsheet.yaml
+            <h3>Step A.5: Customize the Configuration</h3>
+            <p>The <code>bedsheet init</code> command created a basic <code>bedsheet.yaml</code>.
+            Now customize it to support all three deployment targets:</p>
+
+            <pre><code class="language-yaml"># bedsheet.yaml (customize the generated file)
 name: investment-advisor
 version: "1.0.0"
 description: Multi-agent investment advisor with market analysis and news research
