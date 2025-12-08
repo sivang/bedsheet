@@ -214,7 +214,7 @@ async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_singl
 
         # Check we got all expected files
         # Common: 5, Stacks: 2, Lambda: 3, Schemas: 1 = 11 total
-        assert len(files) == 11
+        assert len(files) == 13
 
         file_names = [f.path.name for f in files]
         assert "requirements.txt" in file_names
@@ -426,7 +426,7 @@ async def test_aws_target_generate_with_default_config(mock_single_agent_metadat
         files = target.generate(config, mock_single_agent_metadata, output_dir)
 
         # Should still generate all files with defaults
-        assert len(files) == 11
+        assert len(files) == 13
 
         # Check that default Bedrock model is used
         stack_file = next(f for f in files if f.path.name == "agent_stack.py")

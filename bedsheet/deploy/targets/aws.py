@@ -113,6 +113,19 @@ class AWSTarget(DeploymentTarget):
             executable=False,
         ))
 
+        # Generate GitHub Actions CI/CD workflows
+        github_templates = [
+            ("github_workflows_ci.yaml.j2", ".github/workflows/ci.yaml"),
+            ("github_workflows_deploy.yaml.j2", ".github/workflows/deploy.yaml"),
+        ]
+        for template_name, output_name in github_templates:
+            template = self.env.get_template(template_name)
+            files.append(GeneratedFile(
+                path=output_dir / output_name,
+                content=template.render(**context),
+                executable=False,
+            ))
+
         return files
 
     def validate(self, config: BedsheetConfig) -> list[str]:
