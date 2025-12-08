@@ -603,6 +603,15 @@
         </div>
 
         <div class="nav-section">
+            <div class="nav-section-title">Tutorial</div>
+            <a href="#tutorial" class="nav-link" style="font-weight: 500; color: var(--accent-purple);">End-to-End Example</a>
+            <a href="#tutorial-agent" class="nav-link"><span class="step">A</span>Build the Agent</a>
+            <a href="#tutorial-local" class="nav-link"><span class="step">B</span>Test Locally</a>
+            <a href="#tutorial-gcp" class="nav-link"><span class="step">C</span>Deploy to GCP</a>
+            <a href="#tutorial-aws" class="nav-link"><span class="step">D</span>Deploy to AWS</a>
+        </div>
+
+        <div class="nav-section">
             <div class="nav-section-title">Reference</div>
             <a href="#best-practices" class="nav-link"><span class="step">10</span>Best Practices</a>
             <a href="#generated-files" class="nav-link">Generated Files</a>
@@ -1826,6 +1835,992 @@ terraform apply</code></pre>
             <div class="info-box note">
                 <div class="info-box-title">Promotion Flow</div>
                 <p>Changes should flow: <code>dev → staging → prod</code>. Never deploy directly to production without staging validation.</p>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- END-TO-END TUTORIAL: Investment Advisor Agent -->
+        <!-- ============================================== -->
+
+        <section id="tutorial" style="margin-top: 80px;">
+            <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 12px; padding: 32px; border-left: 5px solid #8250df; margin-bottom: 32px;">
+                <h2 style="margin: 0 0 16px 0; border: none; padding: 0; color: #6b21a8; font-size: 28px;">End-to-End Tutorial: Investment Advisor</h2>
+                <p style="font-size: 16px; line-height: 1.8; margin-bottom: 16px; color: #581c87;">
+                    In this tutorial, you'll build a complete <strong>multi-agent investment advisor</strong> from scratch,
+                    test it locally, then deploy it to both <strong>Google Cloud</strong> and <strong>AWS</strong>.
+                </p>
+                <p style="font-size: 15px; color: #7c3aed; margin: 0;">
+                    <strong>What you'll build:</strong> A supervisor agent that coordinates a Market Analyst and News Researcher
+                    to provide comprehensive stock analysis.
+                </p>
+            </div>
+
+            <div class="mermaid">
+flowchart TB
+    subgraph "What We're Building"
+        User[User Query] --> Advisor[Investment Advisor<br/>Supervisor]
+        Advisor --> |parallel| MA[Market Analyst<br/>Agent]
+        Advisor --> |parallel| NR[News Researcher<br/>Agent]
+        MA --> |stock data| Advisor
+        NR --> |news sentiment| Advisor
+        Advisor --> Response[Synthesized<br/>Recommendation]
+    end
+
+    style User fill:#dbeafe,stroke:#0969da
+    style Advisor fill:#f3e8ff,stroke:#8250df
+    style MA fill:#dcfce7,stroke:#1a7f37
+    style NR fill:#dcfce7,stroke:#1a7f37
+    style Response fill:#fef3c7,stroke:#d97706
+            </div>
+        </section>
+
+        <!-- Tutorial Step A: Build the Agent -->
+        <section id="tutorial-agent">
+            <h2><span class="step-number" style="background: #8250df;">A</span>Build the Agent</h2>
+
+            <h3>Step A.1: Create Project Structure</h3>
+            <pre><code class="language-bash"># Create project directory
+mkdir investment-advisor && cd investment-advisor
+
+# Create Python package structure
+mkdir -p agents tools tests
+touch agents/__init__.py tools/__init__.py tests/__init__.py
+
+# Create main files
+touch agents/advisor.py agents/analysts.py tools/stock_tools.py
+touch bedsheet.yaml requirements.txt</code></pre>
+
+            <h3>Step A.2: Define the Tools</h3>
+            <p>First, create the tools our agents will use. These simulate real API calls:</p>
+
+            <pre><code class="language-python"># tools/stock_tools.py
+"""Stock market tools for the investment advisor."""
+import random
+from datetime import datetime, timedelta
+
+from bedsheet import ActionGroup
+
+# Create action groups for different capabilities
+market_tools = ActionGroup(
+    name="MarketTools",
+    description="Tools for fetching market data"
+)
+
+news_tools = ActionGroup(
+    name="NewsTools",
+    description="Tools for researching financial news"
+)
+
+
+@market_tools.action(
+    name="get_stock_price",
+    description="Get the current stock price and daily change for a ticker symbol"
+)
+async def get_stock_price(symbol: str) -> dict:
+    """Fetch current stock price. In production, call a real API like Alpha Vantage."""
+    # Simulated data - replace with real API call
+    prices = {
+        "AAPL": {"price": 178.52, "change": 2.34, "change_pct": 1.33},
+        "GOOGL": {"price": 141.80, "change": -0.92, "change_pct": -0.64},
+        "MSFT": {"price": 378.91, "change": 4.21, "change_pct": 1.12},
+        "NVDA": {"price": 721.33, "change": 15.67, "change_pct": 2.22},
+        "TSLA": {"price": 248.50, "change": -3.20, "change_pct": -1.27},
+    }
+    data = prices.get(symbol.upper(), {
+        "price": round(random.uniform(50, 500), 2),
+        "change": round(random.uniform(-10, 10), 2),
+        "change_pct": round(random.uniform(-5, 5), 2),
+    })
+    return {
+        "symbol": symbol.upper(),
+        "currency": "USD",
+        "timestamp": datetime.now().isoformat(),
+        **data
+    }
+
+
+@market_tools.action(
+    name="get_historical_prices",
+    description="Get historical price data for technical analysis"
+)
+async def get_historical_prices(symbol: str, days: int = 30) -> dict:
+    """Fetch historical prices for trend analysis."""
+    base_price = 150.0
+    prices = []
+    for i in range(days):
+        date = datetime.now() - timedelta(days=days - i)
+        # Simulate price movement with trend
+        price = base_price + (i * 0.5) + random.uniform(-5, 5)
+        prices.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "close": round(price, 2),
+            "volume": random.randint(1000000, 50000000)
+        })
+    return {
+        "symbol": symbol.upper(),
+        "period": f"{days} days",
+        "prices": prices,
+        "trend": "bullish" if prices[-1]["close"] > prices[0]["close"] else "bearish"
+    }
+
+
+@market_tools.action(
+    name="get_key_metrics",
+    description="Get fundamental metrics like P/E ratio, market cap, etc."
+)
+async def get_key_metrics(symbol: str) -> dict:
+    """Fetch key financial metrics."""
+    return {
+        "symbol": symbol.upper(),
+        "pe_ratio": round(random.uniform(15, 40), 2),
+        "market_cap_billions": round(random.uniform(100, 3000), 1),
+        "dividend_yield": round(random.uniform(0, 3), 2),
+        "52_week_high": round(random.uniform(150, 200), 2),
+        "52_week_low": round(random.uniform(80, 140), 2),
+        "avg_volume": f"{random.randint(10, 100)}M"
+    }
+
+
+@news_tools.action(
+    name="search_news",
+    description="Search for recent news articles about a company or topic"
+)
+async def search_news(query: str, max_results: int = 5) -> list:
+    """Search financial news. In production, use a news API."""
+    # Simulated news results
+    headlines = [
+        f"{query} Reports Strong Q4 Earnings, Beats Expectations",
+        f"Analysts Upgrade {query} After Product Launch",
+        f"{query} Expands Into New Markets, Stock Rises",
+        f"Industry Report: {query} Leads in Innovation",
+        f"{query} CEO Discusses Future Growth Strategy",
+        f"Breaking: {query} Announces Strategic Partnership",
+        f"Market Watch: {query} Shows Resilience Amid Volatility",
+    ]
+    return [
+        {
+            "title": random.choice(headlines),
+            "source": random.choice(["Reuters", "Bloomberg", "CNBC", "WSJ"]),
+            "date": (datetime.now() - timedelta(days=random.randint(0, 7))).strftime("%Y-%m-%d"),
+            "sentiment": random.choice(["positive", "neutral", "positive", "negative"]),
+            "relevance_score": round(random.uniform(0.7, 1.0), 2)
+        }
+        for _ in range(min(max_results, 5))
+    ]
+
+
+@news_tools.action(
+    name="get_analyst_ratings",
+    description="Get analyst ratings and price targets for a stock"
+)
+async def get_analyst_ratings(symbol: str) -> dict:
+    """Fetch analyst consensus ratings."""
+    return {
+        "symbol": symbol.upper(),
+        "consensus": random.choice(["Strong Buy", "Buy", "Hold"]),
+        "num_analysts": random.randint(15, 40),
+        "price_target_avg": round(random.uniform(150, 250), 2),
+        "price_target_high": round(random.uniform(250, 350), 2),
+        "price_target_low": round(random.uniform(100, 150), 2),
+        "ratings_breakdown": {
+            "strong_buy": random.randint(5, 15),
+            "buy": random.randint(5, 15),
+            "hold": random.randint(2, 10),
+            "sell": random.randint(0, 3),
+            "strong_sell": random.randint(0, 2)
+        }
+    }</code></pre>
+
+            <h3>Step A.3: Create the Specialist Agents</h3>
+            <p>Now create the two specialist agents that do the actual analysis:</p>
+
+            <pre><code class="language-python"># agents/analysts.py
+"""Specialist agents for market analysis and news research."""
+from bedsheet import Agent
+from bedsheet.llm import AnthropicClient
+
+from tools.stock_tools import market_tools, news_tools
+
+
+def create_market_analyst() -> Agent:
+    """Create the Market Analyst agent."""
+    agent = Agent(
+        name="MarketAnalyst",
+        instruction="""You are an expert market analyst specializing in technical and fundamental analysis.
+
+Your responsibilities:
+1. Analyze stock prices and trends using get_stock_price and get_historical_prices
+2. Evaluate fundamental metrics using get_key_metrics
+3. Identify patterns and provide data-driven insights
+
+When analyzing a stock:
+- Always fetch current price first
+- Look at historical trends for context
+- Consider key metrics for valuation
+- Be specific with numbers and percentages
+- Clearly state bullish or bearish outlook
+
+Keep your analysis concise but data-rich. Focus on actionable insights.""",
+        model_client=AnthropicClient(),
+    )
+    agent.add_action_group(market_tools)
+    return agent
+
+
+def create_news_researcher() -> Agent:
+    """Create the News Researcher agent."""
+    agent = Agent(
+        name="NewsResearcher",
+        instruction="""You are a financial news analyst who monitors market sentiment and news.
+
+Your responsibilities:
+1. Search for relevant news using search_news
+2. Analyze sentiment and market implications
+3. Check analyst ratings and price targets using get_analyst_ratings
+4. Identify catalysts and risks from news
+
+When researching a stock:
+- Search for recent news about the company
+- Analyze sentiment across sources
+- Check what analysts are saying
+- Highlight any significant events or catalysts
+- Note any red flags or concerns
+
+Provide a balanced view with both positive and negative factors.""",
+        model_client=AnthropicClient(),
+    )
+    agent.add_action_group(news_tools)
+    return agent</code></pre>
+
+            <h3>Step A.4: Create the Supervisor</h3>
+            <p>Now create the Investment Advisor supervisor that coordinates the specialists:</p>
+
+            <pre><code class="language-python"># agents/advisor.py
+"""Investment Advisor - the main supervisor agent."""
+from bedsheet import Supervisor
+from bedsheet.llm import AnthropicClient
+from bedsheet.memory import InMemory
+
+from agents.analysts import create_market_analyst, create_news_researcher
+
+
+def create_investment_advisor() -> Supervisor:
+    """Create the Investment Advisor supervisor."""
+    # Create specialist agents
+    market_analyst = create_market_analyst()
+    news_researcher = create_news_researcher()
+
+    # Create the supervisor
+    advisor = Supervisor(
+        name="InvestmentAdvisor",
+        instruction="""You are a senior investment advisor who coordinates analysis from specialists.
+
+## Your Team
+- **MarketAnalyst**: Technical and fundamental stock analysis
+- **NewsResearcher**: News sentiment and analyst ratings
+
+## How to Handle Requests
+
+For stock analysis requests:
+1. Delegate to BOTH specialists IN PARALLEL:
+   delegate(delegations=[
+       {"agent_name": "MarketAnalyst", "task": "Analyze [STOCK] - price, trends, metrics"},
+       {"agent_name": "NewsResearcher", "task": "Research [STOCK] - news, sentiment, ratings"}
+   ])
+
+2. Wait for both responses
+
+3. Synthesize into a recommendation:
+   - Overall rating (Strong Buy / Buy / Hold / Sell / Strong Sell)
+   - Key data points from both analyses
+   - Risk factors to consider
+   - Suggested action with rationale
+
+## Important Guidelines
+- Always use parallel delegation for efficiency
+- Never make up data - only use what your team provides
+- Be balanced - present both opportunities and risks
+- End with a clear, actionable recommendation
+- Disclose that this is not financial advice""",
+        model_client=AnthropicClient(),
+        memory=InMemory(),
+        collaborators=[market_analyst, news_researcher],
+        collaboration_mode="supervisor",
+    )
+    return advisor
+
+
+# Export for deployment introspection
+advisor = create_investment_advisor()</code></pre>
+
+            <h3>Step A.5: Create the Configuration</h3>
+            <pre><code class="language-yaml"># bedsheet.yaml
+name: investment-advisor
+version: "1.0.0"
+description: Multi-agent investment advisor with market analysis and news research
+
+agents:
+  - name: advisor
+    module: agents.advisor
+    class_name: InvestmentAdvisor
+    description: Coordinates market analysis and news research for investment recommendations
+
+target: local
+
+environments:
+  - dev
+  - staging
+  - prod
+
+targets:
+  local:
+    port: 8080
+    hot_reload: true
+
+  gcp:
+    project: your-gcp-project-id    # <-- Replace with your project
+    region: us-central1
+    model: claude-sonnet-4-5@20250929
+
+  aws:
+    region: us-east-1
+    lambda_memory: 512
+    bedrock_model: anthropic.claude-sonnet-4-5-v2:0
+    style: serverless</code></pre>
+
+            <h3>Step A.6: Create Requirements</h3>
+            <pre><code class="language-bash"># requirements.txt
+bedsheet-agents>=0.3.0
+anthropic>=0.18.0</code></pre>
+
+            <h3>Step A.7: Test the Agent Locally (Python)</h3>
+            <pre><code class="language-python"># test_advisor.py
+"""Quick test script for the investment advisor."""
+import asyncio
+from agents.advisor import create_investment_advisor
+from bedsheet.events import (
+    CompletionEvent, DelegationEvent,
+    CollaboratorStartEvent, CollaboratorCompleteEvent,
+    ToolCallEvent
+)
+
+
+async def main():
+    advisor = create_investment_advisor()
+
+    print("=" * 60)
+    print("Investment Advisor - Test Run")
+    print("=" * 60)
+    print()
+
+    query = "Analyze NVDA stock and give me a recommendation"
+    print(f"Query: {query}")
+    print("-" * 60)
+
+    async for event in advisor.invoke("test-session", query):
+        if isinstance(event, DelegationEvent):
+            agents = [d["agent_name"] for d in event.delegations]
+            print(f"\n📋 Delegating to: {', '.join(agents)}")
+
+        elif isinstance(event, CollaboratorStartEvent):
+            print(f"\n🔄 [{event.agent_name}] Starting analysis...")
+
+        elif isinstance(event, ToolCallEvent):
+            print(f"   🔧 Calling {event.tool_name}()")
+
+        elif isinstance(event, CollaboratorCompleteEvent):
+            print(f"✅ [{event.agent_name}] Complete")
+
+        elif isinstance(event, CompletionEvent):
+            print("\n" + "=" * 60)
+            print("RECOMMENDATION")
+            print("=" * 60)
+            print(event.response)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())</code></pre>
+
+            <pre><code class="language-bash"># Run the test
+export ANTHROPIC_API_KEY=your-key-here
+python test_advisor.py</code></pre>
+
+            <div class="output">
+<span class="comment">============================================================</span>
+Investment Advisor - Test Run
+<span class="comment">============================================================</span>
+
+Query: Analyze NVDA stock and give me a recommendation
+<span class="comment">------------------------------------------------------------</span>
+
+<span class="success">📋 Delegating to: MarketAnalyst, NewsResearcher</span>
+
+🔄 [MarketAnalyst] Starting analysis...
+   🔧 Calling get_stock_price()
+   🔧 Calling get_historical_prices()
+   🔧 Calling get_key_metrics()
+<span class="success">✅ [MarketAnalyst] Complete</span>
+
+🔄 [NewsResearcher] Starting analysis...
+   🔧 Calling search_news()
+   🔧 Calling get_analyst_ratings()
+<span class="success">✅ [NewsResearcher] Complete</span>
+
+<span class="comment">============================================================</span>
+RECOMMENDATION
+<span class="comment">============================================================</span>
+## NVDA Stock Analysis Summary
+
+**Overall Rating: BUY** ⭐⭐⭐⭐
+
+### Market Analysis
+- Current Price: $721.33 (+2.22% today)
+- 30-Day Trend: Bullish with strong momentum
+- P/E Ratio: 28.5 (premium but justified by growth)
+- Market Cap: $1.8 trillion
+
+### News & Sentiment
+- Recent headlines largely positive (4/5 positive sentiment)
+- Analyst consensus: Strong Buy (32 analysts)
+- Average price target: $850 (18% upside)
+
+### Recommendation
+NVDA shows strong technical momentum backed by positive fundamentals...
+
+<span class="warning">⚠️ This is not financial advice. Please consult a licensed advisor.</span>
+            </div>
+        </section>
+
+        <!-- Tutorial Step B: Test Locally with Docker -->
+        <section id="tutorial-local">
+            <h2><span class="step-number" style="background: #8250df;">B</span>Test Locally with Docker</h2>
+
+            <p>Now let's deploy our agent locally using Docker:</p>
+
+            <h3>Step B.1: Generate Local Deployment</h3>
+            <pre><code class="language-bash">bedsheet generate --target local --output deploy/local</code></pre>
+
+            <div class="output">
+<span class="success">Generated 7 files for target: local</span>
+deploy/local/
+├── docker-compose.yaml
+├── Dockerfile
+├── app.py
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/ci.yaml
+            </div>
+
+            <h3>Step B.2: Configure and Run</h3>
+            <pre><code class="language-bash">cd deploy/local
+
+# Set up environment
+cp .env.example .env
+echo "ANTHROPIC_API_KEY=your-key-here" >> .env
+
+# Start the agent
+make run</code></pre>
+
+            <div class="output">
+<span class="success">Starting investment-advisor...</span>
+Building Docker image...
+Starting containers...
+
+<span class="success">✓ Agent running at http://localhost:8080</span>
+<span class="comment">Press Ctrl+C to stop</span>
+            </div>
+
+            <h3>Step B.3: Test the API</h3>
+            <pre><code class="language-bash"># In another terminal
+curl -X POST http://localhost:8080/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "user-123",
+    "input": "Analyze AAPL stock"
+  }'</code></pre>
+
+            <div class="output">
+{
+  "response": "## AAPL Stock Analysis...",
+  "session_id": "user-123",
+  "events_count": 12
+}
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Hot Reload Enabled</div>
+                <p>With <code>hot_reload: true</code>, you can edit your agent code and see changes immediately without restarting Docker.</p>
+            </div>
+        </section>
+
+        <!-- Tutorial Step C: Deploy to GCP -->
+        <section id="tutorial-gcp">
+            <h2><span class="step-number" style="background: #8250df;">C</span>Deploy to Google Cloud</h2>
+
+            <p>Now let's deploy to GCP using Terraform and Cloud Run:</p>
+
+            <h3>Step C.1: Prerequisites</h3>
+            <pre><code class="language-bash"># Install required tools
+brew install terraform  # or your package manager
+brew install google-cloud-sdk
+
+# Authenticate
+gcloud auth login
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project your-gcp-project-id</code></pre>
+
+            <h3>Step C.2: Generate GCP Deployment</h3>
+            <pre><code class="language-bash">cd ../..  # Back to project root
+bedsheet generate --target gcp --output deploy/gcp</code></pre>
+
+            <div class="output">
+<span class="success">Generated 13 files for target: gcp</span>
+deploy/gcp/
+├── agent/
+│   ├── agent.py          <span class="comment"># ADK-compatible code</span>
+│   └── __init__.py
+├── terraform/
+│   ├── main.tf           <span class="comment"># Cloud Run, IAM, Secrets</span>
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+├── Dockerfile
+├── cloudbuild.yaml
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/
+    ├── ci.yaml
+    └── deploy.yaml
+            </div>
+
+            <h3>Step C.3: Review Generated ADK Code</h3>
+            <p>Let's look at the generated agent.py:</p>
+
+            <pre><code class="language-python"># deploy/gcp/agent/agent.py (generated)
+"""Investment Advisor - ADK-compatible agent."""
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import FunctionTool
+
+# === Market Tools ===
+def get_stock_price(symbol: str) -> dict:
+    """Get the current stock price and daily change."""
+    # Implementation from your tools/stock_tools.py
+    ...
+
+def get_historical_prices(symbol: str, days: int = 30) -> dict:
+    """Get historical price data for technical analysis."""
+    ...
+
+# === News Tools ===
+def search_news(query: str, max_results: int = 5) -> list:
+    """Search for recent news articles about a company."""
+    ...
+
+def get_analyst_ratings(symbol: str) -> dict:
+    """Get analyst ratings and price targets."""
+    ...
+
+# === Create Tool Objects ===
+market_tools = [
+    FunctionTool(func=get_stock_price),
+    FunctionTool(func=get_historical_prices),
+    FunctionTool(func=get_key_metrics),
+]
+
+news_tools = [
+    FunctionTool(func=search_news),
+    FunctionTool(func=get_analyst_ratings),
+]
+
+# === Specialist Agents ===
+market_analyst = LlmAgent(
+    name="MarketAnalyst",
+    model="claude-sonnet-4-5@20250929",
+    instruction="""You are an expert market analyst...""",
+    tools=market_tools,
+)
+
+news_researcher = LlmAgent(
+    name="NewsResearcher",
+    model="claude-sonnet-4-5@20250929",
+    instruction="""You are a financial news analyst...""",
+    tools=news_tools,
+)
+
+# === Supervisor (using SequentialAgent for orchestration) ===
+root_agent = SequentialAgent(
+    name="InvestmentAdvisor",
+    sub_agents=[market_analyst, news_researcher],
+)</code></pre>
+
+            <h3>Step C.4: Configure Terraform</h3>
+            <pre><code class="language-bash">cd deploy/gcp/terraform
+
+# Copy and edit variables
+cp terraform.tfvars.example terraform.tfvars</code></pre>
+
+            <pre><code class="language-hcl"># terraform.tfvars
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Secrets (store in Secret Manager, not here!)
+# anthropic_api_key is pulled from Secret Manager</code></pre>
+
+            <h3>Step C.5: Deploy Infrastructure</h3>
+            <pre><code class="language-bash"># Initialize Terraform
+terraform init
+
+# Preview what will be created
+terraform plan</code></pre>
+
+            <div class="output">
+Terraform will perform the following actions:
+
+  <span class="success">+ google_cloud_run_v2_service.agent</span>
+  <span class="success">+ google_service_account.agent_sa</span>
+  <span class="success">+ google_secret_manager_secret.anthropic_key</span>
+  <span class="success">+ google_cloud_run_v2_service_iam_member.invoker</span>
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+            </div>
+
+            <pre><code class="language-bash"># Apply (creates resources)
+terraform apply</code></pre>
+
+            <div class="output">
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
+
+<span class="success">Outputs:</span>
+service_url = "https://investment-advisor-abc123-uc.a.run.app"
+            </div>
+
+            <h3>Step C.6: Store Your API Key</h3>
+            <pre><code class="language-bash"># Add your Anthropic API key to Secret Manager
+echo -n "sk-ant-your-key" | gcloud secrets versions add anthropic-api-key --data-file=-</code></pre>
+
+            <h3>Step C.7: Test the Deployed Agent</h3>
+            <pre><code class="language-bash"># Get the service URL
+SERVICE_URL=$(terraform output -raw service_url)
+
+# Test it
+curl -X POST "$SERVICE_URL/invoke" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test", "input": "Analyze GOOGL stock"}'</code></pre>
+
+            <div class="output">
+{
+  "response": "## GOOGL Stock Analysis\n\n**Rating: BUY**\n\n...",
+  "session_id": "test"
+}
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Multi-Environment Deployment</div>
+                <p>Use Terraform workspaces for dev/staging/prod:</p>
+                <pre style="margin-top: 8px;"><code class="language-bash">terraform workspace new staging
+terraform workspace select staging
+terraform apply -var-file=environments/staging.tfvars</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial Step D: Deploy to AWS -->
+        <section id="tutorial-aws">
+            <h2><span class="step-number" style="background: #8250df;">D</span>Deploy to AWS</h2>
+
+            <p>Finally, let's deploy the same agent to AWS using CDK and Bedrock:</p>
+
+            <h3>Step D.1: Prerequisites</h3>
+            <pre><code class="language-bash"># Install AWS CDK
+npm install -g aws-cdk
+
+# Configure AWS credentials
+aws configure
+
+# Verify access
+aws sts get-caller-identity</code></pre>
+
+            <h3>Step D.2: Generate AWS Deployment</h3>
+            <pre><code class="language-bash">cd ../..  # Back to project root
+bedsheet generate --target aws --output deploy/aws</code></pre>
+
+            <div class="output">
+<span class="success">Generated 13 files for target: aws</span>
+deploy/aws/
+├── app.py                <span class="comment"># CDK app entry</span>
+├── cdk.json
+├── stacks/
+│   ├── __init__.py
+│   └── agent_stack.py    <span class="comment"># Bedrock + Lambda</span>
+├── lambda/
+│   ├── handler.py        <span class="comment"># Action group handler</span>
+│   ├── __init__.py
+│   └── requirements.txt
+├── schemas/
+│   └── openapi.yaml      <span class="comment"># Action group schema</span>
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/
+    ├── ci.yaml
+    └── deploy.yaml
+            </div>
+
+            <h3>Step D.3: Review Generated CDK Stack</h3>
+            <pre><code class="language-python"># deploy/aws/stacks/agent_stack.py (generated)
+"""CDK Stack for Investment Advisor Bedrock Agent."""
+from aws_cdk import (
+    Stack,
+    aws_bedrock as bedrock,
+    aws_lambda as lambda_,
+    aws_iam as iam,
+    Duration,
+)
+from constructs import Construct
+
+
+class InvestmentAdvisorStack(Stack):
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
+
+        # Lambda for action groups
+        action_handler = lambda_.Function(
+            self, "ActionHandler",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="handler.handler",
+            code=lambda_.Code.from_asset("lambda"),
+            timeout=Duration.seconds(30),
+            memory_size=512,
+        )
+
+        # Bedrock Agent
+        agent = bedrock.CfnAgent(
+            self, "InvestmentAdvisor",
+            agent_name="investment-advisor",
+            instruction="""You are a senior investment advisor...""",
+            foundation_model="anthropic.claude-sonnet-4-5-v2:0",
+            agent_resource_role_arn=self.create_agent_role().role_arn,
+        )
+
+        # Action Groups (tools)
+        bedrock.CfnAgentActionGroup(
+            self, "MarketTools",
+            agent_id=agent.attr_agent_id,
+            action_group_name="MarketTools",
+            action_group_executor=bedrock.CfnAgentActionGroup.ActionGroupExecutorProperty(
+                lambda_=action_handler.function_arn
+            ),
+            api_schema=bedrock.CfnAgentActionGroup.APISchemaProperty(
+                s3=bedrock.CfnAgentActionGroup.S3IdentifierProperty(
+                    s3_bucket_name=self.schema_bucket.bucket_name,
+                    s3_object_key="openapi.yaml"
+                )
+            ),
+        )</code></pre>
+
+            <h3>Step D.4: Review Generated Lambda Handler</h3>
+            <pre><code class="language-python"># deploy/aws/lambda/handler.py (generated)
+"""Lambda handler for Bedrock action groups."""
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+logger = Logger()
+tracer = Tracer()
+
+# Your tool implementations
+def get_stock_price(symbol: str) -> dict:
+    """Implementation from tools/stock_tools.py"""
+    ...
+
+def search_news(query: str, max_results: int = 5) -> list:
+    """Implementation from tools/stock_tools.py"""
+    ...
+
+
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
+def handler(event: dict, context: LambdaContext) -> dict:
+    """Route Bedrock action group requests to tool implementations."""
+    api_path = event.get("apiPath")
+    parameters = {p["name"]: p["value"] for p in event.get("parameters", [])}
+
+    logger.info(f"Handling action: {api_path}")
+
+    # Route to appropriate tool
+    if api_path == "/get_stock_price":
+        result = get_stock_price(parameters["symbol"])
+    elif api_path == "/search_news":
+        result = search_news(
+            parameters["query"],
+            int(parameters.get("max_results", 5))
+        )
+    # ... other routes ...
+    else:
+        return {"error": f"Unknown action: {api_path}"}
+
+    return {
+        "messageVersion": "1.0",
+        "response": {
+            "actionGroup": event["actionGroup"],
+            "apiPath": api_path,
+            "httpMethod": "POST",
+            "httpStatusCode": 200,
+            "responseBody": {"application/json": {"body": str(result)}}
+        }
+    }</code></pre>
+
+            <h3>Step D.5: Review Generated OpenAPI Schema</h3>
+            <pre><code class="language-yaml"># deploy/aws/schemas/openapi.yaml (generated)
+openapi: 3.0.0
+info:
+  title: Investment Advisor Actions
+  version: 1.0.0
+  description: Tools for market analysis and news research
+
+paths:
+  /get_stock_price:
+    post:
+      operationId: get_stock_price
+      summary: Get current stock price and daily change
+      description: Fetches real-time stock price data for a ticker symbol
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Stock ticker symbol (e.g., AAPL, GOOGL)
+      responses:
+        '200':
+          description: Stock price data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  price:
+                    type: number
+                  change:
+                    type: number
+                  change_pct:
+                    type: number
+
+  /search_news:
+    post:
+      operationId: search_news
+      summary: Search for recent news articles
+      description: Searches financial news sources for articles about a company
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: max_results
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: List of news articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object</code></pre>
+
+            <h3>Step D.6: Deploy to AWS</h3>
+            <pre><code class="language-bash">cd deploy/aws
+
+# Install CDK dependencies
+pip install -r requirements.txt
+
+# Bootstrap CDK (first time only)
+cdk bootstrap
+
+# Deploy
+cdk deploy</code></pre>
+
+            <div class="output">
+InvestmentAdvisorStack: deploying...
+
+ ✅  InvestmentAdvisorStack
+
+<span class="success">Outputs:</span>
+InvestmentAdvisorStack.AgentId = ABCD1234EF
+InvestmentAdvisorStack.AgentAliasId = TSTALIASID
+            </div>
+
+            <h3>Step D.7: Test the Bedrock Agent</h3>
+            <pre><code class="language-bash"># Using AWS CLI
+aws bedrock-agent-runtime invoke-agent \
+  --agent-id ABCD1234EF \
+  --agent-alias-id TSTALIASID \
+  --session-id test-session \
+  --input-text "Analyze MSFT stock and give me a recommendation"</code></pre>
+
+            <div class="output">
+{
+  "completion": "## MSFT Stock Analysis\n\n**Rating: STRONG BUY**\n\n### Technical Analysis\n- Current Price: $378.91 (+1.12%)\n- 30-Day Trend: Bullish\n...",
+  "sessionId": "test-session"
+}
+            </div>
+
+            <h3>Step D.8: Multi-Environment with CDK Contexts</h3>
+            <pre><code class="language-bash"># Deploy to different environments
+cdk deploy --context environment=dev
+cdk deploy --context environment=staging
+cdk deploy --context environment=prod</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Same Agent, Any Cloud</div>
+                <p>You've now deployed the <strong>exact same agent</strong> to both GCP and AWS! The Bedsheet CLI extracted your agent's architecture and generated cloud-native artifacts for each platform.</p>
+            </div>
+        </section>
+
+        <!-- Tutorial Summary -->
+        <section id="tutorial-summary" style="margin-top: 48px;">
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-radius: 12px; padding: 28px; border-left: 5px solid #1a7f37;">
+                <h3 style="margin-top: 0; color: #166534; font-size: 20px;">Tutorial Complete!</h3>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px; color: #15803d;">
+                    You've successfully built a multi-agent investment advisor and deployed it to:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">Local Docker</div>
+                        <div style="font-size: 13px; color: #15803d;">Development & Testing</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">Google Cloud</div>
+                        <div style="font-size: 13px; color: #15803d;">Terraform + Cloud Run</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">AWS</div>
+                        <div style="font-size: 13px; color: #15803d;">CDK + Bedrock</div>
+                    </div>
+                </div>
+
+                <h4 style="color: #166534; margin-bottom: 12px;">Key Takeaways</h4>
+                <ul style="color: #15803d; margin: 0; padding-left: 24px;">
+                    <li>Write your agent once using Bedsheet's Python API</li>
+                    <li>Use <code style="background: rgba(255,255,255,0.5); padding: 2px 6px; border-radius: 4px;">bedsheet generate</code> to compile for any target</li>
+                    <li>Generated code is production-ready with CI/CD, IaC, and best practices</li>
+                    <li>Multi-environment support via Terraform workspaces (GCP) or CDK contexts (AWS)</li>
+                    <li>Your agent's architecture is preserved across all platforms</li>
+                </ul>
             </div>
         </section>
 
