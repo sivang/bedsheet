@@ -49,7 +49,7 @@ class AWSTarget(DeploymentTarget):
 
         # Always generate these
         common_templates = [
-            ("requirements.txt.j2", "requirements.txt", False),
+            ("pyproject.toml.j2", "pyproject.toml", False),
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
             ("cdk_app.py.j2", "app.py", False),

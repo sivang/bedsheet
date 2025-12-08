@@ -303,7 +303,7 @@ async def test_gcp_target_generate_creates_all_files(mock_gcp_config, mock_singl
         assert "cloudbuild.yaml" in file_names
         assert "Makefile" in file_names
         assert ".env.example" in file_names
-        assert "requirements.txt" in file_names
+        assert "pyproject.toml" in file_names
 
         # Check all are GeneratedFile instances
         for file in files:
@@ -395,25 +395,25 @@ async def test_gcp_target_generate_dockerfile_content(mock_gcp_config, mock_sing
         # Check for expected Dockerfile elements
         assert "FROM python:3.11" in content
         assert "WORKDIR /app" in content
-        assert "COPY requirements.txt" in content
-        assert "RUN pip install" in content
+        assert "COPY pyproject.toml" in content
+        assert "uv pip install" in content
         assert "COPY agent/" in content
         assert "ENV PORT=8080" in content
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_requirements_txt_content(
+async def test_gcp_target_generate_pyproject_toml_content(
     mock_gcp_config, mock_single_agent_metadata
 ):
-    """Test GCPTarget.generate creates requirements.txt with correct dependencies."""
+    """Test GCPTarget.generate creates pyproject.toml with correct dependencies."""
     target = GCPTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         files = target.generate(mock_gcp_config, mock_single_agent_metadata, output_dir)
 
-        req_file = next(f for f in files if f.path.name == "requirements.txt")
-        content = req_file.content
+        pyproject_file = next(f for f in files if f.path.name == "pyproject.toml")
+        content = pyproject_file.content
 
         # Check for expected dependencies
         assert "google-adk" in content
