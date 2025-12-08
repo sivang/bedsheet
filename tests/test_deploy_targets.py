@@ -152,7 +152,7 @@ async def test_local_target_generate_creates_all_files(mock_config, mock_agent_m
         assert "Makefile" in file_names
         assert ".env.example" in file_names
         assert "app.py" in file_names
-        assert "requirements.txt" in file_names
+        assert "pyproject.toml" in file_names
 
         # Check all are GeneratedFile instances
         for file in files:
@@ -177,8 +177,8 @@ async def test_local_target_generate_dockerfile_content(mock_config, mock_agent_
         # Check for expected Dockerfile elements
         assert "FROM python:3.11" in content
         assert "WORKDIR /app" in content
-        assert "COPY requirements.txt" in content
-        assert "RUN pip install" in content
+        assert "COPY pyproject.toml" in content
+        assert "uv pip install" in content
         assert "EXPOSE 8080" in content  # From mock_config port
         assert 'CMD ["uvicorn"' in content
 
@@ -243,23 +243,23 @@ async def test_local_target_generate_env_example_content(mock_config, mock_agent
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_requirements_txt_content(mock_config, mock_agent_metadata):
-    """Test LocalTarget.generate creates requirements.txt with correct content."""
+async def test_local_target_generate_pyproject_toml_content(mock_config, mock_agent_metadata):
+    """Test LocalTarget.generate creates pyproject.toml with correct content."""
     target = LocalTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         files = target.generate(mock_config, mock_agent_metadata, output_dir)
 
-        req_file = next(f for f in files if f.path.name == "requirements.txt")
-        content = req_file.content
+        pyproject_file = next(f for f in files if f.path.name == "pyproject.toml")
+        content = pyproject_file.content
 
         # Check for expected dependencies
         assert "fastapi" in content
         assert "uvicorn" in content
         assert "pydantic" in content
         assert "anthropic" in content
-        assert "bedsheet" in content
+        assert "bedsheet-agents" in content
 
 
 @pytest.mark.asyncio

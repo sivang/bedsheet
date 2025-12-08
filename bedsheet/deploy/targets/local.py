@@ -52,7 +52,7 @@ class LocalTarget(DeploymentTarget):
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
             ("app.py.j2", "app.py", False),
-            ("requirements.txt.j2", "requirements.txt", False),
+            ("pyproject.toml.j2", "pyproject.toml", False),
         ]
 
         for template_name, output_name, executable in templates:

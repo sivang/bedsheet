@@ -38,7 +38,7 @@ app = typer.Typer(
 console = Console()
 
 # Version from pyproject.toml
-__version__ = "0.3.0"
+__version__ = "0.4.0rc1"
 
 # Target mapping
 TARGETS: dict[str, type[DeploymentTarget]] = {
@@ -298,11 +298,22 @@ assistant = create_assistant()
 '''
     (agents_dir / "assistant.py").write_text(assistant_code)
 
-    # Create requirements.txt
-    requirements = """bedsheet-agents>=0.3.0
-anthropic>=0.18.0
-"""
-    (project_dir / "requirements.txt").write_text(requirements)
+    # Create pyproject.toml
+    pyproject = f'''[project]
+name = "{project_name}"
+version = "0.1.0"
+description = "A Bedsheet agent project"
+requires-python = ">=3.11"
+dependencies = [
+    "bedsheet-agents>=0.4.0rc1",
+    "anthropic>=0.18.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+'''
+    (project_dir / "pyproject.toml").write_text(pyproject)
 
     # Create target configurations
     targets = {}
@@ -350,14 +361,14 @@ anthropic>=0.18.0
     console.print()
     console.print(f"[bold green]Created project: {project_name}[/bold green]")
     console.print("[dim]├── bedsheet.yaml      # Configuration[/dim]")
-    console.print("[dim]├── agents/            # Your agent code[/dim]")
-    console.print("[dim]│   └── assistant.py   # Example agent[/dim]")
-    console.print("[dim]└── requirements.txt   # Dependencies[/dim]")
+    console.print("[dim]├── pyproject.toml     # Dependencies[/dim]")
+    console.print("[dim]└── agents/            # Your agent code[/dim]")
+    console.print("[dim]    └── assistant.py   # Example agent[/dim]")
     console.print()
 
     console.print("[bold]Next steps:[/bold]")
     console.print(f"  1. [cyan]cd {project_name}[/cyan]")
-    console.print("  2. [cyan]pip install -r requirements.txt[/cyan]")
+    console.print("  2. [cyan]uv sync[/cyan]  (or pip install -e .)")
     console.print("  3. Edit agents/assistant.py to customize your agent")
     console.print(f"  4. [cyan]bedsheet generate --target {target}[/cyan]")
     console.print()

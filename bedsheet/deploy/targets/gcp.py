@@ -55,7 +55,7 @@ class GCPTarget(DeploymentTarget):
             ("agent.py.j2", "agent/agent.py", False),
             ("__init__.py.j2", "agent/__init__.py", False),
             # Docker/Cloud Build
-            ("requirements.txt.j2", "requirements.txt", False),
+            ("pyproject.toml.j2", "pyproject.toml", False),
             ("Dockerfile.j2", "Dockerfile", False),
             ("cloudbuild.yaml.j2", "cloudbuild.yaml", False),
             # Terraform IaC

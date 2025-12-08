@@ -217,7 +217,7 @@ async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_singl
         assert len(files) == 13
 
         file_names = [f.path.name for f in files]
-        assert "requirements.txt" in file_names
+        assert "pyproject.toml" in file_names
         assert "Makefile" in file_names
         assert ".env.example" in file_names
         assert "app.py" in file_names
@@ -328,18 +328,18 @@ async def test_aws_target_generate_cdk_app_content(mock_aws_config, mock_single_
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_requirements_txt_content(
+async def test_aws_target_generate_pyproject_toml_content(
     mock_aws_config, mock_single_agent_metadata
 ):
-    """Test AWSTarget.generate creates requirements.txt with correct dependencies."""
+    """Test AWSTarget.generate creates pyproject.toml with correct dependencies."""
     target = AWSTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
-        req_file = next(f for f in files if f.path.name == "requirements.txt" and f.path.parent == output_dir)
-        content = req_file.content
+        pyproject_file = next(f for f in files if f.path.name == "pyproject.toml" and f.path.parent == output_dir)
+        content = pyproject_file.content
 
         # Check for expected dependencies
         assert "aws-cdk-lib" in content
