@@ -951,13 +951,14 @@ environments:
             <div class="file-tree">
 <span class="folder">deploy/local/</span>
 ├── <span class="file">docker-compose.yaml</span>    <span class="comment"># Container orchestration</span>
-├── <span class="file">Dockerfile</span>              <span class="comment"># Python container</span>
-├── <span class="file">app.py</span>                  <span class="comment"># FastAPI wrapper</span>
-├── <span class="file">requirements.txt</span>        <span class="comment"># Dependencies</span>
+├── <span class="file">Dockerfile</span>              <span class="comment"># Multi-stage build (Node + Python)</span>
+├── <span class="file">app.py</span>                  <span class="comment"># FastAPI wrapper with SSE streaming</span>
+├── <span class="file">pyproject.toml</span>          <span class="comment"># Dependencies</span>
 ├── <span class="file">Makefile</span>                <span class="comment"># Convenience commands</span>
 ├── <span class="file">.env.example</span>            <span class="comment"># Environment template</span>
-└── <span class="folder">.github/workflows/</span>
-    └── <span class="file">ci.yaml</span>             <span class="comment"># Local CI</span>
+└── <span class="folder">debug-ui/</span>               <span class="comment"># React Debug UI source</span>
+    ├── <span class="file">package.json</span>
+    └── <span class="folder">src/</span>                <span class="comment"># React components</span>
             </div>
 
             <h3>Running Locally</h3>
@@ -986,6 +987,73 @@ vim agents/advisor.py
                 <div class="info-box-title">Local Development Workflow</div>
                 <p>Use the local target for development and testing. When ready for production, generate for GCP or AWS without changing any agent code.</p>
             </div>
+
+            <h3>Debug UI</h3>
+            <p>The local target includes a <strong>built-in Debug UI</strong> for testing and debugging your agents. Access it by opening <code>http://localhost:8000</code> in your browser.</p>
+
+            <div style="background: #1e293b; border-radius: 8px; padding: 20px; margin: 16px 0;">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'%3E%3Crect fill='%230f172a' width='800' height='400'/%3E%3Crect fill='%231e293b' x='0' y='0' width='800' height='48'/%3E%3Ctext x='20' y='30' fill='%23fff' font-family='system-ui' font-size='14' font-weight='600'%3EBedsheet Debug UI%3C/text%3E%3Ccircle cx='700' cy='24' r='6' fill='%2322c55e'/%3E%3Ctext x='715' y='28' fill='%2394a3b8' font-family='system-ui' font-size='12'%3EIdle%3C/text%3E%3Crect fill='%231e293b' x='0' y='48' width='400' height='352'/%3E%3Crect fill='%230f172a' x='400' y='48' width='400' height='352'/%3E%3Ctext x='420' y='80' fill='%23fff' font-family='system-ui' font-size='14' font-weight='600'%3EEvents (12)%3C/text%3E%3Crect fill='%233b82f6' x='20' y='300' width='360' height='36' rx='8'/%3E%3Ctext x='30' y='324' fill='%23fff' font-family='system-ui' font-size='12'%3EType a message...%3C/text%3E%3C/svg%3E" alt="Debug UI Preview" style="width: 100%; border-radius: 4px;" />
+            </div>
+
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li><strong>Chat Panel (left)</strong> — Send messages and see responses with full Markdown rendering</li>
+                <li><strong>Event Stream (right)</strong> — Live view of all agent events (tool calls, delegations, completions)</li>
+                <li><strong>Session Management</strong> — Start new sessions, copy session ID for API testing</li>
+                <li><strong>Expand/Collapse Events</strong> — Click any event to see full JSON details</li>
+            </ul>
+
+            <h4>Disabling the Debug UI</h4>
+            <p>For production-like testing without the UI, set the environment variable:</p>
+            <pre><code class="language-bash"># In .env or docker-compose.yaml
+BEDSHEET_DEBUG_UI=false</code></pre>
+            <p>When disabled, the root endpoint (<code>/</code>) returns a JSON health check instead of the UI.</p>
+
+            <h3>API Endpoints</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/</code></td>
+                        <td>GET</td>
+                        <td>Debug UI (or health check if disabled)</td>
+                    </tr>
+                    <tr>
+                        <td><code>/health</code></td>
+                        <td>GET</td>
+                        <td>Health check with agent info</td>
+                    </tr>
+                    <tr>
+                        <td><code>/invoke</code></td>
+                        <td>POST</td>
+                        <td>Invoke agent (batch response)</td>
+                    </tr>
+                    <tr>
+                        <td><code>/invoke/stream</code></td>
+                        <td>POST</td>
+                        <td>Invoke agent (SSE streaming)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example: Streaming API Call</h4>
+            <pre><code class="language-bash"># Stream events via curl
+curl -X POST http://localhost:8000/invoke/stream \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "session_id": "optional-session-id"}'
+
+# Output (Server-Sent Events):
+# data: {"type": "session", "session_id": "abc-123"}
+# data: {"type": "text_token", "token": "Hello"}
+# data: {"type": "text_token", "token": "!"}
+# data: {"type": "completion", "response": "Hello! How can I help?"}
+# data: {"type": "done"}</code></pre>
 
             <h3>Makefile Commands</h3>
             <table>
