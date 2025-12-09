@@ -159,9 +159,20 @@ bedsheet/
 | AWS target (CDK) | ✅ Done | Bedrock + Lambda + CDK |
 | GitHub Actions CI/CD | ✅ Done | Multi-environment workflows |
 | Multi-env (dev/staging/prod) | ✅ Done | Terraform workspaces / CDK contexts |
+| **1. Streaming SSE endpoint** | ✅ Done | `/invoke/stream` exposes Bedsheet's event stream |
+| **2. Debug UI (React SPA)** | ✅ Done | Chat + live event stream + expand/collapse |
+| 2a. Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
+| 2b. Debug UI: GCP Cloud Run | 🔲 TODO | Included, protected by IAM/Cloud IAP |
+| Debug UI: AWS | 🔮 Deferred | Low priority - use Bedrock console for now |
+| **3. GCP Cloud Run E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Debug UI) |
+| **4. AWS Bedrock E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Bedrock console) |
 
 **Branch:** `development/v0.4-deploy-anywhere`
 **Tests:** 179 passing (52 new for deployment)
+
+**Before v0.4.0 GA:**
+- Both GCP and AWS targets must be deployed and tested end-to-end with a real agent
+- Debug UI with streaming for local and GCP targets
 
 ### v0.5: Knowledge & Safety (Planned)
 
@@ -173,7 +184,18 @@ bedsheet/
 | Content Filtering | 🔮 Planned | Medium |
 | PII Detection | 🔮 Planned | Low |
 
-### v0.6: Advanced Features (Planned)
+### v0.6: GCP Agent Engine Target (Planned)
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Agent Engine deployment target | 🔮 Planned | High |
+| A2A protocol support | 🔮 Planned | High |
+| Managed sessions/memory | 🔮 Planned | Medium |
+| ADK wrapper generation | 🔮 Planned | Medium |
+
+**Why:** Agent Engine provides built-in A2A (Agent-to-Agent) protocol, managed session state, enterprise security (VPC-SC, CMEK), and interop with other enterprise agents (SAP Joule, Microsoft Copilot, etc.). Cloud Run remains the "flexible" option; Agent Engine is the "managed" option.
+
+### v0.7: Advanced Features (Planned)
 
 | Feature | Status | Priority |
 |---------|--------|----------|
@@ -190,6 +212,7 @@ Tasks identified but postponed for future consideration:
 
 | Task | Reason | Priority |
 |------|--------|----------|
+| AWS Debug UI | Bedrock orchestrates agent loop, not us. Options: (a) parse Bedrock streaming API events, or (b) deploy separate Fargate debug server. Use Bedrock console for now. | Low |
 | ASP Terraform Module Integration | Use Agent Starter Pack's battle-tested Terraform modules as optional `terraform_source: "asp"` | Medium |
 | Observability Templates | Cloud Trace, Logging dashboards pre-configured | Low |
 | Load Testing Integration | Locust templates like ASP | Low |

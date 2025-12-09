@@ -1,4 +1,5 @@
 """Local deployment target generator."""
+import shutil
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -64,6 +65,18 @@ class LocalTarget(DeploymentTarget):
                     content=content,
                     executable=executable,
                 )
+            )
+
+        # Copy debug-ui directory (source files for Docker build)
+        debug_ui_src = Path(__file__).parent.parent / "templates" / "local" / "debug-ui"
+        debug_ui_dst = output_dir / "debug-ui"
+        if debug_ui_src.exists():
+            if debug_ui_dst.exists():
+                shutil.rmtree(debug_ui_dst)
+            shutil.copytree(
+                debug_ui_src,
+                debug_ui_dst,
+                ignore=shutil.ignore_patterns("node_modules", "dist", ".git"),
             )
 
         return files

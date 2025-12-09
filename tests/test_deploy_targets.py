@@ -232,6 +232,30 @@ async def test_local_target_generate_app_py_content(mock_config, mock_agent_meta
 
 
 @pytest.mark.asyncio
+async def test_local_target_generate_app_py_sse_endpoint(mock_config, mock_agent_metadata):
+    """Test LocalTarget.generate creates app.py with SSE streaming endpoint."""
+    target = LocalTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(mock_config, mock_agent_metadata, output_dir)
+
+        app_file = next(f for f in files if f.path.name == "app.py")
+        content = app_file.content
+
+        # Check for SSE streaming endpoint
+        assert "/invoke/stream" in content
+        assert "StreamingResponse" in content
+        assert "text/event-stream" in content
+        assert "event_generator" in content
+        assert "serialize_event" in content
+        assert "CollaboratorEvent" in content
+        # Check for proper SSE format
+        assert 'data:' in content
+        assert '"type": "done"' in content or "'type': 'done'" in content
+
+
+@pytest.mark.asyncio
 async def test_local_target_generate_env_example_content(mock_config, mock_agent_metadata):
     """Test LocalTarget.generate creates .env.example with correct content."""
     target = LocalTarget()

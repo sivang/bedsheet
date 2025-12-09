@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/components/chatpanel.tsx","./src/components/eventitem.tsx","./src/components/eventpanel.tsx","./src/components/sessionbar.tsx","./src/hooks/useeventstream.ts"],"version":"5.9.3"}
