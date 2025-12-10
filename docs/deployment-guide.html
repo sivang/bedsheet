@@ -2621,6 +2621,43 @@ curl -X POST "$SERVICE_URL/invoke" \
 }
             </div>
 
+            <h3>Step C.8: Development with ADK Dev UI</h3>
+            <p>For development and testing, you can use the ADK Dev UI which provides a rich interactive interface:</p>
+
+            <pre><code class="language-bash"># Run ADK Dev UI locally
+cd deploy/gcp
+make dev-ui-local</code></pre>
+
+            <div class="output">
+Starting ADK Dev UI locally...
+Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser
+            </div>
+
+            <p>The ADK Dev UI includes:</p>
+            <ul>
+                <li><strong>Chat Interface</strong> - Interactive testing with your agent</li>
+                <li><strong>Execution Trace</strong> - Step-by-step visualization of agent reasoning</li>
+                <li><strong>Visual Graph</strong> - Diagram of tool calls and logic flow</li>
+                <li><strong>State Inspector</strong> - View state changes throughout execution</li>
+                <li><strong>Evaluation Tab</strong> - Capture golden datasets for regression testing</li>
+            </ul>
+
+            <p>To deploy the Dev UI to Cloud Run (separate from production):</p>
+
+            <pre><code class="language-bash"># Deploy with Dev UI to Cloud Run (creates separate service)
+make dev-ui</code></pre>
+
+            <div class="output">
+Deploying to Cloud Run with ADK Dev UI...
+This creates a SEPARATE service (myagent-dev) for development testing.
+Your production deployment (myagent) is NOT affected.
+            </div>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Dev UI vs Production</div>
+                <p><code>make dev-ui</code> creates a separate Cloud Run service (<code>*-dev</code>) with the ADK Dev UI enabled. Use <code>make deploy-terraform</code> for production deployments with full IaC control.</p>
+            </div>
+
             <div class="info-box tip">
                 <div class="info-box-title">Multi-Environment Deployment</div>
                 <p>Use Terraform workspaces for dev/staging/prod:</p>
