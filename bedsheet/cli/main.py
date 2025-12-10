@@ -777,7 +777,12 @@ def generate(
         console.print("  docker-compose up")
     elif target_name == "gcp":
         console.print(f"  cd {output_dir}")
-        console.print("  make setup && make deploy")
+        console.print("  cp .env.example .env")
+        console.print("  # Edit .env and add your GOOGLE_API_KEY")
+        console.print("  # Get a FREE key at: https://aistudio.google.com/apikey")
+        console.print("  make setup")
+        console.print("  make dev-ui-local    # Local testing with ADK Dev UI")
+        console.print("  make deploy          # Production deployment")
     elif target_name == "aws":
         console.print(f"  cd {output_dir}")
         console.print("  make setup && make deploy")

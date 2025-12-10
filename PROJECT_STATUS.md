@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0rc4 🧪 Testing on PyPI
 
-**Last Session:** 2025-12-08 (Evening)
+**Last Session:** 2025-12-10 (Evening)
 
 ### Release Status
 
@@ -26,6 +26,43 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2025-12-10 Evening)
+
+### What Was Done
+
+1. **GCP ADK Dev UI Integration - WORKING!**
+   - Fixed ADK agent discovery: `adk web .` (not `adk web agent`)
+   - Added `root_agent` export to `__init__.py.j2` template
+   - ADK requires agent directory structure with `root_agent` variable
+
+2. **Gemini Model Compatibility Testing**
+   - Tested multiple models for free-tier API key support
+   - `gemini-2.0-flash` - quota errors (regional restrictions)
+   - `gemini-1.5-flash` - also didn't work
+   - `gemini-2.5-flash` - **WORKS with free tier!**
+   - `gemini-3-pro-preview` - requires billing
+   - Updated default model in `config.py` to `gemini-2.5-flash`
+
+3. **Improved Developer Experience**
+   - Added QUICK START guide to `.env.example` template
+   - Clear instructions: get API key → copy .env → run `make dev-ui-local`
+   - Updated CLI to show GCP-specific next steps after `bedsheet generate`
+
+4. **Template Fixes**
+   - `Makefile.j2`: Fixed `dev-ui-local` target to use `adk web .`
+   - `__init__.py.j2`: Export `root_agent` for ADK discovery
+   - `env.example.j2`: Added step-by-step QUICK START comments
+
+### Files Modified
+
+- `bedsheet/deploy/config.py` - Default model → `gemini-2.5-flash`
+- `bedsheet/deploy/templates/gcp/Makefile.j2` - `adk web .` fix
+- `bedsheet/deploy/templates/gcp/__init__.py.j2` - `root_agent` export
+- `bedsheet/deploy/templates/gcp/env.example.j2` - QUICK START guide
+- `bedsheet/cli/main.py` - GCP next steps in CLI output
 
 ---
 
@@ -162,7 +199,7 @@ bedsheet/
 | **1. Streaming SSE endpoint** | ✅ Done | `/invoke/stream` exposes Bedsheet's event stream |
 | **2. Debug UI (React SPA)** | ✅ Done | Chat + live event stream + expand/collapse |
 | 2a. Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
-| 2b. Debug UI: GCP Cloud Run | 🔲 TODO | Included, protected by IAM/Cloud IAP |
+| 2b. Debug UI: GCP Cloud Run | ✅ Done | ADK Dev UI via `make dev-ui-local` |
 | Debug UI: AWS | 🔮 Deferred | Low priority - use Bedrock console for now |
 | **3. GCP Cloud Run E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Debug UI) |
 | **4. AWS Bedrock E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Bedrock console) |
