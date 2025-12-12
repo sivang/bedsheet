@@ -390,18 +390,24 @@ DEBUG_UI_HTML = """
                             if (line.startsWith('data: ')) {
                                 try {
                                     const event = JSON.parse(line.substring(6));
-                                    setEvents(prev => [...prev, event]);
 
                                     if (event.type === 'session') {
                                         setSessionId(event.session_id);
+                                        setEvents(prev => [...prev, event]);
                                     } else if (event.type === 'text_token') {
+                                        // Text tokens only update chat, not events panel
                                         fullResponse += event.token;
                                         setStreamingContent(fullResponse);
                                     } else if (event.type === 'completion') {
                                         setMessages(prev => [...prev, { role: 'assistant', content: event.response }]);
                                         setStreamingContent('');
+                                        setEvents(prev => [...prev, event]);
                                     } else if (event.type === 'error') {
                                         setMessages(prev => [...prev, { role: 'assistant', content: 'Error: ' + event.error }]);
+                                        setEvents(prev => [...prev, event]);
+                                    } else {
+                                        // All other trace events (thinking, tool_call, tool_result, collaborator_*)
+                                        setEvents(prev => [...prev, event]);
                                     }
                                 } catch (e) {
                                     console.error('Parse error:', e);
