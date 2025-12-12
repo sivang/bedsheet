@@ -7,6 +7,7 @@ from aws_cdk import (
     Stack,
     Duration,
     RemovalPolicy,
+    CfnOutput,
     aws_bedrock as bedrock,
     aws_lambda as lambda_,
     aws_iam as iam,
@@ -20,7 +21,7 @@ class AgentStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # IAM role for Bedrock Agent
+        # IAM role for Bedrock Agents
         agent_role = iam.Role(
             self, "AgentRole",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
@@ -30,7 +31,7 @@ class AgentStack(Stack):
         )
 
         {% if agent.tools %}
-        # Lambda function for action groups
+        # Lambda function for supervisor action groups
         action_lambda = lambda_.Function(
             self, "ActionLambda",
             runtime=lambda_.Runtime.PYTHON_3_11,
@@ -52,6 +53,90 @@ class AgentStack(Stack):
             )
         )
         {% endif %}
+
+        {% if agent.is_supervisor and agent.collaborators %}
+        # ============================================
+        # Multi-Agent Collaboration Setup
+        # ============================================
+        # Create collaborator agents first, then link to supervisor
+
+        collaborator_aliases = {}
+
+        {% for collaborator in agent.collaborators %}
+        # Collaborator: {{ collaborator.name }}
+        {{ collaborator.name | lower }}_agent = bedrock.CfnAgent(
+            self, "{{ collaborator.name }}Agent",
+            agent_name="{{ project_name }}_{{ collaborator.name | lower }}",
+            agent_resource_role_arn=agent_role.role_arn,
+            instruction="""{{ collaborator.instruction | replace('"', '\\"') | replace('\n', '\\n') }}""",
+            foundation_model="{{ aws.bedrock_model or 'anthropic.claude-3-sonnet-20240229-v1:0' }}",
+            auto_prepare=True,
+        )
+
+        {{ collaborator.name | lower }}_alias = bedrock.CfnAgentAlias(
+            self, "{{ collaborator.name }}Alias",
+            agent_alias_name="live",
+            agent_id={{ collaborator.name | lower }}_agent.attr_agent_id,
+        )
+        collaborator_aliases["{{ collaborator.name }}"] = {{ collaborator.name | lower }}_alias
+
+        {% endfor %}
+
+        # Supervisor Agent with Multi-Agent Collaboration
+        supervisor_agent = bedrock.CfnAgent(
+            self, "SupervisorAgent",
+            agent_name="{{ project_name }}",
+            agent_resource_role_arn=agent_role.role_arn,
+            instruction="""{{ agent.instruction | replace('"', '\\"') | replace('\n', '\\n') }}""",
+            foundation_model="{{ aws.bedrock_model or 'anthropic.claude-3-sonnet-20240229-v1:0' }}",
+            {% if agent.tools %}
+            action_groups=[
+                bedrock.CfnAgent.AgentActionGroupProperty(
+                    action_group_name="{{ project_name }}_actions",
+                    action_group_executor=bedrock.CfnAgent.ActionGroupExecutorProperty(
+                        lambda_=action_lambda.function_arn,
+                    ),
+                    api_schema=bedrock.CfnAgent.APISchemaProperty(
+                        payload=open("schemas/openapi.yaml").read(),
+                    ),
+                ),
+            ],
+            {% endif %}
+            # Enable multi-agent collaboration as supervisor
+            agent_collaboration="SUPERVISOR",
+            agent_collaborators=[
+                {% for collaborator in agent.collaborators %}
+                bedrock.CfnAgent.AgentCollaboratorProperty(
+                    collaborator_name="{{ collaborator.name }}",
+                    agent_descriptor=bedrock.CfnAgent.AgentDescriptorProperty(
+                        alias_arn=collaborator_aliases["{{ collaborator.name }}"].attr_agent_alias_arn,
+                    ),
+                    collaboration_instruction="""{{ collaborator.instruction[:500] | replace('"', '\\"') | replace('\n', '\\n') }}""",
+                    relay_conversation_history="TO_COLLABORATOR",
+                ),
+                {% endfor %}
+            ],
+            auto_prepare=True,
+        )
+
+        # Supervisor Agent Alias for invoking
+        supervisor_alias = bedrock.CfnAgentAlias(
+            self, "SupervisorAlias",
+            agent_alias_name="live",
+            agent_id=supervisor_agent.attr_agent_id,
+        )
+
+        # Outputs
+        CfnOutput(self, "SupervisorAgentId", value=supervisor_agent.attr_agent_id)
+        CfnOutput(self, "SupervisorAliasArn", value=supervisor_alias.attr_agent_alias_arn)
+        {% for collaborator in agent.collaborators %}
+        CfnOutput(self, "{{ collaborator.name }}AgentId", value={{ collaborator.name | lower }}_agent.attr_agent_id)
+        {% endfor %}
+
+        {% else %}
+        # ============================================
+        # Single Agent Setup
+        # ============================================
 
         # Bedrock Agent
         agent = bedrock.CfnAgent(
@@ -82,3 +167,8 @@ class AgentStack(Stack):
             agent_alias_name="live",
             agent_id=agent.attr_agent_id,
         )
+
+        # Outputs
+        CfnOutput(self, "AgentId", value=agent.attr_agent_id)
+        CfnOutput(self, "AliasArn", value=alias.attr_agent_alias_arn)
+        {% endif %}

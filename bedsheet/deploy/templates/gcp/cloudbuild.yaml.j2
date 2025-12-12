@@ -26,7 +26,7 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/{{ project_name }}:$COMMIT_SHA'
       - '--region'
-      - '{{ gcp.region or "us-central1" }}'
+      - '{{ gcp.region or "europe-west1" }}'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'

@@ -30,7 +30,7 @@ on:
 
 env:
   PROJECT_ID: ${{ "{{" }} vars.GCP_PROJECT_ID {{ "}}" }}
-  REGION: {{ gcp.region or 'us-central1' }}
+  REGION: {{ gcp.region or 'europe-west1' }}
   SERVICE_NAME: {{ project_name }}
   WORKLOAD_IDENTITY_PROVIDER: ${{ "{{" }} vars.WIF_PROVIDER {{ "}}" }}
   SERVICE_ACCOUNT: ${{ "{{" }} vars.GCP_SERVICE_ACCOUNT {{ "}}" }}

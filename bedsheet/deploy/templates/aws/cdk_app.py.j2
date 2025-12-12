@@ -14,7 +14,7 @@ AgentStack(
     app,
     "{{ project_name | title | replace('_', '') }}Stack",
     env=cdk.Environment(
-        region="{{ aws.region or 'us-east-1' }}",
+        region="{{ aws.region or 'eu-central-1' }}",
     ),
 )
 

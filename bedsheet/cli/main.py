@@ -318,14 +318,15 @@ dependencies = [
         targets["local"] = LocalTargetConfig(port=8000, hot_reload=True)
     elif target == "gcp":
         gcp_project = typer.prompt("GCP Project ID")
+        gcp_region = typer.prompt("GCP Region", default="europe-west1")
         targets["gcp"] = GCPTargetConfig(
             project=gcp_project,
-            region="us-central1",
+            region=gcp_region,
             cloud_run_memory="512Mi",
-            model="claude-sonnet-4-5@20250929",
+            model="gemini-2.5-flash",
         )
     elif target == "aws":
-        aws_region = typer.prompt("AWS Region", default="us-east-1")
+        aws_region = typer.prompt("AWS Region", default="eu-central-1")
         targets["aws"] = AWSTargetConfig(
             region=aws_region,
             lambda_memory=512,

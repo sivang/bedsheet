@@ -10,7 +10,7 @@ variable "project_id" {
 variable "region" {
   description = "GCP Region for Cloud Run deployment"
   type        = string
-  default     = "{{ gcp.region or 'us-central1' }}"
+  default     = "{{ gcp.region or 'europe-west1' }}"
 }
 
 variable "allow_unauthenticated" {
