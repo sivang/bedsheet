@@ -4,7 +4,7 @@
 .PHONY: help setup test build deploy deploy-terraform logs clean tf-init tf-plan tf-apply tf-destroy dev-ui dev-ui-local
 
 PROJECT = {{ gcp.project or 'YOUR_PROJECT_ID' }}
-REGION = {{ gcp.region or 'us-central1' }}
+REGION = {{ gcp.region or 'europe-west1' }}
 SERVICE = {{ project_name }}
 
 help:

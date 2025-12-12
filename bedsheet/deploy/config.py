@@ -69,7 +69,7 @@ class GCPTargetConfig(BaseModel):
     """Configuration for GCP deployment target."""
 
     project: str = Field(..., description="GCP project ID")
-    region: str = Field(default="us-central1", description="GCP region")
+    region: str = Field(default="europe-west1", description="GCP region")
     cloud_run_memory: str = Field(default="512Mi", description="Cloud Run memory limit")
     model: str = Field(
         default="gemini-2.5-flash",

@@ -34,7 +34,7 @@ class AWSTarget(DeploymentTarget):
         # Get AWS config with defaults
         aws_config = config.get_active_target_config()
         if not isinstance(aws_config, AWSTargetConfig):
-            aws_config = AWSTargetConfig(region="us-east-1")
+            aws_config = AWSTargetConfig(region="eu-central-1")
 
         # Determine deployment style
         style = aws_config.style.value if aws_config.style else "serverless"
