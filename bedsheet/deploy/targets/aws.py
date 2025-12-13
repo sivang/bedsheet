@@ -126,6 +126,19 @@ class AWSTarget(DeploymentTarget):
                 executable=False,
             ))
 
+        # Generate Debug UI server for local testing against deployed Bedrock agent
+        debug_ui_context = {
+            **context,
+            "agent_id": "YOUR_AGENT_ID",  # Placeholder - set via env var after deployment
+            "agent_alias_id": "TSTALIASID",  # Default to draft alias
+        }
+        debug_ui_template = self.env.get_template("debug-ui/server.py.j2")
+        files.append(GeneratedFile(
+            path=output_dir / "debug-ui" / "server.py",
+            content=debug_ui_template.render(**debug_ui_context),
+            executable=False,
+        ))
+
         return files
 
     def validate(self, config: BedsheetConfig) -> list[str]:

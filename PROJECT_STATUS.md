@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0rc4 🧪 Testing on PyPI
 
-**Last Session:** 2025-12-10 (Evening)
+**Last Session:** 2025-12-12 (Afternoon)
 
 ### Release Status
 
@@ -26,6 +26,48 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2025-12-12 Afternoon)
+
+### What Was Done
+
+1. **AWS Bedrock Debug UI - COMPLETE!**
+   - Built comprehensive debug UI for AWS Bedrock agents
+   - FastAPI server that proxies to Bedrock Agent Runtime API
+   - SSE streaming for real-time event updates
+   - Multi-agent collaboration tracing (collaborator_start/complete)
+   - Tested with Judge/Sage/Oracle multi-agent system
+
+2. **Debug UI Features**
+   - Collapsible event items with badge icons and summaries
+   - Thinking/rationale trace visualization
+   - Tool call and result tracking
+   - Environment variable configuration for agent ID/alias
+   - Filter out redundant long thinking events (final synthesis)
+
+3. **Template Updates**
+   - Lambda handler simplified to use standard library only (removed aws_lambda_powertools dependency)
+   - CDK stack improvements for multi-agent deployments
+   - Debug UI template added to AWS target
+   - Events panel now starts collapsed for cleaner UX
+
+4. **AWS E2E Test Complete**
+   - Successfully deployed agent to Bedrock via CDK
+   - Invoked agent through debug UI
+   - Verified multi-agent orchestration tracing works
+
+### Files Modified
+
+- `bedsheet/deploy/templates/aws/debug-ui/server.py.j2` - Debug UI server
+- `bedsheet/deploy/templates/aws/lambda/handler.py.j2` - Simplified handler
+- `bedsheet/deploy/templates/aws/stacks/agent_stack.py.j2` - CDK improvements
+
+### Remaining for v0.4 GA
+
+- Add Bedsheet @action compilation to Lambda (pending)
+- Update roadmap: AWS Debug UI now DONE (was deferred)
 
 ---
 
@@ -200,9 +242,9 @@ bedsheet/
 | **2. Debug UI (React SPA)** | ✅ Done | Chat + live event stream + expand/collapse |
 | 2a. Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
 | 2b. Debug UI: GCP Cloud Run | ✅ Done | ADK Dev UI via `make dev-ui-local` |
-| Debug UI: AWS | 🔮 Deferred | Low priority - use Bedrock console for now |
+| 2c. Debug UI: AWS Bedrock | ✅ Done | FastAPI proxy to Bedrock Agent Runtime with tracing |
 | **3. GCP Cloud Run E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Debug UI) |
-| **4. AWS Bedrock E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Bedrock console) |
+| **4. AWS Bedrock E2E Test** | ✅ Done | Deployed Judge/Sage/Oracle, verified via Debug UI |
 
 **Branch:** `development/v0.4-deploy-anywhere`
 **Tests:** 179 passing (52 new for deployment)
@@ -249,7 +291,6 @@ Tasks identified but postponed for future consideration:
 
 | Task | Reason | Priority |
 |------|--------|----------|
-| AWS Debug UI | Bedrock orchestrates agent loop, not us. Options: (a) parse Bedrock streaming API events, or (b) deploy separate Fargate debug server. Use Bedrock console for now. | Low |
 | ASP Terraform Module Integration | Use Agent Starter Pack's battle-tested Terraform modules as optional `terraform_source: "asp"` | Medium |
 | Observability Templates | Cloud Trace, Logging dashboards pre-configured | Low |
 | Load Testing Integration | Locust templates like ASP | Low |

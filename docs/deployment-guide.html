@@ -2914,6 +2914,28 @@ aws bedrock-agent-runtime invoke-agent \
 }
             </div>
 
+            <h3>AWS Debug UI</h3>
+            <p>The AWS target includes a <strong>Debug UI</strong> for testing and debugging your Bedrock agent locally. The Debug UI proxies requests to the Bedrock Agent Runtime API and provides real-time tracing.</p>
+
+            <pre><code class="language-bash"># Start the Debug UI
+cd deploy/aws/debug-ui
+export BEDROCK_AGENT_ID=ABCD1234EF
+export BEDROCK_AGENT_ALIAS=TSTALIASID
+pip install -r requirements.txt
+python server.py
+
+# Open http://localhost:8080 in your browser</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Debug UI Features</div>
+                <ul>
+                    <li><strong>Chat Interface</strong> - Send messages and see streaming responses</li>
+                    <li><strong>Events Panel</strong> - Real-time trace events (thinking, tool calls, results)</li>
+                    <li><strong>Multi-Agent Tracing</strong> - See collaborator_start/complete for sub-agent calls</li>
+                    <li><strong>Collapsible Events</strong> - Click to expand full JSON details</li>
+                </ul>
+            </div>
+
             <h3>Step D.8: Multi-Environment with CDK Contexts</h3>
             <pre><code class="language-bash"># Deploy to different environments
 cdk deploy --context environment=dev
