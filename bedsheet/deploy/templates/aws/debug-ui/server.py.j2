@@ -265,6 +265,7 @@ DEBUG_UI_HTML = """
         const canExpand = (event) => event.type !== 'text_token';
 
         function EventItem({ event, index }) {
+            // Start collapsed by default, expand on click
             const [isExpanded, setIsExpanded] = useState(false);
             const badge = getBadgeStyles(event.type);
             const summary = getSummary(event);
@@ -383,7 +384,7 @@ DEBUG_UI_HTML = """
                         if (done) break;
 
                         buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\\n\\n');
+                        const lines = buffer.split(String.fromCharCode(10) + String.fromCharCode(10));
                         buffer = lines.pop() || '';
 
                         for (const line of lines) {
