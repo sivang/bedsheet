@@ -1,19 +1,19 @@
-"""AWS deployment target generator - generates CDK + Bedrock artifacts."""
+"""AWS Terraform deployment target generator - generates Terraform + Bedrock artifacts."""
 from dataclasses import replace
 from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from bedsheet.deploy.config import BedsheetConfig, AWSTargetConfig
-from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata
+from bedsheet.deploy.introspect import AgentMetadata
 from .base import DeploymentTarget, GeneratedFile
 
 
-class AWSTarget(DeploymentTarget):
-    """Generate AWS CDK + Bedrock deployment artifacts."""
+class AWSTerraformTarget(DeploymentTarget):
+    """Generate AWS Terraform + Bedrock deployment artifacts."""
 
     def __init__(self):
         self.env = Environment(
-            loader=PackageLoader("bedsheet.deploy", "templates/aws"),
+            loader=PackageLoader("bedsheet.deploy", "templates/aws-terraform"),
             autoescape=select_autoescape(),
             trim_blocks=True,
             lstrip_blocks=True,
@@ -21,7 +21,7 @@ class AWSTarget(DeploymentTarget):
 
     @property
     def name(self) -> str:
-        return "aws"
+        return "aws-terraform"
 
     def generate(
         self,
@@ -29,16 +29,13 @@ class AWSTarget(DeploymentTarget):
         agent_metadata: AgentMetadata,
         output_dir: Path
     ) -> list[GeneratedFile]:
-        """Generate AWS deployment files."""
+        """Generate AWS Terraform deployment files."""
         files = []
 
         # Get AWS config with defaults
         aws_config = config.get_active_target_config()
         if not isinstance(aws_config, AWSTargetConfig):
             aws_config = AWSTargetConfig(region="eu-central-1")
-
-        # Determine deployment style
-        style = aws_config.style.value if aws_config.style else "serverless"
 
         # For Supervisors with collaborators, filter out the 'delegate' tool from agent metadata
         # since Bedrock handles delegation natively via aws_bedrockagent_agent_collaborator
@@ -55,16 +52,30 @@ class AWSTarget(DeploymentTarget):
             "aws": aws_config,
             "agent": filtered_agent,
             "project_name": config.name.replace("-", "_").replace(" ", "_"),
-            "style": style,
         }
 
-        # Always generate these
+        # Core Terraform files
+        terraform_templates = [
+            ("main.tf.j2", "main.tf", False),
+            ("variables.tf.j2", "variables.tf", False),
+            ("outputs.tf.j2", "outputs.tf", False),
+            ("terraform.tfvars.example.j2", "terraform.tfvars.example", False),
+        ]
+
+        for template_name, output_name, executable in terraform_templates:
+            template = self.env.get_template(template_name)
+            content = template.render(**context)
+            files.append(GeneratedFile(
+                path=output_dir / output_name,
+                content=content,
+                executable=executable,
+            ))
+
+        # Common files
         common_templates = [
             ("pyproject.toml.j2", "pyproject.toml", False),
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
-            ("cdk_app.py.j2", "app.py", False),
-            ("cdk_json.j2", "cdk.json", False),
         ]
 
         for template_name, output_name, executable in common_templates:
@@ -75,22 +86,6 @@ class AWSTarget(DeploymentTarget):
                 content=content,
                 executable=executable,
             ))
-
-        # Generate CDK stack
-        stack_template = self.env.get_template("cdk_stack.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "stacks" / "agent_stack.py",
-            content=stack_template.render(**context),
-            executable=False,
-        ))
-
-        # Generate stacks/__init__.py
-        stacks_init = self.env.get_template("stacks_init.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "stacks" / "__init__.py",
-            content=stacks_init.render(**context),
-            executable=False,
-        ))
 
         # Generate Lambda handlers for action groups (if tools exist after filtering)
         if filtered_agent.tools:
@@ -137,36 +132,23 @@ class AWSTarget(DeploymentTarget):
                 executable=False,
             ))
 
-        # Generate Debug UI server for local testing against deployed Bedrock agent
-        debug_ui_context = {
-            **context,
-            "agent_id": "YOUR_AGENT_ID",  # Placeholder - set via env var after deployment
-            "agent_alias_id": "TSTALIASID",  # Default to draft alias
-        }
+        # Generate Debug UI server
         debug_ui_template = self.env.get_template("debug-ui/server.py.j2")
         files.append(GeneratedFile(
             path=output_dir / "debug-ui" / "server.py",
-            content=debug_ui_template.render(**debug_ui_context),
+            content=debug_ui_template.render(**context),
             executable=False,
         ))
 
         return files
 
     def validate(self, config: BedsheetConfig) -> list[str]:
-        """Validate AWS target configuration."""
+        """Validate AWS Terraform target configuration."""
         errors = []
-        if config.targets and "aws" in config.targets:
-            aws = config.targets["aws"]
+        if config.targets and "aws-terraform" in config.targets:
+            aws = config.targets["aws-terraform"]
             if isinstance(aws, AWSTargetConfig):
-                # Validate region format - already done in Pydantic validator
-                # but we can add additional checks here if needed
-
                 # Validate Lambda memory
                 if aws.lambda_memory and (aws.lambda_memory < 128 or aws.lambda_memory > 10240):
                     errors.append(f"Lambda memory must be between 128-10240 MB: {aws.lambda_memory}")
-
-                # Validate style (already validated by Pydantic enum, but double check)
-                valid_styles = {"bedrock_native", "serverless", "containers"}
-                if aws.style and aws.style.value not in valid_styles:
-                    errors.append(f"Invalid AWS style: {aws.style.value}. Must be one of: {valid_styles}")
         return errors
