@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0rc4 🧪 Testing on PyPI
 
-**Last Session:** 2025-12-12 (Afternoon)
+**Last Session:** 2025-12-18 (Evening)
 
 ### Release Status
 
@@ -26,6 +26,105 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2025-12-18 Evening)
+
+### What Was Done
+
+1. **AWS Terraform @action Translation Fix - COMPLETE!**
+   - Fixed critical bug: delegate action was being translated to Lambda/OpenAPI for supervisors
+   - AWS Bedrock has NATIVE collaboration via `aws_bedrockagent_agent_collaborator`
+   - Delegate @action should only exist for LOCAL execution, not AWS deployment
+
+2. **Delegate Action Filtering**
+   - Modified `aws.py` and `aws_terraform.py` to filter delegate BEFORE creating template context
+   - For supervisors with collaborators: `if is_supervisor and collaborators: filter delegate`
+   - Single agents and supervisors without collaborators: no filtering applied
+   - Result: NO Lambda handler, NO OpenAPI endpoint for delegate action
+
+3. **Resource Identification with bedsheet- Prefix**
+   - Added `bedsheet-` prefix to infrastructure resources for easy identification
+   - IAM roles: `bedsheet-${local.name_prefix}-agent-role`
+   - IAM policies: `bedsheet-${local.name_prefix}-agent-permissions`
+   - Lambda functions (when generated): `bedsheet-${local.name_prefix}-actions`
+   - User-facing resources (Bedrock agents, aliases) kept clean without prefix
+
+4. **Resource Tagging**
+   - Fixed incorrect `agent_resource_tags` attribute → `tags` (correct Terraform syntax)
+   - Added comprehensive tags to ALL resources:
+     - `ManagedBy = "Bedsheet"`
+     - `BedsheetVersion = "0.4.0"`
+     - `Project = var.project_name`
+     - `Environment = local.workspace`
+     - `AgentType = "Supervisor|Collaborator|SingleAgent"` (for Bedrock agents)
+   - Tags support governance, cost allocation, and resource filtering
+
+5. **Verified with wisdom-council**
+   - Generated deployment artifacts with all fixes applied
+   - Confirmed NO Lambda files generated (delegate was only tool, filtered out)
+   - Confirmed NO `/delegate` endpoint in openapi.yaml (only `/health`)
+   - Confirmed `bedsheet-` prefix on IAM resources
+   - Confirmed correct `tags` attribute in all resources
+
+### Root Cause Analysis
+
+**Problem:** User explicitly requested in previous session: "translate the @action decorator of bedsheet to the implementation in AWS, just as it does for GCP"
+
+**What was happening:**
+1. Supervisor auto-registers `delegate` action in `__init__()`
+2. Introspection extracts ALL tools including delegate
+3. AWS templates blindly generated Lambda + OpenAPI for ALL tools
+4. Result: Redundant delegate Lambda that conflicts with Bedrock's native collaboration
+
+**Solution:**
+- Filter delegate at generation time for multi-agent scenarios
+- Bedrock handles delegation via `aws_bedrockagent_agent_collaborator` resources
+- GCP translates @actions to ADK tool stubs (platform idiom)
+- AWS now translates by filtering delegate for supervisors (platform idiom)
+
+### Files Modified
+
+**Python Code (filtering logic):**
+- `bedsheet/deploy/targets/aws.py:40-51` - Filter delegate before context creation
+- `bedsheet/deploy/targets/aws_terraform.py:40-48` - Filter delegate before context creation
+
+**Terraform Template (naming, tagging):**
+- `bedsheet/deploy/templates/aws-terraform/main.tf.j2:40, 71` - bedsheet- prefix for IAM
+- `bedsheet/deploy/templates/aws-terraform/main.tf.j2:195-201, 226-232, 296-302` - Fixed tags attribute
+
+### Verification Results
+
+Generated `wisdom-council/deploy/aws-terraform/`:
+- ✅ 11 files generated (NO lambda directory)
+- ✅ `openapi.yaml` contains only `/health` endpoint
+- ✅ `main.tf` has NO Lambda resource definitions
+- ✅ IAM resources named `bedsheet-wisdom_council-dev-agent-role`
+- ✅ All resources properly tagged with ManagedBy=Bedsheet
+
+### Next Steps (For Next Session)
+
+1. **Deploy with Terraform** (blocked by aws-vault credentials issue)
+   - Need to restart session for aws-vault to work properly
+   - Run: `cd deploy/aws-terraform && aws-vault exec personal -- terraform plan`
+   - Then: `aws-vault exec personal -- terraform apply`
+
+2. **Test with Debug UI**
+   - Start debug UI: `aws-vault exec personal -- python debug-ui/server.py`
+   - Verify multi-agent collaboration works via Bedrock native delegation
+   - Check traces show collaborator invocations (NOT Lambda delegate calls)
+
+3. **Add to examples/** (if successful)
+   - Copy wisdom-council to BedsheetAgents/examples/
+   - Document as canonical multi-agent AWS deployment example
+
+### Technical Debt Addressed
+
+- ✅ AWS @action translation now matches user's original intent
+- ✅ Resource naming conventions established (bedsheet- prefix)
+- ✅ Resource tagging strategy implemented
+- ✅ Multi-agent translation correctly handles platform idioms
 
 ---
 
