@@ -235,12 +235,12 @@ def load_config(path: str | Path) -> BedsheetConfig:
         for key, config in interpolated_data["targets"].items():
             if key == "local":
                 targets[key] = LocalTargetConfig(**config)
-            elif key == "aws":
+            elif key in ("aws", "aws-terraform"):
                 targets[key] = AWSTargetConfig(**config)
             elif key == "gcp":
                 targets[key] = GCPTargetConfig(**config)
             else:
-                raise ValueError(f"Unknown target type: {key}. Must be 'local', 'aws', or 'gcp'")
+                raise ValueError(f"Unknown target type: {key}. Must be 'local', 'aws', 'aws-terraform', or 'gcp'")
         interpolated_data["targets"] = targets
 
     return BedsheetConfig(**interpolated_data)

@@ -8,10 +8,12 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     CfnOutput,
+    CustomResource,
     aws_bedrock as bedrock,
     aws_lambda as lambda_,
     aws_iam as iam,
     aws_logs as logs,
+    custom_resources as cr,
 )
 
 
@@ -28,6 +30,18 @@ class AgentStack(Stack):
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonBedrockFullAccess"),
             ],
+        )
+
+        # Multi-agent and model invocation permissions
+        agent_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "bedrock-agent-runtime:InvokeAgent",
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                resources=["*"],
+            )
         )
 
         {% if agent.tools %}
@@ -126,6 +140,50 @@ class AgentStack(Stack):
             agent_id=supervisor_agent.attr_agent_id,
         )
 
+        # Custom Resource to prepare all agents after deployment
+        prepare_agents_provider = cr.Provider(
+            self, "PrepareAgentsProvider",
+            on_event_handler=lambda_.Function(
+                self, "PrepareAgentsLambda",
+                runtime=lambda_.Runtime.PYTHON_3_11,
+                handler="index.handler",
+                code=lambda_.Code.from_inline("""
+import boto3
+import json
+
+bedrock = boto3.client('bedrock-agent')
+
+def handler(event, context):
+    request_type = event['RequestType']
+    if request_type in ['Create', 'Update']:
+        agent_ids = event['ResourceProperties']['AgentIds'].split(',')
+        for agent_id in agent_ids:
+            bedrock.prepare_agent(agentId=agent_id)
+    return {'PhysicalResourceId': 'PrepareAgents'}
+                """),
+                timeout=Duration.seconds(60),
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=["bedrock:PrepareAgent", "bedrock:GetAgent"],
+                        resources=["*"],
+                    )
+                ],
+            ),
+        )
+
+        CustomResource(
+            self, "PrepareAgents",
+            service_token=prepare_agents_provider.service_token,
+            properties={
+                "AgentIds": ",".join([
+                    supervisor_agent.attr_agent_id,
+                    {% for collaborator in agent.collaborators %}
+                    {{ collaborator.name | lower }}_agent.attr_agent_id,
+                    {% endfor %}
+                ]),
+            },
+        )
+
         # Outputs
         CfnOutput(self, "SupervisorAgentId", value=supervisor_agent.attr_agent_id)
         CfnOutput(self, "SupervisorAliasArn", value=supervisor_alias.attr_agent_alias_arn)
@@ -166,6 +224,43 @@ class AgentStack(Stack):
             self, "AgentAlias",
             agent_alias_name="live",
             agent_id=agent.attr_agent_id,
+        )
+
+        # Custom Resource to prepare agent after deployment
+        prepare_agent_provider = cr.Provider(
+            self, "PrepareAgentProvider",
+            on_event_handler=lambda_.Function(
+                self, "PrepareAgentLambda",
+                runtime=lambda_.Runtime.PYTHON_3_11,
+                handler="index.handler",
+                code=lambda_.Code.from_inline("""
+import boto3
+
+bedrock = boto3.client('bedrock-agent')
+
+def handler(event, context):
+    request_type = event['RequestType']
+    if request_type in ['Create', 'Update']:
+        agent_id = event['ResourceProperties']['AgentId']
+        bedrock.prepare_agent(agentId=agent_id)
+    return {'PhysicalResourceId': 'PrepareAgent'}
+                """),
+                timeout=Duration.seconds(60),
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=["bedrock:PrepareAgent", "bedrock:GetAgent"],
+                        resources=["*"],
+                    )
+                ],
+            ),
+        )
+
+        CustomResource(
+            self, "PrepareAgent",
+            service_token=prepare_agent_provider.service_token,
+            properties={
+                "AgentId": agent.attr_agent_id,
+            },
         )
 
         # Outputs
