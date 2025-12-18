@@ -25,7 +25,7 @@ from bedsheet.deploy.config import (
     save_config,
 )
 from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata, extract_agent_metadata
-from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, DeploymentTarget
+from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, AWSTerraformTarget, DeploymentTarget
 
 # Initialize Typer app
 app = typer.Typer(
@@ -45,6 +45,7 @@ TARGETS: dict[str, type[DeploymentTarget]] = {
     "local": LocalTarget,
     "gcp": GCPTarget,
     "aws": AWSTarget,
+    "aws-terraform": AWSTerraformTarget,
 }
 
 
