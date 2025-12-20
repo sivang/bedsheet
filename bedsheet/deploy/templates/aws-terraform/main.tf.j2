@@ -221,7 +221,9 @@ resource "aws_bedrockagent_agent" "supervisor" {
   # Enable multi-agent collaboration
   agent_collaboration = "SUPERVISOR"
 
-  prepare_agent = true
+  # Don't prepare supervisor until collaborators are attached
+  # Collaborators will trigger preparation when they're added
+  prepare_agent = false
 
   tags = {
     ManagedBy       = "Bedsheet"
