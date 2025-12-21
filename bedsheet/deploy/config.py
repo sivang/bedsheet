@@ -52,6 +52,11 @@ class AWSTargetConfig(BaseModel):
         default=AWSDeploymentStyle.SERVERLESS,
         description="Deployment style: bedrock_native, serverless, or containers",
     )
+    enable_delegate_for_supervisors: bool = Field(
+        default=True,
+        description="Enable delegate action for supervisor agents to improve trace visibility. "
+        "Can be disabled when AWS improves native multi-agent collaboration traces.",
+    )
 
     model_config = {"extra": "forbid"}
 

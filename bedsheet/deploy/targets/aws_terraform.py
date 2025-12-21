@@ -37,15 +37,19 @@ class AWSTerraformTarget(DeploymentTarget):
         if not isinstance(aws_config, AWSTargetConfig):
             aws_config = AWSTargetConfig(region="eu-central-1")
 
-        # For Supervisors with collaborators, filter out the 'delegate' tool from agent metadata
-        # since Bedrock handles delegation natively via aws_bedrockagent_agent_collaborator
+        # For Supervisors with collaborators, optionally filter out the 'delegate' tool
+        # When enable_delegate_for_supervisors is True, keep delegate for better trace visibility
+        # When False, use Bedrock's native delegation via aws_bedrockagent_agent_collaborator
         filtered_agent = agent_metadata
         if agent_metadata.is_supervisor and agent_metadata.collaborators:
-            filtered_tools = [
-                tool for tool in agent_metadata.tools
-                if tool.name != "delegate"
-            ]
-            filtered_agent = replace(agent_metadata, tools=filtered_tools)
+            if not aws_config.enable_delegate_for_supervisors:
+                # Filter out delegate - use native collaboration only
+                filtered_tools = [
+                    tool for tool in agent_metadata.tools
+                    if tool.name != "delegate"
+                ]
+                filtered_agent = replace(agent_metadata, tools=filtered_tools)
+            # else: keep delegate action for improved trace visibility
 
         context = {
             "config": config,
