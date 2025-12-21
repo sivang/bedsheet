@@ -13,16 +13,12 @@ paths:
       summary: "{{ tool.name }}"
       description: "{{ tool.description }}"
       operationId: "{{ tool.name }}"
-      {% if tool.parameters %}
-      parameters:
-        {% for param in tool.parameters %}
-        - name: "{{ param.name }}"
-          in: query
-          description: "{{ param.description or param.name }}"
-          required: {{ 'true' if param.required else 'false' }}
-          schema:
-            type: "{{ param.json_type or 'string' }}"
-        {% endfor %}
+      {% if tool.parameters_schema and tool.parameters_schema.get('properties') %}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {{ tool.parameters_schema | tojson }}
       {% endif %}
       responses:
         "200":

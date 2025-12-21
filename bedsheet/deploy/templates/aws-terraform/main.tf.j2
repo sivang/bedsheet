@@ -91,7 +91,7 @@ resource "aws_iam_role_policy" "agent_permissions" {
   })
 }
 
-{% if agent.tools %}
+{% if agent.tools or (agent.is_supervisor and agent.collaborators and aws.enable_delegate_for_supervisors) %}
 # ============================================
 # Lambda Function for Action Groups
 # ============================================
@@ -136,7 +136,12 @@ resource "aws_iam_role_policy" "lambda_bedrock" {
         Effect   = "Allow"
         Action   = ["bedrock:InvokeModel"]
         Resource = "*"
-      }
+      }{% if agent.is_supervisor and agent.collaborators and aws.enable_delegate_for_supervisors %},
+      {
+        Effect   = "Allow"
+        Action   = ["bedrock-agent-runtime:InvokeAgent"]
+        Resource = "*"
+      }{% endif %}
     ]
   })
 }
@@ -157,6 +162,17 @@ resource "aws_lambda_function" "action_lambda" {
   runtime         = "python3.11"
   memory_size     = {{ aws.lambda_memory or 512 }}
   timeout         = 30
+
+{% if agent.is_supervisor and agent.collaborators and aws.enable_delegate_for_supervisors %}
+  environment {
+    variables = {
+{% for collaborator in agent.collaborators %}
+      COLLABORATOR_{{ collaborator.name | upper }}_AGENT_ID  = aws_bedrockagent_agent.{{ collaborator.name | lower }}.agent_id
+      COLLABORATOR_{{ collaborator.name | upper }}_ALIAS_ID  = aws_bedrockagent_agent_alias.{{ collaborator.name | lower }}.agent_alias_id
+{% endfor %}
+    }
+  }
+{% endif %}
 
   tags = {
     ManagedBy       = "Bedsheet"
@@ -218,12 +234,18 @@ resource "aws_bedrockagent_agent" "supervisor" {
 {{ agent.instruction }}
   EOT
 
-  # Enable multi-agent collaboration
+{% if not aws.enable_delegate_for_supervisors %}
+  # Enable native multi-agent collaboration
   agent_collaboration = "SUPERVISOR"
 
   # Don't prepare supervisor until collaborators are attached
   # Collaborators will trigger preparation when they're added
   prepare_agent = false
+{% else %}
+  # Using delegate action instead of native collaboration
+  # Prepare agent immediately since there are no collaborator connections
+  prepare_agent = false  # Will be prepared by action group
+{% endif %}
 
   tags = {
     ManagedBy       = "Bedsheet"
@@ -254,7 +276,8 @@ resource "aws_bedrockagent_agent_action_group" "supervisor_actions" {
 }
 {% endif %}
 
-# Collaborators for supervisor (separate resources)
+# Native Bedrock collaborator connections (only when delegate is disabled)
+{% if not aws.enable_delegate_for_supervisors %}
 {% for collaborator in agent.collaborators %}
 resource "aws_bedrockagent_agent_collaborator" "{{ collaborator.name | lower }}" {
   agent_id                  = aws_bedrockagent_agent.supervisor.agent_id
@@ -273,6 +296,7 @@ resource "aws_bedrockagent_agent_collaborator" "{{ collaborator.name | lower }}"
 }
 
 {% endfor %}
+{% endif %}
 
 resource "aws_bedrockagent_agent_alias" "supervisor" {
   agent_alias_name = "live"
