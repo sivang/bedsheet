@@ -213,8 +213,8 @@ async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_singl
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
         # Check we got all expected files
-        # Common: 5, Stacks: 2, Lambda: 3, Schemas: 1 = 11 total
-        assert len(files) == 13
+        # Common: 5, Stacks: 2, Lambda: 3, Schemas: 1, Debug UI: 2, GitHub: 2 = 14 total
+        assert len(files) == 14
 
         file_names = [f.path.name for f in files]
         assert "pyproject.toml" in file_names
@@ -362,8 +362,8 @@ async def test_aws_target_generate_lambda_requirements_txt_content(
         )
         content = lambda_req_file.content
 
-        # Check for expected Lambda dependencies
-        assert "aws-lambda-powertools" in content or "boto3" in content
+        # Lambda uses only Python standard library - no external dependencies needed
+        assert "No external dependencies" in content or "Lambda dependencies" in content
 
 
 @pytest.mark.asyncio
@@ -425,8 +425,8 @@ async def test_aws_target_generate_with_default_config(mock_single_agent_metadat
         output_dir = Path(tmpdir)
         files = target.generate(config, mock_single_agent_metadata, output_dir)
 
-        # Should still generate all files with defaults
-        assert len(files) == 13
+        # Should still generate all files with defaults (includes debug-ui)
+        assert len(files) == 14
 
         # Check that default Bedrock model is used
         stack_file = next(f for f in files if f.path.name == "agent_stack.py")

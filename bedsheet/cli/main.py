@@ -6,14 +6,12 @@ agent deployments. Use `bedsheet --help` to see available commands.
 import importlib
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import typer
-import yaml
 from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 
 from bedsheet.deploy.config import (
     BedsheetConfig,
@@ -24,7 +22,7 @@ from bedsheet.deploy.config import (
     load_config,
     save_config,
 )
-from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata, extract_agent_metadata
+from bedsheet.deploy.introspect import AgentMetadata, extract_agent_metadata
 from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, AWSTerraformTarget, DeploymentTarget
 
 # Initialize Typer app
@@ -174,7 +172,7 @@ def _load_and_introspect_agent(
             )
 
         # Introspect the agent
-        console.print(f"  [dim]Introspecting agent...[/dim]")
+        console.print("  [dim]Introspecting agent...[/dim]")
         metadata = extract_agent_metadata(agent_instance)
         return metadata, None
 
@@ -313,7 +311,7 @@ dependencies = [
     (project_dir / "pyproject.toml").write_text(pyproject)
 
     # Create target configurations
-    targets = {}
+    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig] = {}
 
     if target == "local":
         targets["local"] = LocalTargetConfig(port=8000, hot_reload=True)
@@ -447,11 +445,11 @@ def deploy(
 
     # Deployment logic (skeleton)
     if config.target == "local":
-        _deploy_local(config, target_config, dry_run)
+        _deploy_local(config, cast(LocalTargetConfig, target_config), dry_run)
     elif config.target == "gcp":
-        _deploy_gcp(config, target_config, dry_run)
+        _deploy_gcp(config, cast(GCPTargetConfig, target_config), dry_run)
     elif config.target == "aws":
-        _deploy_aws(config, target_config, dry_run)
+        _deploy_aws(config, cast(AWSTargetConfig, target_config), dry_run)
 
 
 def _deploy_local(config: BedsheetConfig, target_config: LocalTargetConfig, dry_run: bool):
@@ -598,7 +596,7 @@ def validate(
             console.print()
 
     except Exception as e:
-        rprint(f"[bold red]✗[/bold red] Configuration validation failed:")
+        rprint("[bold red]✗[/bold red] Configuration validation failed:")
         rprint(f"  {e}")
         raise typer.Exit(1)
 
@@ -675,7 +673,7 @@ def generate(
     # Validate configuration for this target
     validation_errors = target_generator.validate(config)
     if validation_errors:
-        rprint(f"[bold red]Error:[/bold red] Configuration validation failed:")
+        rprint("[bold red]Error:[/bold red] Configuration validation failed:")
         for error in validation_errors:
             rprint(f"  - {error}")
         raise typer.Exit(1)
@@ -696,11 +694,11 @@ def generate(
 
     # Try to introspect the actual agent
     console.print("[bold]Introspecting agent...[/bold]")
-    agent_metadata, error = _load_and_introspect_agent(agent_config, console)
+    introspected_metadata, introspection_error = _load_and_introspect_agent(agent_config, console)
 
-    if error:
+    if introspection_error or introspected_metadata is None:
         # Introspection failed - fall back to config-based metadata with warning
-        console.print(f"[bold yellow]Warning:[/bold yellow] {error}")
+        console.print(f"[bold yellow]Warning:[/bold yellow] {introspection_error}")
         console.print("[dim]Falling back to config-based metadata (tools will be empty)[/dim]")
         console.print()
 
@@ -712,6 +710,7 @@ def generate(
             is_supervisor=False,
         )
     else:
+        agent_metadata = introspected_metadata
         # Show what we found
         tool_count = len(agent_metadata.tools)
         collab_count = len(agent_metadata.collaborators)

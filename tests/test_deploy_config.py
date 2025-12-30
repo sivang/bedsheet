@@ -5,7 +5,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import yaml
 from pydantic import ValidationError
 
 from bedsheet.deploy import (
@@ -74,7 +73,7 @@ def test_gcp_target_config():
 
     # Test defaults
     config = GCPTargetConfig(project="test-project")
-    assert config.region == "us-central1"
+    assert config.region == "europe-west1"
     assert config.cloud_run_memory == "512Mi"
     assert config.style == GCPDeploymentStyle.CLOUD_RUN
 

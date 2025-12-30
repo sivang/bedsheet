@@ -4,7 +4,7 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from bedsheet.deploy.config import BedsheetConfig, AWSTargetConfig
-from bedsheet.deploy.introspect import AgentMetadata, ToolMetadata
+from bedsheet.deploy.introspect import AgentMetadata
 from .base import DeploymentTarget, GeneratedFile
 
 
