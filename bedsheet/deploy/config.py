@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -149,11 +149,11 @@ class BedsheetConfig(BaseModel):
         """Validate that target configs match their keys."""
         for key, config in self.targets.items():
             if key == "local" and not isinstance(config, LocalTargetConfig):
-                raise ValueError(f"Target 'local' must use LocalTargetConfig")
+                raise ValueError("Target 'local' must use LocalTargetConfig")
             elif key == "aws" and not isinstance(config, AWSTargetConfig):
-                raise ValueError(f"Target 'aws' must use AWSTargetConfig")
+                raise ValueError("Target 'aws' must use AWSTargetConfig")
             elif key == "gcp" and not isinstance(config, GCPTargetConfig):
-                raise ValueError(f"Target 'gcp' must use GCPTargetConfig")
+                raise ValueError("Target 'gcp' must use GCPTargetConfig")
         return self
 
     def get_active_target_config(
@@ -236,7 +236,7 @@ def load_config(path: str | Path) -> BedsheetConfig:
 
     # Parse targets with proper type discrimination
     if "targets" in interpolated_data:
-        targets = {}
+        targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig] = {}
         for key, config in interpolated_data["targets"].items():
             if key == "local":
                 targets[key] = LocalTargetConfig(**config)

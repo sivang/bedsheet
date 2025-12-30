@@ -1,6 +1,6 @@
 """Agent introspection module for extracting metadata from agents."""
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from bedsheet.agent import Agent
 from bedsheet.supervisor import Supervisor
@@ -54,7 +54,7 @@ def extract_agent_metadata(agent: Agent) -> AgentMetadata:
     collaborators: list[AgentMetadata] = []
     if is_supervisor:
         # Supervisor stores collaborators in a dict {name: agent}
-        supervisor = agent  # type: Supervisor
+        supervisor = cast(Supervisor, agent)
         for collaborator_agent in supervisor.collaborators.values():
             # Recursively extract metadata from each collaborator
             collaborator_metadata = extract_agent_metadata(collaborator_agent)

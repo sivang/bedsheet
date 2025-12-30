@@ -2,7 +2,7 @@
 import pytest
 
 from bedsheet import Agent, ActionGroup, Supervisor
-from bedsheet.deploy import extract_agent_metadata, AgentMetadata, ToolMetadata
+from bedsheet.deploy import extract_agent_metadata, AgentMetadata
 from bedsheet.testing import MockLLMClient, MockResponse
 
 
