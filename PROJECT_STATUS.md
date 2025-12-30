@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0rc4 🧪 Testing on PyPI
 
-**Last Session:** 2025-12-18 (Evening)
+**Last Session:** 2025-12-31 (Evening)
 
 ### Release Status
 
@@ -18,7 +18,7 @@
 | Source Code | ✅ Complete |
 | Test Suite | ✅ 179 tests passing |
 | README.md | ✅ Comprehensive with examples |
-| CHANGELOG.md | ✅ v0.1.0, v0.2.0, and v0.3.0 documented |
+| CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
 | LICENSE | ✅ Apache 2.0 (Sivan Grünberg, Vitakka Consulting) |
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
@@ -26,6 +26,50 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2025-12-31 Evening)
+
+### What Was Done
+
+1. **AWS Terraform Thinking Events - COMPLETE!**
+   - Solved thinking/rationale extraction for AWS Bedrock Debug UI
+   - Option A prompt injection extracts XML `<thinking>` tags from model responses
+   - Backported to Bedsheet templates: `aws-terraform/debug-ui/server.py.j2`
+   - Fixed duplicate thinking events in UI (deduplication logic)
+   - Fixed `<answer>` tag content appearing in thinking panel
+
+2. **AWS Terraform Target - COMPLETE!**
+   - Added `aws-terraform` target to CLI (`bedsheet/deploy/targets/aws_terraform.py`)
+   - Updated CLI main.py to support aws-terraform in generate and deploy commands
+   - Updated config.py to include aws-terraform in TargetType enum
+   - Full E2E tested with wisdom-council multi-agent deployment
+
+3. **Documentation Review - COMPLETE!**
+   - Added comprehensive v0.4.0 entry to CHANGELOG.md
+   - Reviewed README.md roadmap (already accurate)
+   - Updated PROJECT_STATUS.md with session summaries
+   - All documentation now reflects v0.4 features
+
+### Files Modified
+
+**Python Code:**
+- `bedsheet/cli/main.py` - Added aws-terraform target
+- `bedsheet/deploy/config.py` - Added aws-terraform to TargetType enum
+
+**Templates:**
+- `bedsheet/deploy/templates/aws-terraform/debug-ui/server.py.j2` - Thinking extraction
+
+**Documentation:**
+- `CHANGELOG.md` - Added v0.4.0 section
+- `PROJECT_STATUS.md` - Updated session history
+
+### Next Steps (For v0.4.0 GA)
+
+1. **GCP Cloud Run E2E Test** - Still pending
+2. **Final testing across all targets**
+3. **Release v0.4.0 to PyPI**
 
 ---
 
