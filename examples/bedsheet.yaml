@@ -1,0 +1,50 @@
+# Bedsheet Agent Deployment Configuration
+# This file defines how your agents are deployed across different targets
+
+version: "1.0"
+
+# Project name
+name: customer-support-system
+
+# Agent definitions
+agents:
+  - name: calculator
+    module: examples.calculator_agent
+    class_name: CalculatorAgent
+    description: Performs mathematical calculations
+
+  - name: weather
+    module: examples.weather_agent
+    class_name: WeatherAgent
+    description: Provides weather information
+
+# Active deployment target (local, aws, or gcp)
+target: local
+
+# Target-specific configurations
+targets:
+  # Local development
+  local:
+    port: 8000
+    hot_reload: true
+
+  # AWS deployment
+  aws:
+    region: us-east-1
+    lambda_memory: 512
+    bedrock_model: anthropic.claude-sonnet-4-5-v2:0
+    style: serverless  # Options: bedrock_native, serverless, containers
+
+  # GCP deployment
+  gcp:
+    project: ${GCP_PROJECT_ID:-my-gcp-project}
+    region: us-central1
+    cloud_run_memory: 512Mi
+    model: claude-sonnet-4-5@20250929
+    style: cloud_run  # Options: agent_engine, cloud_run, cloud_functions
+
+# Optional enhancements
+enhancements:
+  trace: false    # Enable distributed tracing
+  metrics: false  # Enable metrics collection
+  auth: false     # Enable authentication

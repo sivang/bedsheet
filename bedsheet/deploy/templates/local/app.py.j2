@@ -1,0 +1,110 @@
+"""FastAPI wrapper for {{ config.name }}."""
+import json
+import os
+import uuid
+from dataclasses import asdict
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from bedsheet.events import TextTokenEvent, CompletionEvent, CollaboratorEvent
+
+# Import the agent from the scaffolded project
+from agents.assistant import assistant as agent
+
+app = FastAPI(title="{{ config.name }}")
+
+# Serve Debug UI if enabled and static files exist
+DEBUG_UI_ENABLED = os.environ.get("BEDSHEET_DEBUG_UI", "true").lower() == "true"
+STATIC_DIR = Path(__file__).parent / "static"
+
+if DEBUG_UI_ENABLED and STATIC_DIR.exists():
+    # Mount static assets (JS, CSS)
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+
+class InvokeRequest(BaseModel):
+    """Request model for agent invocation."""
+    message: str
+    session_id: str | None = None
+
+
+class InvokeResponse(BaseModel):
+    """Response model for agent invocation."""
+    response: str
+    session_id: str
+
+
+@app.get("/")
+async def root():
+    """Serve Debug UI or health check."""
+    if DEBUG_UI_ENABLED and STATIC_DIR.exists():
+        return FileResponse(STATIC_DIR / "index.html")
+    return {"status": "ok", "agent": agent.name}
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok", "agent": agent.name, "debug_ui": DEBUG_UI_ENABLED}
+
+
+def serialize_event(event) -> str:
+    """Serialize an event to JSON, handling nested CollaboratorEvents."""
+    data = asdict(event)
+    # CollaboratorEvent has inner_event which is also a dataclass
+    if isinstance(event, CollaboratorEvent):
+        data["inner_event"] = asdict(event.inner_event)
+    return json.dumps(data)
+
+
+@app.post("/invoke")
+async def invoke(request: InvokeRequest) -> InvokeResponse:
+    """Invoke the agent with a message."""
+    session_id = request.session_id or str(uuid.uuid4())
+    response_text = ""
+    async for event in agent.invoke(session_id, request.message):
+        if isinstance(event, TextTokenEvent):
+            response_text += event.token
+        elif isinstance(event, CompletionEvent):
+            response_text = event.response
+    return InvokeResponse(response=response_text, session_id=session_id)
+
+
+@app.post("/invoke/stream")
+async def invoke_stream(request: InvokeRequest):
+    """Stream agent events as Server-Sent Events (SSE)."""
+    session_id = request.session_id or str(uuid.uuid4())
+
+    async def event_generator():
+        # Send session_id as first event
+        yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
+
+        async for event in agent.invoke(session_id, request.message):
+            # For CollaboratorEvent, emit wrapper then inner event separately
+            if isinstance(event, CollaboratorEvent):
+                # Emit wrapper (without inner_event serialized)
+                wrapper_data = {
+                    "type": event.type,
+                    "agent_name": event.agent_name,
+                }
+                yield f"data: {json.dumps(wrapper_data)}\n\n"
+                # Emit inner event
+                yield f"data: {serialize_event(event.inner_event)}\n\n"
+            else:
+                yield f"data: {serialize_event(event)}\n\n"
+
+        # Signal end of stream
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )

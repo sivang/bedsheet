@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/tests-99%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-180%20passing-brightgreen.svg" alt="Tests">
 </p>
 
 **Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside.
@@ -368,6 +368,7 @@ Total: ~1,000 lines. Coffee break reading.
 
 - **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
 - **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
+- **[Deployment Guide](https://sivang.github.io/bedsheet/deployment-guide.html)** — Local, GCP, and AWS deployment
 - **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.md)** — Supervisor deep dive
 
 ---
@@ -376,10 +377,11 @@ Total: ~1,000 lines. Coffee break reading.
 
 - [x] v0.1 — Single agents, tools, streaming
 - [x] v0.2 — Multi-agent, parallel delegation
-- [x] v0.3 — Structured outputs ← *you are here*
-- [ ] v0.4 — Knowledge bases, RAG
-- [ ] v0.5 — Guardrails, safety
-- [ ] v0.6 — MCP integration
+- [x] v0.3 — Structured outputs
+- [x] v0.4 — Deploy anywhere (Local/GCP/AWS), Debug UI ← *you are here*
+- [ ] v0.5 — Knowledge bases, RAG
+- [ ] v0.6 — Guardrails, safety
+- [ ] v0.7 — GCP Agent Engine, A2A protocol
 
 ---
 
@@ -389,7 +391,7 @@ Total: ~1,000 lines. Coffee break reading.
 git clone https://github.com/sivang/bedsheet.git
 cd bedsheet
 pip install -e ".[dev]"
-pytest -v  # 99 tests, all green
+pytest -v  # 180 tests, all green
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -399,7 +401,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## FAQ
 
 **Production ready?**
-Yes. 99 tests, type hints, async-first, Redis support. We use it.
+Yes. 180 tests, type hints, async-first, Redis support. We use it.
 
 **Only Claude?**
 For now. `LLMClient` is a protocol—implement it for OpenAI/Gemini/local. PRs welcome.

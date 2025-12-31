@@ -1,0 +1,1 @@
+"""GCP/ADK deployment templates."""

@@ -6,10 +6,11 @@
 
 ## Quick Facts
 
-- **Version:** 0.2 (Multi-Agent)
-- **Tests:** 99 passing (`pytest -v`)
+- **Version:** 0.3.0 (Released on PyPI), v0.4.0 in development
+- **Tests:** 179 passing (`pytest -v`)
 - **Demo:** `python -m bedsheet` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
 - **Default Model:** `claude-sonnet-4-5-20250929`
+- **v0.4 Branch:** `development/v0.4-deploy-anywhere`
 
 ## Key Features
 
@@ -18,6 +19,9 @@
 3. **Parallel Delegation** - Run multiple agents simultaneously
 4. **Event Streaming** - Full visibility: ToolCallEvent, TextTokenEvent, CompletionEvent, etc.
 5. **Token Streaming** - `stream=True` for word-by-word LLM output
+6. **Structured Outputs** - Pydantic-based output schemas with Anthropic beta integration
+7. **CLI (v0.4)** - `bedsheet init`, `generate`, `validate`, `deploy` commands
+8. **Multi-Target Deployment (v0.4)** - Local (Docker), GCP (Terraform), AWS (CDK)
 
 ## Architecture
 
@@ -36,7 +40,18 @@ bedsheet/
 │   ├── base.py        # Memory protocol
 │   ├── in_memory.py   # Dict-based (dev)
 │   └── redis.py       # Redis-based (prod)
-└── testing.py         # MockLLMClient for tests
+├── testing.py         # MockLLMClient for tests
+├── cli/               # NEW in v0.4
+│   └── main.py        # Typer CLI (init, generate, validate, deploy)
+└── deploy/            # NEW in v0.4
+    ├── config.py      # bedsheet.yaml Pydantic schema
+    ├── introspect.py  # Agent metadata extraction
+    ├── targets/       # Deployment generators
+    │   ├── base.py    # DeploymentTarget protocol
+    │   ├── local.py   # Docker/FastAPI
+    │   ├── gcp.py     # ADK/Terraform
+    │   └── aws.py     # CDK/Bedrock
+    └── templates/     # Jinja2 templates (local/, gcp/, aws/)
 ```
 
 ## Documentation
@@ -57,6 +72,12 @@ pytest -v
 # Run demo (requires API key)
 export ANTHROPIC_API_KEY=your-key
 python -m bedsheet
+
+# CLI commands (v0.4)
+bedsheet init my-agent             # Create new agent project
+bedsheet generate --target aws     # Generate deployment artifacts
+bedsheet validate                  # Validate bedsheet.yaml
+bedsheet deploy --target gcp       # Deploy to target
 
 # Open documentation
 open docs/user-guide.html

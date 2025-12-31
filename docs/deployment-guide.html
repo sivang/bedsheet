@@ -1,0 +1,3079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Deployment Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/hcl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .sidebar-header .version {
+            display: inline-block;
+            background: var(--accent-purple);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-link .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            color: var(--text-muted);
+        }
+
+        .nav-link:hover .step {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            max-width: 1000px;
+            padding: 48px 64px;
+        }
+
+        /* Hero */
+        .hero {
+            margin-bottom: 48px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .hero .lead {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .hero .badge-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-purple { background: #f3e8ff; color: #6b21a8; }
+        .badge-orange { background: #ffedd5; color: #9a3412; }
+
+        /* Typography */
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-top: 64px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2 .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--accent-blue);
+            color: white;
+            border-radius: 50%;
+            font-size: 18px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Code */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 16px 0 24px 0;
+            font-size: 14px;
+            white-space: pre;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        p code, li code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-purple);
+        }
+
+        /* Info boxes */
+        .info-box {
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.tip {
+            background: #f0fdf4;
+            border-color: var(--accent-green);
+        }
+
+        .info-box.note {
+            background: #eff6ff;
+            border-color: var(--accent-blue);
+        }
+
+        .info-box.warning {
+            background: #fefce8;
+            border-color: var(--accent-orange);
+        }
+
+        .info-box.important {
+            background: #fef2f2;
+            border-color: var(--accent-red);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .important .info-box-title { color: var(--accent-red); }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Output blocks */
+        .output {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .output .comment {
+            color: #6b7280;
+        }
+
+        .output .success {
+            color: #34d399;
+        }
+
+        .output .warning {
+            color: #fbbf24;
+        }
+
+        /* What's happening boxes */
+        .whats-happening {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .whats-happening h4 {
+            margin-top: 0;
+            color: var(--accent-purple);
+        }
+
+        .whats-happening ol, .whats-happening ul {
+            margin-left: 24px;
+            margin-bottom: 0;
+        }
+
+        .whats-happening li {
+            margin-bottom: 8px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Comparison grid */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .comparison-item h4 {
+            margin-top: 0;
+        }
+
+        .comparison-item.good h4 { color: var(--accent-green); }
+        .comparison-item.bad h4 { color: var(--accent-red); }
+
+        /* Three column grid */
+        .target-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .target-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid var(--border-color);
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .target-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .target-card h4 {
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .target-card .subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .target-card ul {
+            margin: 0;
+            list-style: none;
+            padding: 0;
+        }
+
+        .target-card li {
+            padding: 4px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .target-card li::before {
+            content: "✓";
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Mermaid diagrams */
+        .mermaid {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* File tree */
+        .file-tree {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            margin: 16px 0;
+        }
+
+        .file-tree .folder {
+            color: var(--accent-blue);
+        }
+
+        .file-tree .file {
+            color: var(--text-secondary);
+        }
+
+        .file-tree .comment {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: -1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .tab.active {
+            background: var(--bg-primary);
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            border-bottom: 1px solid var(--bg-primary);
+        }
+
+        .tab-content {
+            border: 1px solid var(--border-color);
+            border-radius: 0 8px 8px 8px;
+            padding: 20px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .target-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 24px;
+            }
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Bedsheet Agents</h1>
+            <div class="subtitle">Deployment Guide</div>
+            <span class="version">v0.4</span>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Overview</div>
+            <a href="#introduction" class="nav-link" style="font-style: italic;">Build Once, Deploy Anywhere</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Getting Started</div>
+            <a href="#installation" class="nav-link"><span class="step">1</span>Installation</a>
+            <a href="#quick-start" class="nav-link"><span class="step">2</span>Quick Start</a>
+            <a href="#configuration" class="nav-link"><span class="step">3</span>Configuration</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Deployment Targets</div>
+            <a href="#local-target" class="nav-link"><span class="step">4</span>Local (Docker)</a>
+            <a href="#gcp-target" class="nav-link"><span class="step">5</span>GCP (Terraform)</a>
+            <a href="#aws-target" class="nav-link"><span class="step">6</span>AWS (CDK)</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Production</div>
+            <a href="#multi-environment" class="nav-link"><span class="step">7</span>Multi-Environment</a>
+            <a href="#cicd" class="nav-link"><span class="step">8</span>GitHub Actions CI/CD</a>
+            <a href="#introspection" class="nav-link"><span class="step">9</span>Agent Introspection</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Tutorial</div>
+            <a href="#tutorial" class="nav-link" style="font-weight: 500; color: var(--accent-purple);">End-to-End Example</a>
+            <a href="#tutorial-agent" class="nav-link"><span class="step">A</span>Build the Agent</a>
+            <a href="#tutorial-local" class="nav-link"><span class="step">B</span>Test Locally</a>
+            <a href="#tutorial-gcp" class="nav-link"><span class="step">C</span>Deploy to GCP</a>
+            <a href="#tutorial-aws" class="nav-link"><span class="step">D</span>Deploy to AWS</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Reference</div>
+            <a href="#best-practices" class="nav-link"><span class="step">10</span>Best Practices</a>
+            <a href="#generated-files" class="nav-link">Generated Files</a>
+            <a href="user-guide.html" class="nav-link">User Guide</a>
+        </div>
+
+        <div class="nav-section" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+                <div>&copy; 2025-2026</div>
+                <div><strong style="color: var(--text-secondary);">Sivan Grünberg</strong></div>
+                <div><a href="https://vitakka.co/" style="color: var(--accent-blue); text-decoration: none;">Vitakka Consulting</a></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="hero">
+            <h1>Build Once, Deploy Anywhere</h1>
+            <p class="lead">Define agents in Python. Deploy to any cloud with a single command.</p>
+            <div class="badge-row">
+                <span class="badge badge-blue">3 Targets</span>
+                <span class="badge badge-green">Multi-Environment</span>
+                <span class="badge badge-purple">CI/CD Ready</span>
+                <span class="badge badge-orange">v0.4</span>
+            </div>
+        </div>
+
+        <!-- Introduction -->
+        <section id="introduction" style="margin-bottom: 48px;">
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 28px; border-left: 5px solid #0969da;">
+                <h3 style="margin-top: 0; color: #1e40af; font-size: 20px;">The Problem with Cloud Agent Platforms</h3>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    Every cloud has its own way of defining agents. AWS Bedrock wants you clicking through a web console.
+                    Google's Agent Development Kit (ADK) requires specific Python patterns. Each platform locks you in.
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+                    <strong>Bedsheet's solution:</strong> Define your agents once in standard Python using Bedsheet's API.
+                    Then run <code style="background: rgba(255,255,255,0.5); padding: 2px 6px; border-radius: 4px;">bedsheet generate</code>
+                    to compile them into cloud-native artifacts for your chosen target.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px;">
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🐳</div>
+                        <div style="font-weight: 600; color: #1e40af;">Local</div>
+                        <div style="font-size: 13px; color: #3b82f6;">Docker + FastAPI</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">☁️</div>
+                        <div style="font-weight: 600; color: #1e40af;">GCP</div>
+                        <div style="font-size: 13px; color: #3b82f6;">Terraform + ADK</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🔶</div>
+                        <div style="font-weight: 600; color: #1e40af;">AWS</div>
+                        <div style="font-size: 13px; color: #3b82f6;">CDK + Bedrock</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: Installation -->
+        <section id="installation">
+            <h2><span class="step-number">1</span>Installation</h2>
+
+            <h3>Install Bedsheet with CLI</h3>
+            <pre><code class="language-bash"># Using uv (recommended)
+uv add bedsheet-agents --prerelease allow
+
+# Or with pip
+pip install bedsheet-agents</code></pre>
+
+            <h3>Verify CLI Installation</h3>
+            <pre><code class="language-bash">bedsheet --help</code></pre>
+
+            <div class="output">
+<span class="success">Usage: bedsheet [OPTIONS] COMMAND [ARGS]...</span>
+
+Bedsheet CLI - Build Once, Deploy Anywhere
+
+<span class="comment">Commands:</span>
+  init      Initialize a new Bedsheet project
+  generate  Generate deployment artifacts
+  validate  Validate bedsheet.yaml configuration
+  deploy    Deploy to target platform
+  version   Show version information
+            </div>
+
+            <h3>Target-Specific Prerequisites</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Target</th>
+                        <th>Prerequisites</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Local</strong></td>
+                        <td>Docker, Docker Compose</td>
+                    </tr>
+                    <tr>
+                        <td><strong>GCP</strong></td>
+                        <td>Terraform, gcloud CLI, GCP project</td>
+                    </tr>
+                    <tr>
+                        <td><strong>AWS</strong></td>
+                        <td>AWS CDK, AWS CLI, AWS account</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Section 2: Quick Start -->
+        <section id="quick-start">
+            <h2><span class="step-number">2</span>Quick Start</h2>
+
+            <p>Let's deploy an agent in under 5 minutes:</p>
+
+            <h3>Step 1: Initialize a Project</h3>
+            <pre><code class="language-bash">bedsheet init my-agent
+cd my-agent</code></pre>
+
+            <div class="output">
+<span class="success">Created project: my-agent</span>
+<span class="comment">├── bedsheet.yaml      # Configuration</span>
+<span class="comment">├── pyproject.toml     # Dependencies</span>
+<span class="comment">└── agents/            # Your agent code</span>
+<span class="comment">    └── assistant.py   # Example agent</span>
+            </div>
+
+            <h3>Step 2: Install Dependencies &amp; Generate</h3>
+            <pre><code class="language-bash"># Install dependencies (using uv - recommended)
+uv sync --prerelease allow
+
+# Or with pip
+pip install -e .
+
+# Generate deployment artifacts
+uv run bedsheet generate --target local</code></pre>
+
+            <div class="output">
+<span class="success">Generated 6 files in deploy/local/</span>
+<span class="comment">├── Dockerfile</span>
+<span class="comment">├── docker-compose.yaml</span>
+<span class="comment">├── app.py</span>
+<span class="comment">├── Makefile</span>
+<span class="comment">├── pyproject.toml</span>
+<span class="comment">└── .env.example</span>
+            </div>
+
+            <h3>Step 3: Build &amp; Run Locally</h3>
+            <pre><code class="language-bash">cd deploy/local
+cp .env.example .env   # Add your ANTHROPIC_API_KEY
+make build
+make run</code></pre>
+
+            <div class="output">
+<span class="success">Starting my-agent...</span>
+Agent running at http://localhost:8000
+<span class="comment">Press Ctrl+C to stop</span>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">That's it!</div>
+                <p>Your agent is now running locally in Docker. To deploy to the cloud, just change the target: <code>bedsheet generate --target gcp</code> or <code>--target aws</code>.</p>
+            </div>
+        </section>
+
+        <!-- Section 3: Configuration -->
+        <section id="configuration">
+            <h2><span class="step-number">3</span>Configuration</h2>
+
+            <p>All deployment settings live in <code>bedsheet.yaml</code>:</p>
+
+            <pre><code class="language-yaml"># bedsheet.yaml - Your deployment configuration
+name: investment-advisor
+
+# Define your agents
+agents:
+  - name: advisor
+    module: agents.advisor        # Python module path
+    class_name: InvestmentAdvisor # Class name
+    description: Provides investment recommendations
+
+# Active deployment target
+target: local
+
+# Target-specific configuration
+targets:
+  local:
+    port: 8080
+    hot_reload: true
+
+  gcp:
+    project: my-gcp-project
+    region: us-central1
+    model: gemini-2.5-flash
+    # Or use Claude via Vertex AI:
+    # model: claude-sonnet-4-5@20250929
+
+  aws:
+    region: us-east-1
+    lambda_memory: 512
+    bedrock_model: anthropic.claude-sonnet-4-5-v2:0
+    style: serverless  # or "bedrock_native", "containers"
+
+# Multi-environment settings
+environments:
+  - dev
+  - staging
+  - prod</code></pre>
+
+            <h3>Configuration Reference</h3>
+
+            <h4>Agent Configuration</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>name</code></td>
+                        <td>Yes</td>
+                        <td>Agent identifier (used in URLs and resource names)</td>
+                    </tr>
+                    <tr>
+                        <td><code>module</code></td>
+                        <td>Yes</td>
+                        <td>Python module path (e.g., <code>myapp.agents.advisor</code>)</td>
+                    </tr>
+                    <tr>
+                        <td><code>class_name</code></td>
+                        <td>Yes</td>
+                        <td>Agent class name to instantiate</td>
+                    </tr>
+                    <tr>
+                        <td><code>description</code></td>
+                        <td>No</td>
+                        <td>Human-readable description</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>GCP Target Configuration</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>project</code></td>
+                        <td>-</td>
+                        <td>GCP project ID (required)</td>
+                    </tr>
+                    <tr>
+                        <td><code>region</code></td>
+                        <td><code>us-central1</code></td>
+                        <td>GCP region for Cloud Run</td>
+                    </tr>
+                    <tr>
+                        <td><code>model</code></td>
+                        <td><code>claude-sonnet-4-5@20250929</code></td>
+                        <td>Model via Vertex AI</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>AWS Target Configuration</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>region</code></td>
+                        <td><code>us-east-1</code></td>
+                        <td>AWS region</td>
+                    </tr>
+                    <tr>
+                        <td><code>lambda_memory</code></td>
+                        <td><code>256</code></td>
+                        <td>Lambda memory in MB (128-10240)</td>
+                    </tr>
+                    <tr>
+                        <td><code>bedrock_model</code></td>
+                        <td><code>anthropic.claude-sonnet-4-5-v2:0</code></td>
+                        <td>Bedrock model ID</td>
+                    </tr>
+                    <tr>
+                        <td><code>style</code></td>
+                        <td><code>serverless</code></td>
+                        <td>Deployment style</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Validating Configuration</h3>
+            <pre><code class="language-bash">bedsheet validate</code></pre>
+
+            <div class="output">
+<span class="success">✓ Configuration valid</span>
+<span class="comment">  Name: investment-advisor</span>
+<span class="comment">  Agents: 1</span>
+<span class="comment">  Active target: local</span>
+            </div>
+        </section>
+
+        <!-- Section 4: Local Target -->
+        <section id="local-target">
+            <h2><span class="step-number">4</span>Local Target (Docker)</h2>
+
+            <p>The local target generates a Docker-based development environment with FastAPI.</p>
+
+            <h3>Generate Local Artifacts</h3>
+            <pre><code class="language-bash">bedsheet generate --target local</code></pre>
+
+            <h3>Generated Files</h3>
+            <div class="file-tree">
+<span class="folder">deploy/local/</span>
+├── <span class="file">docker-compose.yaml</span>    <span class="comment"># Container orchestration</span>
+├── <span class="file">Dockerfile</span>              <span class="comment"># Multi-stage build (Node + Python)</span>
+├── <span class="file">app.py</span>                  <span class="comment"># FastAPI wrapper with SSE streaming</span>
+├── <span class="file">pyproject.toml</span>          <span class="comment"># Dependencies</span>
+├── <span class="file">Makefile</span>                <span class="comment"># Convenience commands</span>
+├── <span class="file">.env.example</span>            <span class="comment"># Environment template</span>
+└── <span class="folder">debug-ui/</span>               <span class="comment"># React Debug UI source</span>
+    ├── <span class="file">package.json</span>
+    └── <span class="folder">src/</span>                <span class="comment"># React components</span>
+            </div>
+
+            <h3>Running Locally</h3>
+            <pre><code class="language-bash"># Copy environment template
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start the agent
+make run
+
+# Or with Docker Compose directly
+docker-compose up</code></pre>
+
+            <h3>Hot Reload</h3>
+            <p>With <code>hot_reload: true</code> in your config, changes to your agent code are automatically detected:</p>
+
+            <pre><code class="language-bash"># In one terminal
+make run
+
+# In another terminal, edit your agent
+vim agents/advisor.py
+
+# Changes are automatically picked up!</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Local Development Workflow</div>
+                <p>Use the local target for development and testing. When ready for production, generate for GCP or AWS without changing any agent code.</p>
+            </div>
+
+            <h3>Debug UI</h3>
+            <p>The local target includes a <strong>built-in Debug UI</strong> for testing and debugging your agents. Access it by opening <code>http://localhost:8000</code> in your browser.</p>
+
+            <div style="background: #1e293b; border-radius: 8px; padding: 20px; margin: 16px 0;">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'%3E%3Crect fill='%230f172a' width='800' height='400'/%3E%3Crect fill='%231e293b' x='0' y='0' width='800' height='48'/%3E%3Ctext x='20' y='30' fill='%23fff' font-family='system-ui' font-size='14' font-weight='600'%3EBedsheet Debug UI%3C/text%3E%3Ccircle cx='700' cy='24' r='6' fill='%2322c55e'/%3E%3Ctext x='715' y='28' fill='%2394a3b8' font-family='system-ui' font-size='12'%3EIdle%3C/text%3E%3Crect fill='%231e293b' x='0' y='48' width='400' height='352'/%3E%3Crect fill='%230f172a' x='400' y='48' width='400' height='352'/%3E%3Ctext x='420' y='80' fill='%23fff' font-family='system-ui' font-size='14' font-weight='600'%3EEvents (12)%3C/text%3E%3Crect fill='%233b82f6' x='20' y='300' width='360' height='36' rx='8'/%3E%3Ctext x='30' y='324' fill='%23fff' font-family='system-ui' font-size='12'%3EType a message...%3C/text%3E%3C/svg%3E" alt="Debug UI Preview" style="width: 100%; border-radius: 4px;" />
+            </div>
+
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li><strong>Chat Panel (left)</strong> — Send messages and see responses with full Markdown rendering</li>
+                <li><strong>Event Stream (right)</strong> — Live view of all agent events (tool calls, delegations, completions)</li>
+                <li><strong>Session Management</strong> — Start new sessions, copy session ID for API testing</li>
+                <li><strong>Expand/Collapse Events</strong> — Click any event to see full JSON details</li>
+            </ul>
+
+            <h4>Disabling the Debug UI</h4>
+            <p>For production-like testing without the UI, set the environment variable:</p>
+            <pre><code class="language-bash"># In .env or docker-compose.yaml
+BEDSHEET_DEBUG_UI=false</code></pre>
+            <p>When disabled, the root endpoint (<code>/</code>) returns a JSON health check instead of the UI.</p>
+
+            <h3>API Endpoints</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/</code></td>
+                        <td>GET</td>
+                        <td>Debug UI (or health check if disabled)</td>
+                    </tr>
+                    <tr>
+                        <td><code>/health</code></td>
+                        <td>GET</td>
+                        <td>Health check with agent info</td>
+                    </tr>
+                    <tr>
+                        <td><code>/invoke</code></td>
+                        <td>POST</td>
+                        <td>Invoke agent (batch response)</td>
+                    </tr>
+                    <tr>
+                        <td><code>/invoke/stream</code></td>
+                        <td>POST</td>
+                        <td>Invoke agent (SSE streaming)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example: Streaming API Call</h4>
+            <pre><code class="language-bash"># Stream events via curl
+curl -X POST http://localhost:8000/invoke/stream \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "session_id": "optional-session-id"}'
+
+# Output (Server-Sent Events):
+# data: {"type": "session", "session_id": "abc-123"}
+# data: {"type": "text_token", "token": "Hello"}
+# data: {"type": "text_token", "token": "!"}
+# data: {"type": "completion", "response": "Hello! How can I help?"}
+# data: {"type": "done"}</code></pre>
+
+            <h3>Makefile Commands</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Command</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>make run</code></td>
+                        <td>Start the agent locally</td>
+                    </tr>
+                    <tr>
+                        <td><code>make build</code></td>
+                        <td>Build Docker image</td>
+                    </tr>
+                    <tr>
+                        <td><code>make test</code></td>
+                        <td>Run tests</td>
+                    </tr>
+                    <tr>
+                        <td><code>make logs</code></td>
+                        <td>View container logs</td>
+                    </tr>
+                    <tr>
+                        <td><code>make clean</code></td>
+                        <td>Remove containers and images</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Section 5: GCP Target -->
+        <section id="gcp-target">
+            <h2><span class="step-number">5</span>GCP Target (Terraform + ADK)</h2>
+
+            <p>The GCP target generates Google Agent Development Kit (ADK) compatible code with Terraform infrastructure.</p>
+
+            <div class="mermaid">
+flowchart LR
+    subgraph "Your Code"
+        Agent[Bedsheet Agent]
+    end
+
+    subgraph "Generated"
+        ADK[ADK agent.py]
+        TF[Terraform]
+        GHA[GitHub Actions]
+    end
+
+    subgraph "GCP"
+        CR[Cloud Run]
+        SM[Secret Manager]
+        IAM[IAM]
+    end
+
+    Agent --> ADK
+    Agent --> TF
+    TF --> CR
+    TF --> SM
+    TF --> IAM
+    GHA --> TF
+
+    style Agent fill:#dbeafe,stroke:#0969da
+    style ADK fill:#dcfce7,stroke:#1a7f37
+    style TF fill:#f3e8ff,stroke:#8250df
+    style CR fill:#fef3c7,stroke:#d97706
+            </div>
+
+            <h3>Generate GCP Artifacts</h3>
+            <pre><code class="language-bash">bedsheet generate --target gcp</code></pre>
+
+            <h3>Generated Files</h3>
+            <div class="file-tree">
+<span class="folder">deploy/gcp/</span>
+├── <span class="folder">agent/</span>
+│   ├── <span class="file">agent.py</span>             <span class="comment"># ADK-compatible agent</span>
+│   └── <span class="file">__init__.py</span>
+├── <span class="folder">terraform/</span>
+│   ├── <span class="file">main.tf</span>              <span class="comment"># Cloud Run, IAM, Secrets</span>
+│   ├── <span class="file">variables.tf</span>         <span class="comment"># Input variables</span>
+│   ├── <span class="file">outputs.tf</span>           <span class="comment"># Service URL, etc.</span>
+│   └── <span class="file">terraform.tfvars.example</span>
+├── <span class="file">Dockerfile</span>              <span class="comment"># Container image</span>
+├── <span class="file">cloudbuild.yaml</span>         <span class="comment"># Cloud Build config</span>
+├── <span class="file">requirements.txt</span>
+├── <span class="file">Makefile</span>
+├── <span class="file">.env.example</span>
+└── <span class="folder">.github/workflows/</span>
+    ├── <span class="file">ci.yaml</span>              <span class="comment"># Tests on PR</span>
+    └── <span class="file">deploy.yaml</span>          <span class="comment"># Deploy on push</span>
+            </div>
+
+            <h3>Deploying to GCP</h3>
+
+            <pre><code class="language-bash"># 1. Set up Terraform variables
+cd deploy/gcp/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your project details
+
+# 2. Initialize Terraform
+terraform init
+
+# 3. Plan the deployment
+terraform plan
+
+# 4. Apply (creates resources)
+terraform apply</code></pre>
+
+            <div class="output">
+<span class="success">Apply complete! Resources: 5 added, 0 changed, 0 destroyed.</span>
+
+Outputs:
+service_url = "https://my-agent-abc123-uc.a.run.app"
+            </div>
+
+            <h3>Generated ADK Agent Code</h3>
+            <p>The generator creates ADK-compatible agent.py:</p>
+
+            <pre><code class="language-python"># agent/agent.py (generated)
+from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool
+
+# Tools extracted from your Bedsheet ActionGroups
+def get_stock_price(symbol: str) -> dict:
+    """Get current stock price."""
+    # Your original tool implementation
+    ...
+
+get_stock_price_tool = FunctionTool(func=get_stock_price)
+
+# Agent definition
+root_agent = LlmAgent(
+    name="InvestmentAdvisor",
+    model="claude-sonnet-4-5@20250929",  # From bedsheet.yaml
+    instruction="""You are an investment advisor...""",  # Your instruction
+    tools=[get_stock_price_tool],
+)</code></pre>
+
+            <div class="info-box note">
+                <div class="info-box-title">ADK Orchestration</div>
+                <p>For Supervisors with collaborators, the generator uses <code>SequentialAgent</code> or <code>ParallelAgent</code> from ADK to match your Bedsheet architecture.</p>
+            </div>
+
+            <h3>Terraform Resources</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>google_cloud_run_v2_service</code></td>
+                        <td>Runs your agent container</td>
+                    </tr>
+                    <tr>
+                        <td><code>google_service_account</code></td>
+                        <td>Service identity for the agent</td>
+                    </tr>
+                    <tr>
+                        <td><code>google_secret_manager_secret</code></td>
+                        <td>Stores API keys securely</td>
+                    </tr>
+                    <tr>
+                        <td><code>google_cloud_run_v2_service_iam_member</code></td>
+                        <td>IAM bindings</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Section 6: AWS Target -->
+        <section id="aws-target">
+            <h2><span class="step-number">6</span>AWS Target (CDK + Bedrock)</h2>
+
+            <p>The AWS target generates AWS CDK infrastructure with Bedrock agent integration.</p>
+
+            <div class="mermaid">
+flowchart LR
+    subgraph "Your Code"
+        Agent[Bedsheet Agent]
+    end
+
+    subgraph "Generated"
+        CDK[AWS CDK]
+        Lambda[Lambda Handler]
+        Schema[OpenAPI Schema]
+        GHA[GitHub Actions]
+    end
+
+    subgraph "AWS"
+        BR[Bedrock Agent]
+        LF[Lambda Functions]
+        IAM[IAM Roles]
+    end
+
+    Agent --> CDK
+    Agent --> Lambda
+    Agent --> Schema
+    CDK --> BR
+    CDK --> LF
+    CDK --> IAM
+    GHA --> CDK
+
+    style Agent fill:#dbeafe,stroke:#0969da
+    style CDK fill:#dcfce7,stroke:#1a7f37
+    style Lambda fill:#f3e8ff,stroke:#8250df
+    style BR fill:#fef3c7,stroke:#d97706
+            </div>
+
+            <h3>Generate AWS Artifacts</h3>
+            <pre><code class="language-bash">bedsheet generate --target aws</code></pre>
+
+            <h3>Generated Files</h3>
+            <div class="file-tree">
+<span class="folder">deploy/aws/</span>
+├── <span class="file">app.py</span>                  <span class="comment"># CDK app entry point</span>
+├── <span class="file">cdk.json</span>                <span class="comment"># CDK configuration</span>
+├── <span class="folder">stacks/</span>
+│   ├── <span class="file">__init__.py</span>
+│   └── <span class="file">agent_stack.py</span>      <span class="comment"># Bedrock + Lambda stack</span>
+├── <span class="folder">lambda/</span>
+│   ├── <span class="file">handler.py</span>          <span class="comment"># Lambda handler (Powertools)</span>
+│   ├── <span class="file">__init__.py</span>
+│   └── <span class="file">requirements.txt</span>
+├── <span class="folder">schemas/</span>
+│   └── <span class="file">openapi.yaml</span>        <span class="comment"># Action group schema</span>
+├── <span class="file">requirements.txt</span>        <span class="comment"># CDK dependencies</span>
+├── <span class="file">Makefile</span>
+├── <span class="file">.env.example</span>
+└── <span class="folder">.github/workflows/</span>
+    ├── <span class="file">ci.yaml</span>
+    └── <span class="file">deploy.yaml</span>
+            </div>
+
+            <h3>Deploying to AWS</h3>
+            <pre><code class="language-bash"># 1. Install CDK dependencies
+cd deploy/aws
+pip install -r requirements.txt
+
+# 2. Bootstrap CDK (first time only)
+cdk bootstrap
+
+# 3. Deploy
+cdk deploy</code></pre>
+
+            <div class="output">
+<span class="success">✓ InvestmentAdvisorStack</span>
+
+Outputs:
+InvestmentAdvisorStack.AgentId = ABC123DEF
+InvestmentAdvisorStack.AgentAliasId = PROD456
+            </div>
+
+            <h3>Generated Lambda Handler</h3>
+            <p>The generator creates Lambda handlers using AWS Powertools patterns:</p>
+
+            <pre><code class="language-python"># lambda/handler.py (generated)
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+logger = Logger()
+tracer = Tracer()
+
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
+def handler(event: dict, context: LambdaContext) -> dict:
+    """Handle Bedrock agent action group invocations."""
+    action = event.get("actionGroup")
+    api_path = event.get("apiPath")
+    parameters = event.get("parameters", [])
+
+    # Route to your tool implementations
+    if api_path == "/get_stock_price":
+        symbol = next(p["value"] for p in parameters if p["name"] == "symbol")
+        result = get_stock_price(symbol)
+        return format_response(result)
+
+    return {"error": f"Unknown action: {api_path}"}</code></pre>
+
+            <h3>Generated OpenAPI Schema</h3>
+            <p>Your <code>@action</code> decorators are compiled into an OpenAPI schema for Bedrock:</p>
+
+            <pre><code class="language-yaml"># schemas/openapi.yaml (generated)
+openapi: 3.0.0
+info:
+  title: InvestmentAdvisor Actions
+  version: 1.0.0
+paths:
+  /get_stock_price:
+    post:
+      summary: Get current stock price
+      description: Fetches real-time stock price for a symbol
+      operationId: get_stock_price
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Stock ticker symbol (e.g., AAPL, GOOGL)
+      responses:
+        '200':
+          description: Stock price data
+          content:
+            application/json:
+              schema:
+                type: object</code></pre>
+
+            <h3>CDK Stack Resources</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>bedrock.CfnAgent</code></td>
+                        <td>Bedrock agent definition</td>
+                    </tr>
+                    <tr>
+                        <td><code>bedrock.CfnAgentAlias</code></td>
+                        <td>Versioned agent alias</td>
+                    </tr>
+                    <tr>
+                        <td><code>lambda.Function</code></td>
+                        <td>Action group handler</td>
+                    </tr>
+                    <tr>
+                        <td><code>iam.Role</code></td>
+                        <td>Agent and Lambda execution roles</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box tip">
+                <div class="info-box-title">AWS Deployment Styles</div>
+                <p>The <code>style</code> option controls how your agent is deployed:</p>
+                <ul style="margin-top: 8px; margin-bottom: 0;">
+                    <li><code>serverless</code> (default) - Lambda + API Gateway</li>
+                    <li><code>bedrock_native</code> - Pure Bedrock agent</li>
+                    <li><code>containers</code> - ECS Fargate</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 7: Multi-Environment -->
+        <section id="multi-environment">
+            <h2><span class="step-number">7</span>Multi-Environment Deployment</h2>
+
+            <p>Deploy the same agent to dev, staging, and production with environment-specific configurations.</p>
+
+            <div class="mermaid">
+flowchart LR
+    subgraph "Environments"
+        Dev[dev]
+        Staging[staging]
+        Prod[prod]
+    end
+
+    subgraph "GCP (Terraform Workspaces)"
+        TFDev[workspace: dev]
+        TFStaging[workspace: staging]
+        TFProd[workspace: prod]
+    end
+
+    subgraph "AWS (CDK Contexts)"
+        CDKDev[context: dev]
+        CDKStaging[context: staging]
+        CDKProd[context: prod]
+    end
+
+    Dev --> TFDev
+    Dev --> CDKDev
+    Staging --> TFStaging
+    Staging --> CDKStaging
+    Prod --> TFProd
+    Prod --> CDKProd
+
+    style Dev fill:#dcfce7,stroke:#1a7f37
+    style Staging fill:#fef3c7,stroke:#d97706
+    style Prod fill:#fee2e2,stroke:#dc2626
+            </div>
+
+            <h3>Environment Configuration</h3>
+            <pre><code class="language-yaml"># bedsheet.yaml
+name: investment-advisor
+
+environments:
+  - dev
+  - staging
+  - prod
+
+targets:
+  gcp:
+    project: my-project
+    region: us-central1
+    # Environment-specific overrides handled by Terraform workspaces
+
+  aws:
+    region: us-east-1
+    # Environment-specific overrides handled by CDK contexts</code></pre>
+
+            <h3>GCP: Terraform Workspaces</h3>
+            <pre><code class="language-bash"># Create workspaces
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new prod
+
+# Switch to dev and deploy
+terraform workspace select dev
+terraform apply -var-file=environments/dev.tfvars
+
+# Switch to prod and deploy
+terraform workspace select prod
+terraform apply -var-file=environments/prod.tfvars</code></pre>
+
+            <h4>Environment-Specific Variables</h4>
+            <pre><code class="language-hcl"># terraform/environments/dev.tfvars
+min_instances = 0
+max_instances = 2
+memory        = "512Mi"
+log_level     = "DEBUG"
+
+# terraform/environments/prod.tfvars
+min_instances = 2
+max_instances = 10
+memory        = "2Gi"
+log_level     = "INFO"</code></pre>
+
+            <h3>AWS: CDK Contexts</h3>
+            <pre><code class="language-bash"># Deploy to dev
+cdk deploy --context environment=dev
+
+# Deploy to staging
+cdk deploy --context environment=staging
+
+# Deploy to prod
+cdk deploy --context environment=prod</code></pre>
+
+            <h4>Context Configuration</h4>
+            <pre><code class="language-json"># cdk.json
+{
+  "context": {
+    "environments": {
+      "dev": {
+        "lambda_memory": 256,
+        "log_level": "DEBUG"
+      },
+      "staging": {
+        "lambda_memory": 512,
+        "log_level": "INFO"
+      },
+      "prod": {
+        "lambda_memory": 1024,
+        "log_level": "WARN"
+      }
+    }
+  }
+}</code></pre>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why Separate Environments?</div>
+                <p>Development environments let you test changes safely. Staging mirrors production for final validation. Production serves real users. This separation prevents "it worked on my machine" problems.</p>
+            </div>
+        </section>
+
+        <!-- Section 8: CI/CD -->
+        <section id="cicd">
+            <h2><span class="step-number">8</span>GitHub Actions CI/CD</h2>
+
+            <p>Bedsheet generates production-ready GitHub Actions workflows for automated testing and deployment.</p>
+
+            <h3>Generated Workflows</h3>
+
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>CI Workflow</h4>
+                    <ul style="margin-left: 20px;">
+                        <li>Runs on every pull request</li>
+                        <li>Executes tests</li>
+                        <li>Validates configuration</li>
+                        <li>Lints code</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <h4>Deploy Workflow</h4>
+                    <ul style="margin-left: 20px;">
+                        <li>Runs on push to main</li>
+                        <li>Deploys to dev automatically</li>
+                        <li>Staging on approval</li>
+                        <li>Prod with manual gate</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>GCP Deploy Workflow</h3>
+            <pre><code class="language-yaml"># .github/workflows/deploy.yaml (generated)
+name: Deploy to GCP
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # For Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Deploy to dev
+        working-directory: terraform
+        run: |
+          terraform init
+          terraform workspace select dev
+          terraform apply -auto-approve
+
+  deploy-staging:
+    needs: deploy-dev
+    environment: staging  # Requires approval
+    # ... similar steps with staging workspace
+
+  deploy-prod:
+    needs: deploy-staging
+    environment: production  # Requires approval
+    # ... similar steps with prod workspace</code></pre>
+
+            <h3>AWS Deploy Workflow</h3>
+            <pre><code class="language-yaml"># .github/workflows/deploy.yaml (generated)
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # For OIDC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install CDK
+        run: npm install -g aws-cdk
+
+      - name: Deploy to dev
+        run: |
+          pip install -r requirements.txt
+          cdk deploy --context environment=dev --require-approval never
+
+  deploy-staging:
+    needs: deploy-dev
+    environment: staging
+    # ... similar steps with staging context
+
+  deploy-prod:
+    needs: deploy-staging
+    environment: production
+    # ... similar steps with prod context</code></pre>
+
+            <h3>Setting Up Authentication</h3>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Security: Use Workload Identity, Not Keys</div>
+                <p>Both workflows use keyless authentication (Workload Identity Federation for GCP, OIDC for AWS). Never store long-lived credentials in GitHub secrets.</p>
+            </div>
+
+            <h4>GCP: Workload Identity Federation Setup</h4>
+            <pre><code class="language-bash"># Create the Workload Identity Pool
+gcloud iam workload-identity-pools create "github-pool" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+# Create the provider
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository"
+
+# Allow GitHub to impersonate service account
+gcloud iam service-accounts add-iam-policy-binding "your-sa@project.iam.gserviceaccount.com" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/your-org/your-repo"</code></pre>
+
+            <h4>AWS: OIDC Provider Setup</h4>
+            <pre><code class="language-bash"># Create OIDC provider (one-time setup)
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
+
+# Create IAM role for GitHub Actions
+# (See AWS documentation for the trust policy)</code></pre>
+
+            <h3>Required GitHub Secrets</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Secret</th>
+                        <th>Target</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>WIF_PROVIDER</code></td>
+                        <td>GCP</td>
+                        <td>Workload Identity Pool provider</td>
+                    </tr>
+                    <tr>
+                        <td><code>WIF_SERVICE_ACCOUNT</code></td>
+                        <td>GCP</td>
+                        <td>Service account email</td>
+                    </tr>
+                    <tr>
+                        <td><code>AWS_ROLE_ARN</code></td>
+                        <td>AWS</td>
+                        <td>IAM role ARN for GitHub Actions</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Section 9: Introspection -->
+        <section id="introspection">
+            <h2><span class="step-number">9</span>Agent Introspection</h2>
+
+            <p>Bedsheet extracts metadata from your agents at build time to generate accurate deployment artifacts.</p>
+
+            <h3>What Gets Extracted</h3>
+            <pre><code class="language-python">from bedsheet.deploy.introspect import extract_agent_metadata
+
+# Your Bedsheet agent
+agent = Agent(
+    name="InvestmentAdvisor",
+    instruction="You provide investment advice...",
+    model_client=AnthropicClient(),
+)
+
+tools = ActionGroup(name="StockTools")
+
+@tools.action(name="get_price", description="Get stock price")
+async def get_price(symbol: str) -> dict:
+    """Fetches current stock price."""
+    ...
+
+agent.add_action_group(tools)
+
+# Extract metadata for deployment
+metadata = extract_agent_metadata(agent)
+print(metadata)</code></pre>
+
+            <div class="output">
+AgentMetadata(
+  name='InvestmentAdvisor',
+  instruction='You provide investment advice...',
+  is_supervisor=False,
+  tools=[
+    ToolMetadata(
+      name='get_price',
+      description='Get stock price',
+      parameters=[
+        ParameterMetadata(name='symbol', type='str', required=True)
+      ],
+      return_type='dict'
+    )
+  ],
+  collaborators=[]
+)
+            </div>
+
+            <h3>Introspection Flow</h3>
+            <div class="mermaid">
+flowchart LR
+    Agent[Your Agent Code] --> Extract[extract_agent_metadata]
+    Extract --> Meta[AgentMetadata]
+    Meta --> Gen[Target Generator]
+    Gen --> Files[Deployment Files]
+
+    style Agent fill:#dbeafe,stroke:#0969da
+    style Meta fill:#f3e8ff,stroke:#8250df
+    style Files fill:#dcfce7,stroke:#1a7f37
+            </div>
+
+            <h3>Extracted Information</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Source</th>
+                        <th>Used For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>name</code></td>
+                        <td><code>Agent.name</code></td>
+                        <td>Resource naming, ADK agent name</td>
+                    </tr>
+                    <tr>
+                        <td><code>instruction</code></td>
+                        <td><code>Agent.instruction</code></td>
+                        <td>ADK instruction, Bedrock prompt</td>
+                    </tr>
+                    <tr>
+                        <td><code>tools</code></td>
+                        <td><code>@action</code> decorators</td>
+                        <td>OpenAPI schema, Lambda handlers</td>
+                    </tr>
+                    <tr>
+                        <td><code>collaborators</code></td>
+                        <td><code>Supervisor.collaborators</code></td>
+                        <td>Multi-agent orchestration</td>
+                    </tr>
+                    <tr>
+                        <td><code>is_supervisor</code></td>
+                        <td>Class type check</td>
+                        <td>ADK SequentialAgent vs LlmAgent</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Type Hints Matter</div>
+                <p>Introspection uses Python type hints to generate accurate schemas. Always type your <code>@action</code> functions:</p>
+                <pre style="margin-top: 8px;"><code class="language-python">@tools.action(name="search", description="Search")
+async def search(query: str, limit: int = 10) -> list[dict]:
+    ...</code></pre>
+            </div>
+        </section>
+
+        <!-- Section 10: Best Practices -->
+        <section id="best-practices">
+            <h2><span class="step-number">10</span>Best Practices</h2>
+
+            <h3>Project Structure</h3>
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>Good: Organized</h4>
+                    <div class="file-tree" style="font-size: 12px; padding: 12px;">
+my-agent/
+├── bedsheet.yaml
+├── agents/
+│   ├── __init__.py
+│   └── advisor.py
+├── tools/
+│   ├── __init__.py
+│   └── stock_tools.py
+└── tests/
+    └── test_advisor.py
+                    </div>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Bad: Messy</h4>
+                    <div class="file-tree" style="font-size: 12px; padding: 12px;">
+my-agent/
+├── config.yaml
+├── agent.py
+├── other_agent.py
+├── tool1.py
+├── tool2.py
+├── test.py
+└── deploy_stuff/
+                    </div>
+                </div>
+            </div>
+
+            <h3>Configuration</h3>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Keep Secrets Out of bedsheet.yaml</div>
+                <p>Never put API keys or credentials in configuration files. Use environment variables or secret managers.</p>
+            </div>
+
+            <div class="comparison">
+                <div class="comparison-item good">
+                    <h4>Good: Reference secrets</h4>
+                    <pre style="margin: 0; font-size: 12px;"><code class="language-yaml">targets:
+  gcp:
+    project: my-project
+    # API key in Secret Manager</code></pre>
+                </div>
+                <div class="comparison-item bad">
+                    <h4>Bad: Hardcoded</h4>
+                    <pre style="margin: 0; font-size: 12px;"><code class="language-yaml">targets:
+  gcp:
+    project: my-project
+    api_key: sk-abc123...</code></pre>
+                </div>
+            </div>
+
+            <h3>Deployment</h3>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Always Validate Before Generating</div>
+                <pre style="margin-top: 8px;"><code class="language-bash">bedsheet validate && bedsheet generate --target gcp</code></pre>
+            </div>
+
+            <h4>Use Dry Run for Safety</h4>
+            <pre><code class="language-bash"># See what would be generated without writing files
+bedsheet generate --target aws --dry-run</code></pre>
+
+            <h4>Review Generated Code</h4>
+            <p>Generated code is meant to be understood and customized:</p>
+            <ul>
+                <li>Review Terraform/CDK before applying</li>
+                <li>Adjust resource sizes for your workload</li>
+                <li>Add monitoring and alerting as needed</li>
+            </ul>
+
+            <h3>Testing</h3>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Test Locally First</div>
+                <p>Always use the local target for development. Only deploy to cloud when you're confident the agent works correctly.</p>
+            </div>
+
+            <pre><code class="language-bash"># Development flow
+bedsheet generate --target local
+make run
+# Test your agent...
+
+# When ready for cloud
+bedsheet generate --target gcp
+terraform plan  # Review changes
+terraform apply</code></pre>
+
+            <h3>Multi-Environment</h3>
+
+            <ul>
+                <li><strong>Dev:</strong> Fast iteration, debug logging, minimal resources</li>
+                <li><strong>Staging:</strong> Production-like, test integrations, moderate resources</li>
+                <li><strong>Prod:</strong> High availability, error-level logging, scaled resources</li>
+            </ul>
+
+            <div class="info-box note">
+                <div class="info-box-title">Promotion Flow</div>
+                <p>Changes should flow: <code>dev → staging → prod</code>. Never deploy directly to production without staging validation.</p>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- END-TO-END TUTORIAL: Investment Advisor Agent -->
+        <!-- ============================================== -->
+
+        <section id="tutorial" style="margin-top: 80px;">
+            <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 12px; padding: 32px; border-left: 5px solid #8250df; margin-bottom: 32px;">
+                <h2 style="margin: 0 0 16px 0; border: none; padding: 0; color: #6b21a8; font-size: 28px;">End-to-End Tutorial: Investment Advisor</h2>
+                <p style="font-size: 16px; line-height: 1.8; margin-bottom: 16px; color: #581c87;">
+                    In this tutorial, you'll build a complete <strong>multi-agent investment advisor</strong> from scratch,
+                    test it locally, then deploy it to both <strong>Google Cloud</strong> and <strong>AWS</strong>.
+                </p>
+                <p style="font-size: 15px; color: #7c3aed; margin: 0;">
+                    <strong>What you'll build:</strong> A supervisor agent that coordinates a Market Analyst and News Researcher
+                    to provide comprehensive stock analysis.
+                </p>
+            </div>
+
+            <div class="mermaid">
+flowchart TB
+    subgraph "What We're Building"
+        User[User Query] --> Advisor[Investment Advisor<br/>Supervisor]
+        Advisor --> |parallel| MA[Market Analyst<br/>Agent]
+        Advisor --> |parallel| NR[News Researcher<br/>Agent]
+        MA --> |stock data| Advisor
+        NR --> |news sentiment| Advisor
+        Advisor --> Response[Synthesized<br/>Recommendation]
+    end
+
+    style User fill:#dbeafe,stroke:#0969da
+    style Advisor fill:#f3e8ff,stroke:#8250df
+    style MA fill:#dcfce7,stroke:#1a7f37
+    style NR fill:#dcfce7,stroke:#1a7f37
+    style Response fill:#fef3c7,stroke:#d97706
+            </div>
+        </section>
+
+        <!-- Tutorial Step A: Build the Agent -->
+        <section id="tutorial-agent">
+            <h2><span class="step-number" style="background: #8250df;">A</span>Build the Agent</h2>
+
+            <h3>Step A.1: Create Project Structure</h3>
+            <pre><code class="language-bash"># Initialize a new project (creates full scaffold)
+bedsheet init investment-advisor
+cd investment-advisor
+
+# Add tools directory for our custom tools
+mkdir tools
+touch tools/__init__.py tools/stock_tools.py
+
+# Add additional agent files
+touch agents/analysts.py</code></pre>
+
+            <p>The <code>bedsheet init</code> command creates a complete project scaffold:</p>
+
+            <pre><code class="language-bash">Created project: investment-advisor
+├── bedsheet.yaml      # Configuration
+├── agents/            # Your agent code
+│   └── assistant.py   # Example agent (we'll replace this)
+└── requirements.txt   # Dependencies</code></pre>
+
+            <p>You can also initialize with a specific target:</p>
+
+            <pre><code class="language-bash"># For GCP deployment (prompts for project ID)
+bedsheet init investment-advisor --target gcp
+
+# For AWS deployment (prompts for region)
+bedsheet init investment-advisor --target aws</code></pre>
+
+            <h3>Step A.2: Define the Tools</h3>
+            <p>First, create the tools our agents will use. These simulate real API calls:</p>
+
+            <pre><code class="language-python"># tools/stock_tools.py
+"""Stock market tools for the investment advisor."""
+import random
+from datetime import datetime, timedelta
+
+from bedsheet import ActionGroup
+
+# Create action groups for different capabilities
+market_tools = ActionGroup(
+    name="MarketTools",
+    description="Tools for fetching market data"
+)
+
+news_tools = ActionGroup(
+    name="NewsTools",
+    description="Tools for researching financial news"
+)
+
+
+@market_tools.action(
+    name="get_stock_price",
+    description="Get the current stock price and daily change for a ticker symbol"
+)
+async def get_stock_price(symbol: str) -> dict:
+    """Fetch current stock price. In production, call a real API like Alpha Vantage."""
+    # Simulated data - replace with real API call
+    prices = {
+        "AAPL": {"price": 178.52, "change": 2.34, "change_pct": 1.33},
+        "GOOGL": {"price": 141.80, "change": -0.92, "change_pct": -0.64},
+        "MSFT": {"price": 378.91, "change": 4.21, "change_pct": 1.12},
+        "NVDA": {"price": 721.33, "change": 15.67, "change_pct": 2.22},
+        "TSLA": {"price": 248.50, "change": -3.20, "change_pct": -1.27},
+    }
+    data = prices.get(symbol.upper(), {
+        "price": round(random.uniform(50, 500), 2),
+        "change": round(random.uniform(-10, 10), 2),
+        "change_pct": round(random.uniform(-5, 5), 2),
+    })
+    return {
+        "symbol": symbol.upper(),
+        "currency": "USD",
+        "timestamp": datetime.now().isoformat(),
+        **data
+    }
+
+
+@market_tools.action(
+    name="get_historical_prices",
+    description="Get historical price data for technical analysis"
+)
+async def get_historical_prices(symbol: str, days: int = 30) -> dict:
+    """Fetch historical prices for trend analysis."""
+    base_price = 150.0
+    prices = []
+    for i in range(days):
+        date = datetime.now() - timedelta(days=days - i)
+        # Simulate price movement with trend
+        price = base_price + (i * 0.5) + random.uniform(-5, 5)
+        prices.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "close": round(price, 2),
+            "volume": random.randint(1000000, 50000000)
+        })
+    return {
+        "symbol": symbol.upper(),
+        "period": f"{days} days",
+        "prices": prices,
+        "trend": "bullish" if prices[-1]["close"] > prices[0]["close"] else "bearish"
+    }
+
+
+@market_tools.action(
+    name="get_key_metrics",
+    description="Get fundamental metrics like P/E ratio, market cap, etc."
+)
+async def get_key_metrics(symbol: str) -> dict:
+    """Fetch key financial metrics."""
+    return {
+        "symbol": symbol.upper(),
+        "pe_ratio": round(random.uniform(15, 40), 2),
+        "market_cap_billions": round(random.uniform(100, 3000), 1),
+        "dividend_yield": round(random.uniform(0, 3), 2),
+        "52_week_high": round(random.uniform(150, 200), 2),
+        "52_week_low": round(random.uniform(80, 140), 2),
+        "avg_volume": f"{random.randint(10, 100)}M"
+    }
+
+
+@news_tools.action(
+    name="search_news",
+    description="Search for recent news articles about a company or topic"
+)
+async def search_news(query: str, max_results: int = 5) -> list:
+    """Search financial news. In production, use a news API."""
+    # Simulated news results
+    headlines = [
+        f"{query} Reports Strong Q4 Earnings, Beats Expectations",
+        f"Analysts Upgrade {query} After Product Launch",
+        f"{query} Expands Into New Markets, Stock Rises",
+        f"Industry Report: {query} Leads in Innovation",
+        f"{query} CEO Discusses Future Growth Strategy",
+        f"Breaking: {query} Announces Strategic Partnership",
+        f"Market Watch: {query} Shows Resilience Amid Volatility",
+    ]
+    return [
+        {
+            "title": random.choice(headlines),
+            "source": random.choice(["Reuters", "Bloomberg", "CNBC", "WSJ"]),
+            "date": (datetime.now() - timedelta(days=random.randint(0, 7))).strftime("%Y-%m-%d"),
+            "sentiment": random.choice(["positive", "neutral", "positive", "negative"]),
+            "relevance_score": round(random.uniform(0.7, 1.0), 2)
+        }
+        for _ in range(min(max_results, 5))
+    ]
+
+
+@news_tools.action(
+    name="get_analyst_ratings",
+    description="Get analyst ratings and price targets for a stock"
+)
+async def get_analyst_ratings(symbol: str) -> dict:
+    """Fetch analyst consensus ratings."""
+    return {
+        "symbol": symbol.upper(),
+        "consensus": random.choice(["Strong Buy", "Buy", "Hold"]),
+        "num_analysts": random.randint(15, 40),
+        "price_target_avg": round(random.uniform(150, 250), 2),
+        "price_target_high": round(random.uniform(250, 350), 2),
+        "price_target_low": round(random.uniform(100, 150), 2),
+        "ratings_breakdown": {
+            "strong_buy": random.randint(5, 15),
+            "buy": random.randint(5, 15),
+            "hold": random.randint(2, 10),
+            "sell": random.randint(0, 3),
+            "strong_sell": random.randint(0, 2)
+        }
+    }</code></pre>
+
+            <h3>Step A.3: Create the Specialist Agents</h3>
+            <p>Now create the two specialist agents that do the actual analysis:</p>
+
+            <pre><code class="language-python"># agents/analysts.py
+"""Specialist agents for market analysis and news research."""
+from bedsheet import Agent
+from bedsheet.llm import AnthropicClient
+
+from tools.stock_tools import market_tools, news_tools
+
+
+def create_market_analyst() -> Agent:
+    """Create the Market Analyst agent."""
+    agent = Agent(
+        name="MarketAnalyst",
+        instruction="""You are an expert market analyst specializing in technical and fundamental analysis.
+
+Your responsibilities:
+1. Analyze stock prices and trends using get_stock_price and get_historical_prices
+2. Evaluate fundamental metrics using get_key_metrics
+3. Identify patterns and provide data-driven insights
+
+When analyzing a stock:
+- Always fetch current price first
+- Look at historical trends for context
+- Consider key metrics for valuation
+- Be specific with numbers and percentages
+- Clearly state bullish or bearish outlook
+
+Keep your analysis concise but data-rich. Focus on actionable insights.""",
+        model_client=AnthropicClient(),
+    )
+    agent.add_action_group(market_tools)
+    return agent
+
+
+def create_news_researcher() -> Agent:
+    """Create the News Researcher agent."""
+    agent = Agent(
+        name="NewsResearcher",
+        instruction="""You are a financial news analyst who monitors market sentiment and news.
+
+Your responsibilities:
+1. Search for relevant news using search_news
+2. Analyze sentiment and market implications
+3. Check analyst ratings and price targets using get_analyst_ratings
+4. Identify catalysts and risks from news
+
+When researching a stock:
+- Search for recent news about the company
+- Analyze sentiment across sources
+- Check what analysts are saying
+- Highlight any significant events or catalysts
+- Note any red flags or concerns
+
+Provide a balanced view with both positive and negative factors.""",
+        model_client=AnthropicClient(),
+    )
+    agent.add_action_group(news_tools)
+    return agent</code></pre>
+
+            <h3>Step A.4: Create the Supervisor</h3>
+            <p>Now create the Investment Advisor supervisor that coordinates the specialists:</p>
+
+            <pre><code class="language-python"># agents/advisor.py
+"""Investment Advisor - the main supervisor agent."""
+from bedsheet import Supervisor
+from bedsheet.llm import AnthropicClient
+from bedsheet.memory import InMemory
+
+from agents.analysts import create_market_analyst, create_news_researcher
+
+
+def create_investment_advisor() -> Supervisor:
+    """Create the Investment Advisor supervisor."""
+    # Create specialist agents
+    market_analyst = create_market_analyst()
+    news_researcher = create_news_researcher()
+
+    # Create the supervisor
+    advisor = Supervisor(
+        name="InvestmentAdvisor",
+        instruction="""You are a senior investment advisor who coordinates analysis from specialists.
+
+## Your Team
+- **MarketAnalyst**: Technical and fundamental stock analysis
+- **NewsResearcher**: News sentiment and analyst ratings
+
+## How to Handle Requests
+
+For stock analysis requests:
+1. Delegate to BOTH specialists IN PARALLEL:
+   delegate(delegations=[
+       {"agent_name": "MarketAnalyst", "task": "Analyze [STOCK] - price, trends, metrics"},
+       {"agent_name": "NewsResearcher", "task": "Research [STOCK] - news, sentiment, ratings"}
+   ])
+
+2. Wait for both responses
+
+3. Synthesize into a recommendation:
+   - Overall rating (Strong Buy / Buy / Hold / Sell / Strong Sell)
+   - Key data points from both analyses
+   - Risk factors to consider
+   - Suggested action with rationale
+
+## Important Guidelines
+- Always use parallel delegation for efficiency
+- Never make up data - only use what your team provides
+- Be balanced - present both opportunities and risks
+- End with a clear, actionable recommendation
+- Disclose that this is not financial advice""",
+        model_client=AnthropicClient(),
+        memory=InMemory(),
+        collaborators=[market_analyst, news_researcher],
+        collaboration_mode="supervisor",
+    )
+    return advisor
+
+
+# Export for deployment introspection
+advisor = create_investment_advisor()</code></pre>
+
+            <h3>Step A.5: Customize the Configuration</h3>
+            <p>The <code>bedsheet init</code> command created a basic <code>bedsheet.yaml</code>.
+            Now customize it to support all three deployment targets:</p>
+
+            <pre><code class="language-yaml"># bedsheet.yaml (customize the generated file)
+name: investment-advisor
+version: "1.0.0"
+description: Multi-agent investment advisor with market analysis and news research
+
+agents:
+  - name: advisor
+    module: agents.advisor
+    class_name: InvestmentAdvisor
+    description: Coordinates market analysis and news research for investment recommendations
+
+target: local
+
+environments:
+  - dev
+  - staging
+  - prod
+
+targets:
+  local:
+    port: 8080
+    hot_reload: true
+
+  gcp:
+    project: your-gcp-project-id    # <-- Replace with your project
+    region: us-central1
+    model: claude-sonnet-4-5@20250929
+
+  aws:
+    region: us-east-1
+    lambda_memory: 512
+    bedrock_model: anthropic.claude-sonnet-4-5-v2:0
+    style: serverless</code></pre>
+
+            <h3>Step A.6: Install Dependencies</h3>
+            <p>The <code>bedsheet init</code> command already created <code>requirements.txt</code>. Install the dependencies:</p>
+            <pre><code class="language-bash">pip install -r requirements.txt</code></pre>
+
+            <h3>Step A.7: Test the Agent Locally (Python)</h3>
+            <pre><code class="language-python"># test_advisor.py
+"""Quick test script for the investment advisor."""
+import asyncio
+from agents.advisor import create_investment_advisor
+from bedsheet.events import (
+    CompletionEvent, DelegationEvent,
+    CollaboratorStartEvent, CollaboratorCompleteEvent,
+    ToolCallEvent
+)
+
+
+async def main():
+    advisor = create_investment_advisor()
+
+    print("=" * 60)
+    print("Investment Advisor - Test Run")
+    print("=" * 60)
+    print()
+
+    query = "Analyze NVDA stock and give me a recommendation"
+    print(f"Query: {query}")
+    print("-" * 60)
+
+    async for event in advisor.invoke("test-session", query):
+        if isinstance(event, DelegationEvent):
+            agents = [d["agent_name"] for d in event.delegations]
+            print(f"\n📋 Delegating to: {', '.join(agents)}")
+
+        elif isinstance(event, CollaboratorStartEvent):
+            print(f"\n🔄 [{event.agent_name}] Starting analysis...")
+
+        elif isinstance(event, ToolCallEvent):
+            print(f"   🔧 Calling {event.tool_name}()")
+
+        elif isinstance(event, CollaboratorCompleteEvent):
+            print(f"✅ [{event.agent_name}] Complete")
+
+        elif isinstance(event, CompletionEvent):
+            print("\n" + "=" * 60)
+            print("RECOMMENDATION")
+            print("=" * 60)
+            print(event.response)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())</code></pre>
+
+            <pre><code class="language-bash"># Run the test
+export ANTHROPIC_API_KEY=your-key-here
+python test_advisor.py</code></pre>
+
+            <div class="output">
+<span class="comment">============================================================</span>
+Investment Advisor - Test Run
+<span class="comment">============================================================</span>
+
+Query: Analyze NVDA stock and give me a recommendation
+<span class="comment">------------------------------------------------------------</span>
+
+<span class="success">📋 Delegating to: MarketAnalyst, NewsResearcher</span>
+
+🔄 [MarketAnalyst] Starting analysis...
+   🔧 Calling get_stock_price()
+   🔧 Calling get_historical_prices()
+   🔧 Calling get_key_metrics()
+<span class="success">✅ [MarketAnalyst] Complete</span>
+
+🔄 [NewsResearcher] Starting analysis...
+   🔧 Calling search_news()
+   🔧 Calling get_analyst_ratings()
+<span class="success">✅ [NewsResearcher] Complete</span>
+
+<span class="comment">============================================================</span>
+RECOMMENDATION
+<span class="comment">============================================================</span>
+## NVDA Stock Analysis Summary
+
+**Overall Rating: BUY** ⭐⭐⭐⭐
+
+### Market Analysis
+- Current Price: $721.33 (+2.22% today)
+- 30-Day Trend: Bullish with strong momentum
+- P/E Ratio: 28.5 (premium but justified by growth)
+- Market Cap: $1.8 trillion
+
+### News & Sentiment
+- Recent headlines largely positive (4/5 positive sentiment)
+- Analyst consensus: Strong Buy (32 analysts)
+- Average price target: $850 (18% upside)
+
+### Recommendation
+NVDA shows strong technical momentum backed by positive fundamentals...
+
+<span class="warning">⚠️ This is not financial advice. Please consult a licensed advisor.</span>
+            </div>
+        </section>
+
+        <!-- Tutorial Step B: Test Locally with Docker -->
+        <section id="tutorial-local">
+            <h2><span class="step-number" style="background: #8250df;">B</span>Test Locally with Docker</h2>
+
+            <p>Now let's deploy our agent locally using Docker:</p>
+
+            <h3>Step B.1: Generate Local Deployment</h3>
+            <pre><code class="language-bash">bedsheet generate --target local --output deploy/local</code></pre>
+
+            <div class="output">
+<span class="success">Generated 7 files for target: local</span>
+deploy/local/
+├── docker-compose.yaml
+├── Dockerfile
+├── app.py
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/ci.yaml
+            </div>
+
+            <h3>Step B.2: Configure and Run</h3>
+            <pre><code class="language-bash">cd deploy/local
+
+# Set up environment
+cp .env.example .env
+echo "ANTHROPIC_API_KEY=your-key-here" >> .env
+
+# Start the agent
+make run</code></pre>
+
+            <div class="output">
+<span class="success">Starting investment-advisor...</span>
+Building Docker image...
+Starting containers...
+
+<span class="success">✓ Agent running at http://localhost:8080</span>
+<span class="comment">Press Ctrl+C to stop</span>
+            </div>
+
+            <h3>Step B.3: Test the API</h3>
+            <pre><code class="language-bash"># In another terminal
+curl -X POST http://localhost:8080/invoke \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "user-123",
+    "input": "Analyze AAPL stock"
+  }'</code></pre>
+
+            <div class="output">
+{
+  "response": "## AAPL Stock Analysis...",
+  "session_id": "user-123",
+  "events_count": 12
+}
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Hot Reload Enabled</div>
+                <p>With <code>hot_reload: true</code>, you can edit your agent code and see changes immediately without restarting Docker.</p>
+            </div>
+        </section>
+
+        <!-- Tutorial Step C: Deploy to GCP -->
+        <section id="tutorial-gcp">
+            <h2><span class="step-number" style="background: #8250df;">C</span>Deploy to Google Cloud</h2>
+
+            <p>Now let's deploy to GCP using Terraform and Cloud Run:</p>
+
+            <h3>Step C.1: Prerequisites</h3>
+            <pre><code class="language-bash"># Install required tools
+brew install terraform  # or your package manager
+brew install google-cloud-sdk
+
+# Authenticate
+gcloud auth login
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project your-gcp-project-id</code></pre>
+
+            <h3>Step C.2: Generate GCP Deployment</h3>
+            <pre><code class="language-bash">cd ../..  # Back to project root
+bedsheet generate --target gcp --output deploy/gcp</code></pre>
+
+            <div class="output">
+<span class="success">Generated 13 files for target: gcp</span>
+deploy/gcp/
+├── agent/
+│   ├── agent.py          <span class="comment"># ADK-compatible code</span>
+│   └── __init__.py
+├── terraform/
+│   ├── main.tf           <span class="comment"># Cloud Run, IAM, Secrets</span>
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+├── Dockerfile
+├── cloudbuild.yaml
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/
+    ├── ci.yaml
+    └── deploy.yaml
+            </div>
+
+            <h3>Step C.3: Review Generated ADK Code</h3>
+            <p>Let's look at the generated agent.py:</p>
+
+            <pre><code class="language-python"># deploy/gcp/agent/agent.py (generated)
+"""Investment Advisor - ADK-compatible agent."""
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import FunctionTool
+
+# === Market Tools ===
+def get_stock_price(symbol: str) -> dict:
+    """Get the current stock price and daily change."""
+    # Implementation from your tools/stock_tools.py
+    ...
+
+def get_historical_prices(symbol: str, days: int = 30) -> dict:
+    """Get historical price data for technical analysis."""
+    ...
+
+# === News Tools ===
+def search_news(query: str, max_results: int = 5) -> list:
+    """Search for recent news articles about a company."""
+    ...
+
+def get_analyst_ratings(symbol: str) -> dict:
+    """Get analyst ratings and price targets."""
+    ...
+
+# === Create Tool Objects ===
+market_tools = [
+    FunctionTool(func=get_stock_price),
+    FunctionTool(func=get_historical_prices),
+    FunctionTool(func=get_key_metrics),
+]
+
+news_tools = [
+    FunctionTool(func=search_news),
+    FunctionTool(func=get_analyst_ratings),
+]
+
+# === Specialist Agents ===
+market_analyst = LlmAgent(
+    name="MarketAnalyst",
+    model="claude-sonnet-4-5@20250929",
+    instruction="""You are an expert market analyst...""",
+    tools=market_tools,
+)
+
+news_researcher = LlmAgent(
+    name="NewsResearcher",
+    model="claude-sonnet-4-5@20250929",
+    instruction="""You are a financial news analyst...""",
+    tools=news_tools,
+)
+
+# === Supervisor (using SequentialAgent for orchestration) ===
+root_agent = SequentialAgent(
+    name="InvestmentAdvisor",
+    sub_agents=[market_analyst, news_researcher],
+)</code></pre>
+
+            <h3>Step C.4: Configure Terraform</h3>
+            <pre><code class="language-bash">cd deploy/gcp/terraform
+
+# Copy and edit variables
+cp terraform.tfvars.example terraform.tfvars</code></pre>
+
+            <pre><code class="language-hcl"># terraform.tfvars
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Secrets (store in Secret Manager, not here!)
+# anthropic_api_key is pulled from Secret Manager</code></pre>
+
+            <h3>Step C.5: Deploy Infrastructure</h3>
+            <pre><code class="language-bash"># Initialize Terraform
+terraform init
+
+# Preview what will be created
+terraform plan</code></pre>
+
+            <div class="output">
+Terraform will perform the following actions:
+
+  <span class="success">+ google_cloud_run_v2_service.agent</span>
+  <span class="success">+ google_service_account.agent_sa</span>
+  <span class="success">+ google_secret_manager_secret.anthropic_key</span>
+  <span class="success">+ google_cloud_run_v2_service_iam_member.invoker</span>
+
+Plan: 4 to add, 0 to change, 0 to destroy.
+            </div>
+
+            <pre><code class="language-bash"># Apply (creates resources)
+terraform apply</code></pre>
+
+            <div class="output">
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
+
+<span class="success">Outputs:</span>
+service_url = "https://investment-advisor-abc123-uc.a.run.app"
+            </div>
+
+            <h3>Step C.6: Store Your API Key</h3>
+            <pre><code class="language-bash"># Add your Anthropic API key to Secret Manager
+echo -n "sk-ant-your-key" | gcloud secrets versions add anthropic-api-key --data-file=-</code></pre>
+
+            <h3>Step C.7: Test the Deployed Agent</h3>
+            <pre><code class="language-bash"># Get the service URL
+SERVICE_URL=$(terraform output -raw service_url)
+
+# Test it
+curl -X POST "$SERVICE_URL/invoke" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test", "input": "Analyze GOOGL stock"}'</code></pre>
+
+            <div class="output">
+{
+  "response": "## GOOGL Stock Analysis\n\n**Rating: BUY**\n\n...",
+  "session_id": "test"
+}
+            </div>
+
+            <h3>Step C.8: Development with ADK Dev UI</h3>
+            <p>For development and testing, you can use the ADK Dev UI which provides a rich interactive interface:</p>
+
+            <pre><code class="language-bash"># Run ADK Dev UI locally
+cd deploy/gcp
+make dev-ui-local</code></pre>
+
+            <div class="output">
+Starting ADK Dev UI locally...
+Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser
+            </div>
+
+            <p>The ADK Dev UI includes:</p>
+            <ul>
+                <li><strong>Chat Interface</strong> - Interactive testing with your agent</li>
+                <li><strong>Execution Trace</strong> - Step-by-step visualization of agent reasoning</li>
+                <li><strong>Visual Graph</strong> - Diagram of tool calls and logic flow</li>
+                <li><strong>State Inspector</strong> - View state changes throughout execution</li>
+                <li><strong>Evaluation Tab</strong> - Capture golden datasets for regression testing</li>
+            </ul>
+
+            <p>To deploy the Dev UI to Cloud Run (separate from production):</p>
+
+            <pre><code class="language-bash"># Deploy with Dev UI to Cloud Run (creates separate service)
+make dev-ui</code></pre>
+
+            <div class="output">
+Deploying to Cloud Run with ADK Dev UI...
+This creates a SEPARATE service (myagent-dev) for development testing.
+Your production deployment (myagent) is NOT affected.
+            </div>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Dev UI vs Production</div>
+                <p><code>make dev-ui</code> creates a separate Cloud Run service (<code>*-dev</code>) with the ADK Dev UI enabled. Use <code>make deploy-terraform</code> for production deployments with full IaC control.</p>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Multi-Environment Deployment</div>
+                <p>Use Terraform workspaces for dev/staging/prod:</p>
+                <pre style="margin-top: 8px;"><code class="language-bash">terraform workspace new staging
+terraform workspace select staging
+terraform apply -var-file=environments/staging.tfvars</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial Step D: Deploy to AWS -->
+        <section id="tutorial-aws">
+            <h2><span class="step-number" style="background: #8250df;">D</span>Deploy to AWS</h2>
+
+            <p>Finally, let's deploy the same agent to AWS using CDK and Bedrock:</p>
+
+            <h3>Step D.1: Prerequisites</h3>
+            <pre><code class="language-bash"># Install AWS CDK
+npm install -g aws-cdk
+
+# Configure AWS credentials
+aws configure
+
+# Verify access
+aws sts get-caller-identity</code></pre>
+
+            <h3>Step D.2: Generate AWS Deployment</h3>
+            <pre><code class="language-bash">cd ../..  # Back to project root
+bedsheet generate --target aws --output deploy/aws</code></pre>
+
+            <div class="output">
+<span class="success">Generated 13 files for target: aws</span>
+deploy/aws/
+├── app.py                <span class="comment"># CDK app entry</span>
+├── cdk.json
+├── stacks/
+│   ├── __init__.py
+│   └── agent_stack.py    <span class="comment"># Bedrock + Lambda</span>
+├── lambda/
+│   ├── handler.py        <span class="comment"># Action group handler</span>
+│   ├── __init__.py
+│   └── requirements.txt
+├── schemas/
+│   └── openapi.yaml      <span class="comment"># Action group schema</span>
+├── requirements.txt
+├── Makefile
+├── .env.example
+└── .github/workflows/
+    ├── ci.yaml
+    └── deploy.yaml
+            </div>
+
+            <h3>Step D.3: Review Generated CDK Stack</h3>
+            <pre><code class="language-python"># deploy/aws/stacks/agent_stack.py (generated)
+"""CDK Stack for Investment Advisor Bedrock Agent."""
+from aws_cdk import (
+    Stack,
+    aws_bedrock as bedrock,
+    aws_lambda as lambda_,
+    aws_iam as iam,
+    Duration,
+)
+from constructs import Construct
+
+
+class InvestmentAdvisorStack(Stack):
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
+
+        # Lambda for action groups
+        action_handler = lambda_.Function(
+            self, "ActionHandler",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="handler.handler",
+            code=lambda_.Code.from_asset("lambda"),
+            timeout=Duration.seconds(30),
+            memory_size=512,
+        )
+
+        # Bedrock Agent
+        agent = bedrock.CfnAgent(
+            self, "InvestmentAdvisor",
+            agent_name="investment-advisor",
+            instruction="""You are a senior investment advisor...""",
+            foundation_model="anthropic.claude-sonnet-4-5-v2:0",
+            agent_resource_role_arn=self.create_agent_role().role_arn,
+        )
+
+        # Action Groups (tools)
+        bedrock.CfnAgentActionGroup(
+            self, "MarketTools",
+            agent_id=agent.attr_agent_id,
+            action_group_name="MarketTools",
+            action_group_executor=bedrock.CfnAgentActionGroup.ActionGroupExecutorProperty(
+                lambda_=action_handler.function_arn
+            ),
+            api_schema=bedrock.CfnAgentActionGroup.APISchemaProperty(
+                s3=bedrock.CfnAgentActionGroup.S3IdentifierProperty(
+                    s3_bucket_name=self.schema_bucket.bucket_name,
+                    s3_object_key="openapi.yaml"
+                )
+            ),
+        )</code></pre>
+
+            <h3>Step D.4: Review Generated Lambda Handler</h3>
+            <pre><code class="language-python"># deploy/aws/lambda/handler.py (generated)
+"""Lambda handler for Bedrock action groups."""
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+logger = Logger()
+tracer = Tracer()
+
+# Your tool implementations
+def get_stock_price(symbol: str) -> dict:
+    """Implementation from tools/stock_tools.py"""
+    ...
+
+def search_news(query: str, max_results: int = 5) -> list:
+    """Implementation from tools/stock_tools.py"""
+    ...
+
+
+@logger.inject_lambda_context
+@tracer.capture_lambda_handler
+def handler(event: dict, context: LambdaContext) -> dict:
+    """Route Bedrock action group requests to tool implementations."""
+    api_path = event.get("apiPath")
+    parameters = {p["name"]: p["value"] for p in event.get("parameters", [])}
+
+    logger.info(f"Handling action: {api_path}")
+
+    # Route to appropriate tool
+    if api_path == "/get_stock_price":
+        result = get_stock_price(parameters["symbol"])
+    elif api_path == "/search_news":
+        result = search_news(
+            parameters["query"],
+            int(parameters.get("max_results", 5))
+        )
+    # ... other routes ...
+    else:
+        return {"error": f"Unknown action: {api_path}"}
+
+    return {
+        "messageVersion": "1.0",
+        "response": {
+            "actionGroup": event["actionGroup"],
+            "apiPath": api_path,
+            "httpMethod": "POST",
+            "httpStatusCode": 200,
+            "responseBody": {"application/json": {"body": str(result)}}
+        }
+    }</code></pre>
+
+            <h3>Step D.5: Review Generated OpenAPI Schema</h3>
+            <pre><code class="language-yaml"># deploy/aws/schemas/openapi.yaml (generated)
+openapi: 3.0.0
+info:
+  title: Investment Advisor Actions
+  version: 1.0.0
+  description: Tools for market analysis and news research
+
+paths:
+  /get_stock_price:
+    post:
+      operationId: get_stock_price
+      summary: Get current stock price and daily change
+      description: Fetches real-time stock price data for a ticker symbol
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Stock ticker symbol (e.g., AAPL, GOOGL)
+      responses:
+        '200':
+          description: Stock price data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  price:
+                    type: number
+                  change:
+                    type: number
+                  change_pct:
+                    type: number
+
+  /search_news:
+    post:
+      operationId: search_news
+      summary: Search for recent news articles
+      description: Searches financial news sources for articles about a company
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: max_results
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: List of news articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object</code></pre>
+
+            <h3>Step D.6: Deploy to AWS</h3>
+            <pre><code class="language-bash">cd deploy/aws
+
+# Install CDK dependencies
+pip install -r requirements.txt
+
+# Bootstrap CDK (first time only)
+cdk bootstrap
+
+# Deploy
+cdk deploy</code></pre>
+
+            <div class="output">
+InvestmentAdvisorStack: deploying...
+
+ ✅  InvestmentAdvisorStack
+
+<span class="success">Outputs:</span>
+InvestmentAdvisorStack.AgentId = ABCD1234EF
+InvestmentAdvisorStack.AgentAliasId = TSTALIASID
+            </div>
+
+            <h3>Step D.7: Test the Bedrock Agent</h3>
+            <pre><code class="language-bash"># Using AWS CLI
+aws bedrock-agent-runtime invoke-agent \
+  --agent-id ABCD1234EF \
+  --agent-alias-id TSTALIASID \
+  --session-id test-session \
+  --input-text "Analyze MSFT stock and give me a recommendation"</code></pre>
+
+            <div class="output">
+{
+  "completion": "## MSFT Stock Analysis\n\n**Rating: STRONG BUY**\n\n### Technical Analysis\n- Current Price: $378.91 (+1.12%)\n- 30-Day Trend: Bullish\n...",
+  "sessionId": "test-session"
+}
+            </div>
+
+            <h3>AWS Debug UI</h3>
+            <p>The AWS target includes a <strong>Debug UI</strong> for testing and debugging your Bedrock agent locally. The Debug UI proxies requests to the Bedrock Agent Runtime API and provides real-time tracing.</p>
+
+            <pre><code class="language-bash"># Start the Debug UI
+cd deploy/aws/debug-ui
+export BEDROCK_AGENT_ID=ABCD1234EF
+export BEDROCK_AGENT_ALIAS=TSTALIASID
+pip install -r requirements.txt
+python server.py
+
+# Open http://localhost:8080 in your browser</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Debug UI Features</div>
+                <ul>
+                    <li><strong>Chat Interface</strong> - Send messages and see streaming responses</li>
+                    <li><strong>Events Panel</strong> - Real-time trace events (thinking, tool calls, results)</li>
+                    <li><strong>Multi-Agent Tracing</strong> - See collaborator_start/complete for sub-agent calls</li>
+                    <li><strong>Collapsible Events</strong> - Click to expand full JSON details</li>
+                </ul>
+            </div>
+
+            <h3>Step D.8: Multi-Environment with CDK Contexts</h3>
+            <pre><code class="language-bash"># Deploy to different environments
+cdk deploy --context environment=dev
+cdk deploy --context environment=staging
+cdk deploy --context environment=prod</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Same Agent, Any Cloud</div>
+                <p>You've now deployed the <strong>exact same agent</strong> to both GCP and AWS! The Bedsheet CLI extracted your agent's architecture and generated cloud-native artifacts for each platform.</p>
+            </div>
+        </section>
+
+        <!-- Tutorial Summary -->
+        <section id="tutorial-summary" style="margin-top: 48px;">
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-radius: 12px; padding: 28px; border-left: 5px solid #1a7f37;">
+                <h3 style="margin-top: 0; color: #166534; font-size: 20px;">Tutorial Complete!</h3>
+
+                <p style="font-size: 15px; line-height: 1.8; margin-bottom: 16px; color: #15803d;">
+                    You've successfully built a multi-agent investment advisor and deployed it to:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">Local Docker</div>
+                        <div style="font-size: 13px; color: #15803d;">Development & Testing</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">Google Cloud</div>
+                        <div style="font-size: 13px; color: #15803d;">Terraform + Cloud Run</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                        <div style="font-weight: 600; color: #166534;">AWS</div>
+                        <div style="font-size: 13px; color: #15803d;">CDK + Bedrock</div>
+                    </div>
+                </div>
+
+                <h4 style="color: #166534; margin-bottom: 12px;">Key Takeaways</h4>
+                <ul style="color: #15803d; margin: 0; padding-left: 24px;">
+                    <li>Write your agent once using Bedsheet's Python API</li>
+                    <li>Use <code style="background: rgba(255,255,255,0.5); padding: 2px 6px; border-radius: 4px;">bedsheet generate</code> to compile for any target</li>
+                    <li>Generated code is production-ready with CI/CD, IaC, and best practices</li>
+                    <li>Multi-environment support via Terraform workspaces (GCP) or CDK contexts (AWS)</li>
+                    <li>Your agent's architecture is preserved across all platforms</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Generated Files Reference -->
+        <section id="generated-files">
+            <h3 style="margin-top: 40px;">Generated Files Reference</h3>
+
+            <h4>Local Target</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>docker-compose.yaml</code></td><td>Container orchestration</td></tr>
+                    <tr><td><code>Dockerfile</code></td><td>Agent container image</td></tr>
+                    <tr><td><code>app.py</code></td><td>FastAPI application</td></tr>
+                    <tr><td><code>requirements.txt</code></td><td>Python dependencies</td></tr>
+                    <tr><td><code>Makefile</code></td><td>Convenience commands</td></tr>
+                    <tr><td><code>.env.example</code></td><td>Environment template</td></tr>
+                </tbody>
+            </table>
+
+            <h4>GCP Target</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>agent/agent.py</code></td><td>ADK-compatible agent code</td></tr>
+                    <tr><td><code>terraform/main.tf</code></td><td>Cloud Run, IAM, Secrets</td></tr>
+                    <tr><td><code>terraform/variables.tf</code></td><td>Input variables</td></tr>
+                    <tr><td><code>terraform/outputs.tf</code></td><td>Service URL, etc.</td></tr>
+                    <tr><td><code>Dockerfile</code></td><td>Container image</td></tr>
+                    <tr><td><code>cloudbuild.yaml</code></td><td>Cloud Build config</td></tr>
+                    <tr><td><code>.github/workflows/*</code></td><td>CI/CD pipelines</td></tr>
+                </tbody>
+            </table>
+
+            <h4>AWS Target</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>app.py</code></td><td>CDK app entry point</td></tr>
+                    <tr><td><code>stacks/agent_stack.py</code></td><td>Bedrock + Lambda stack</td></tr>
+                    <tr><td><code>lambda/handler.py</code></td><td>Action group handler</td></tr>
+                    <tr><td><code>schemas/openapi.yaml</code></td><td>Action group schema</td></tr>
+                    <tr><td><code>cdk.json</code></td><td>CDK configuration</td></tr>
+                    <tr><td><code>.github/workflows/*</code></td><td>CI/CD pipelines</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p><strong>Copyright &copy; 2025-2026 Sivan Grünberg, <a href="https://vitakka.co/">Vitakka Consulting</a></strong></p>
+            <p style="margin-top: 8px;">Apache 2.0 License</p>
+            <p style="margin-top: 8px;">
+                <a href="user-guide.html">User Guide</a> &middot;
+                <a href="technical-guide.html">Technical Guide</a> &middot;
+                <a href="https://github.com/sivang/bedsheet">GitHub</a>
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#1f2328',
+                primaryBorderColor: '#0969da',
+                lineColor: '#57606a',
+                secondaryColor: '#f0fdf4',
+                tertiaryColor: '#fef3c7'
+            }
+        });
+
+        // Initialize syntax highlighting
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
