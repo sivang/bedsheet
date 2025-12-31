@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  {{ project_name }}:
+    build:
+      context: ../..
+      dockerfile: deploy/local/Dockerfile
+    ports:
+      - "{{ local.port }}:{{ local.port }}"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    {% if local.hot_reload %}
+    volumes:
+      # Mount agent code for hot reload (rebuild needed for app.py changes)
+      - ../../agents:/app/agents:ro
+    {% endif %}
