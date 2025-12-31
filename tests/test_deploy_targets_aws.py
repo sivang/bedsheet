@@ -362,8 +362,9 @@ async def test_aws_target_generate_lambda_requirements_txt_content(
         )
         content = lambda_req_file.content
 
-        # Lambda uses only Python standard library - no external dependencies needed
-        assert "No external dependencies" in content or "Lambda dependencies" in content
+        # Lambda template includes helpful comments about common dependencies
+        assert "Lambda dependencies" in content
+        assert "Add your dependencies below" in content
 
 
 @pytest.mark.asyncio
