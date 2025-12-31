@@ -20,7 +20,7 @@
 | README.md | ✅ Comprehensive with examples |
 | CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
-| LICENSE | ✅ Apache 2.0 (Sivan Grünberg, Vitakka Consulting) |
+| LICENSE | ✅ Elastic License 2.0 (Sivan Grünberg, Vitakka Consulting) |
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
 | Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
 | Examples | ✅ Investment advisor demo |

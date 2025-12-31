@@ -137,7 +137,7 @@ pytest --cov=bedsheet -v
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the Apache 2.0 License.
+By contributing, you agree that your contributions will be licensed under the Elastic License 2.0.
 
 ---
 

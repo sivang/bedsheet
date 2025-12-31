@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
-  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://www.elastic.co/licensing/elastic-license"><img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/tests-180%20passing-brightgreen.svg" alt="Tests">
 </p>
 
@@ -416,7 +416,7 @@ Yes. The code isn't.
 
 ## License
 
-Apache 2.0 - see [LICENSE](LICENSE) for details.
+Elastic License 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
