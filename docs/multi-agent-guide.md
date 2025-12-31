@@ -596,4 +596,4 @@ This turns your multi-agent system from a "chat with experts" into a **structure
 
 **Copyright © 2025-2026 Sivan Grünberg, [Vitakka Consulting](https://vitakka.co/)**
 
-Licensed under the Apache 2.0 License.
+Licensed under the Elastic License 2.0.
