@@ -1,15 +1,15 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.4.0rc4 🧪 Testing on PyPI
+## Current Version: v0.4.0 ✅ Released on PyPI
 
-**Last Session:** 2025-12-31 (Evening)
+**Last Session:** 2026-01-01
 
 ### Release Status
 
 | Version | Status | Branch |
 |---------|--------|--------|
 | v0.3.0 | ✅ Released on PyPI | main |
-| v0.4.0rc4 | 🧪 Testing on PyPI | development/v0.4-deploy-anywhere |
+| v0.4.0 | ✅ Released on PyPI | main |
 
 ### Release Artifacts
 
@@ -26,6 +26,51 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2026-01-01) - v0.4.0 GA Release!
+
+### What Was Done
+
+1. **Published v0.4.0 to PyPI** - GA Release!
+   - Bumped version from 0.4.0rc4 to 0.4.0
+   - Fixed build: Added node_modules exclusion to pyproject.toml
+   - Removed all `--prerelease` flags from docs and templates
+   - https://pypi.org/project/bedsheet-agents/0.4.0/
+
+2. **License Cleanup**
+   - Updated all Apache 2.0 references to Elastic License 2.0
+   - Files updated: PROJECT_STATUS.md, README.md, CONTRIBUTING.md, all HTML docs
+
+3. **PR #1 Merged**
+   - CI/CD fixes merged to main
+   - All GitHub Actions passing (test 3.11, 3.12, lint, typecheck)
+
+4. **uvx Support**
+   - Package now installable via `uvx bedsheet --help`
+   - No more `--prerelease` needed
+
+### Install Options (Now Stable!)
+
+```bash
+pip install bedsheet-agents
+uv add bedsheet-agents
+uvx bedsheet --help
+```
+
+### Files Modified
+
+- `pyproject.toml` - Version bump + build exclusions
+- `docs/deployment-guide.html` - Removed --prerelease
+- `bedsheet/deploy/templates/gcp/Dockerfile.j2` - Removed --prerelease
+- `bedsheet/deploy/templates/local/Dockerfile.j2` - Removed --prerelease
+
+### Next Steps (For v0.5)
+
+1. **GCP Cloud Run E2E Test** - Still pending
+2. **Knowledge bases and RAG** - v0.5 roadmap item
+3. **Guardrails and safety** - v0.6 roadmap item
 
 ---
 
