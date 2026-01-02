@@ -24,7 +24,7 @@
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
 | Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
 | Examples | ✅ Investment advisor demo |
-| Demo | ✅ `python -m bedsheet` (requires API key, uses Claude Sonnet 4.5) |
+| Demo | ✅ `uvx bedsheet` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
 
 ---
@@ -54,7 +54,7 @@
 ### Install Options (Now Stable!)
 
 ```bash
-pip install bedsheet
+uv pip install bedsheet
 uv add bedsheet
 uvx bedsheet --help
 ```
@@ -491,7 +491,7 @@ Tasks identified but postponed for future consideration:
 ```
 bedsheet/
 ├── __init__.py              # Exports: Agent, Supervisor, ActionGroup
-├── __main__.py              # Demo: python -m bedsheet
+├── __main__.py              # Demo: uvx bedsheet
 ├── agent.py                 # Single agent with ReAct loop
 ├── supervisor.py            # Multi-agent coordination
 ├── action_group.py          # @action decorator, tool registration

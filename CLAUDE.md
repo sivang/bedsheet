@@ -8,7 +8,7 @@
 
 - **Version:** 0.3.0 (Released on PyPI), v0.4.0 in development
 - **Tests:** 179 passing (`pytest -v`)
-- **Demo:** `python -m bedsheet` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
+- **Demo:** `uvx bedsheet` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
 - **Default Model:** `claude-sonnet-4-5-20250929`
 - **v0.4 Branch:** `development/v0.4-deploy-anywhere`
 
@@ -28,7 +28,7 @@
 ```
 bedsheet/
 ├── __init__.py        # Exports: Agent, Supervisor, ActionGroup
-├── __main__.py        # Demo: python -m bedsheet
+├── __main__.py        # Demo: uvx bedsheet
 ├── agent.py           # Single agent with ReAct loop
 ├── supervisor.py      # Multi-agent coordination (extends Agent)
 ├── action_group.py    # @action decorator, tool registration
@@ -71,7 +71,7 @@ pytest -v
 
 # Run demo (requires API key)
 export ANTHROPIC_API_KEY=your-key
-python -m bedsheet
+uvx bedsheet
 
 # CLI commands (v0.4)
 bedsheet init my-agent             # Create new agent project
