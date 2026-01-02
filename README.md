@@ -416,7 +416,7 @@ Yes. The code isn't.
 
 ## License
 
-Elastic License 2.0 - see [LICENSE.md](LICENSE) for details.
+Elastic License 2.0 - see [LICENSE](LICENSE.md) for details.
 
 ---
 
