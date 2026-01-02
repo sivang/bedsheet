@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Multi-Agent Collaboration Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-link .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            color: var(--text-muted);
+        }
+
+        .nav-link:hover .step {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            max-width: 1000px;
+            padding: 48px 64px;
+        }
+
+        /* Hero */
+        .hero {
+            margin-bottom: 48px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .hero .lead {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .hero .badge-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-purple { background: #f3e8ff; color: #6b21a8; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
+
+        /* Typography */
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-top: 64px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2 .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--accent-blue);
+            color: white;
+            border-radius: 50%;
+            font-size: 18px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Code */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 16px 0 24px 0;
+            font-size: 14px;
+            white-space: pre;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        p code, li code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-purple);
+        }
+
+        /* Info boxes */
+        .info-box {
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.tip {
+            background: #f0fdf4;
+            border-color: var(--accent-green);
+        }
+
+        .info-box.note {
+            background: #eff6ff;
+            border-color: var(--accent-blue);
+        }
+
+        .info-box.warning {
+            background: #fefce8;
+            border-color: var(--accent-orange);
+        }
+
+        .info-box.important {
+            background: #fef2f2;
+            border-color: var(--accent-red);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .important .info-box-title { color: var(--accent-red); }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Output blocks */
+        .output {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .output .comment {
+            color: #6b7280;
+        }
+
+        /* What's happening boxes */
+        .whats-happening {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .whats-happening h4 {
+            margin-top: 0;
+            color: var(--accent-purple);
+        }
+
+        .whats-happening ol, .whats-happening ul {
+            margin-left: 24px;
+            margin-bottom: 0;
+        }
+
+        .whats-happening li {
+            margin-bottom: 8px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Architecture diagram */
+        .architecture {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* Feature grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .feature-card h4 {
+            margin-top: 0;
+            color: var(--accent-blue);
+        }
+
+        .feature-card p {
+            margin-bottom: 0;
+            font-size: 14px;
+        }
+
+        /* Mermaid diagrams */
+        .mermaid {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 24px;
+            }
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Bedsheet Agents</h1>
+            <div class="subtitle">Multi-Agent Guide</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Overview</div>
+            <a href="#introduction" class="nav-link">Introduction</a>
+            <a href="#architecture" class="nav-link">Architecture</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Building the System</div>
+            <a href="#collaborators" class="nav-link"><span class="step">1</span>Collaborator Agents</a>
+            <a href="#supervisor" class="nav-link"><span class="step">2</span>The Supervisor</a>
+            <a href="#events" class="nav-link"><span class="step">3</span>Rich Event Handling</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Key Features</div>
+            <a href="#parallel" class="nav-link"><span class="step">4</span>Parallel Delegation</a>
+            <a href="#event-streaming" class="nav-link"><span class="step">5</span>Event Streaming</a>
+            <a href="#error-handling" class="nav-link"><span class="step">6</span>Error Handling</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Advanced</div>
+            <a href="#structured-outputs" class="nav-link"><span class="step">7</span>Structured Outputs</a>
+            <a href="#best-practices" class="nav-link"><span class="step">8</span>Best Practices</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Reference</div>
+            <a href="user-guide.html" class="nav-link">User Guide</a>
+            <a href="technical-guide.html" class="nav-link">Technical Guide</a>
+        </div>
+
+        <div class="nav-section" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+                <div>&copy; 2025-2026</div>
+                <div><strong style="color: var(--text-secondary);">Sivan Grunberg</strong></div>
+                <div><a href="https://vitakka.co/" style="color: var(--accent-blue); text-decoration: none;">Vitakka Consulting</a></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="hero">
+            <h1>Multi-Agent Collaboration Guide</h1>
+            <p class="lead">Build a multi-agent assistant using Bedsheet's Supervisor pattern with parallel delegation and rich event streaming.</p>
+            <div class="badge-row">
+                <span class="badge badge-blue">Parallel Delegation</span>
+                <span class="badge badge-green">Event Streaming</span>
+                <span class="badge badge-purple">Supervisor Synthesis</span>
+                <span class="badge badge-orange">Error Recovery</span>
+            </div>
+        </div>
+
+        <!-- Introduction -->
+        <section id="introduction">
+            <h2>Introduction</h2>
+
+            <p>This guide walks through building a multi-agent assistant using Bedsheet's Supervisor pattern. We'll create an <strong>Investment Research Assistant</strong> that demonstrates Bedsheet's key features:</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Parallel Delegation</h4>
+                    <p>Multiple agents working simultaneously to reduce response time</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Rich Event Streaming</h4>
+                    <p>Full visibility into every step of execution</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Supervisor Synthesis</h4>
+                    <p>Intelligent combination of multiple agent outputs</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Error Recovery</h4>
+                    <p>Graceful handling of agent failures</p>
+                </div>
+            </div>
+
+            <h3>The Example: Investment Research Assistant</h3>
+
+            <p>We'll build an assistant that helps with investment research by coordinating three specialized agents:</p>
+
+            <ol>
+                <li><strong>EthicsChecker</strong> - Validates requests before processing</li>
+                <li><strong>MarketAnalyst</strong> - Analyzes market data and trends</li>
+                <li><strong>NewsResearcher</strong> - Gathers recent news and sentiment</li>
+            </ol>
+
+            <p>The supervisor delegates to Market and News agents <strong>in parallel</strong>, dramatically reducing response time.</p>
+        </section>
+
+        <!-- Architecture -->
+        <section id="architecture">
+            <h2>Architecture</h2>
+
+            <div class="architecture">
+                         User: "Analyze NVIDIA stock"
+                                    |
+                                    v
++---------------------------------------------------------------+
+|                    InvestmentAdvisor                          |
+|                      (Supervisor)                             |
+|                                                               |
+|   1. Check ethics                                             |
+|   2. Delegate to Market + News IN PARALLEL                    |
+|   3. Synthesize comprehensive analysis                        |
++------------+------------------+------------------+------------+
+             |                  |                  |
+             v                  |                  |
+    +-----------------+         |                  |
+    |  EthicsChecker  |         |                  |
+    |  (Sequential)   |         |                  |
+    +--------+--------+         |                  |
+             |                  v                  v
+             |         +-----------------+ +-----------------+
+             |         |  MarketAnalyst  | |  NewsResearcher |
+             |         |   (Parallel)    | |   (Parallel)    |
+             |         +--------+--------+ +--------+--------+
+             |                  |                   |
+             v                  v                   v
++---------------------------------------------------------------+
+|              Synthesized Investment Analysis                   |
++---------------------------------------------------------------+</div>
+
+            <div class="mermaid">
+flowchart TB
+    User[User Request] --> Supervisor[InvestmentAdvisor<br/>Supervisor]
+    Supervisor --> Ethics[EthicsChecker]
+    Ethics --> |approved| Parallel{Parallel Delegation}
+    Parallel --> Market[MarketAnalyst]
+    Parallel --> News[NewsResearcher]
+    Market --> Synthesis[Synthesize]
+    News --> Synthesis
+    Synthesis --> Response[Final Response]
+
+    style Supervisor fill:#dbeafe,stroke:#0969da,color:#1f2328
+    style Ethics fill:#fef3c7,stroke:#d97706,color:#1f2328
+    style Market fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+    style News fill:#dcfce7,stroke:#1a7f37,color:#1f2328
+            </div>
+        </section>
+
+        <!-- Step 1: Collaborator Agents -->
+        <section id="collaborators">
+            <h2><span class="step-number">1</span>Define the Collaborator Agents</h2>
+
+            <h3>Ethics Checker Agent</h3>
+
+            <pre><code class="language-python">import asyncio
+from bedsheet import Agent, ActionGroup, Supervisor
+from bedsheet.llm import AnthropicClient
+from bedsheet.memory import InMemory
+from bedsheet.events import (
+    ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent,
+    DelegationEvent, CollaboratorStartEvent, CollaboratorEvent,
+    CollaboratorCompleteEvent, RoutingEvent
+)
+
+
+# ============================================================
+# Ethics Checker Agent
+# ============================================================
+
+ethics_tools = ActionGroup(name="EthicsTools")
+
+
+@ethics_tools.action(
+    name="check_investment_request",
+    description="Check if an investment request is appropriate"
+)
+async def check_investment_request(request: str) -> dict:
+    """Check for inappropriate investment advice requests."""
+    red_flags = ["insider", "manipulation", "pump and dump", "illegal"]
+    request_lower = request.lower()
+
+    for flag in red_flags:
+        if flag in request_lower:
+            return {
+                "approved": False,
+                "reason": f"Request may involve {flag}",
+                "recommendation": "We cannot provide advice on potentially illegal activities."
+            }
+
+    return {
+        "approved": True,
+        "reason": "Request is appropriate for analysis",
+        "recommendation": None
+    }
+
+
+ethics_agent = Agent(
+    name="EthicsChecker",
+    instruction="""You review investment-related requests for ethical concerns.
+Use the check_investment_request tool and provide a clear verdict.
+Be strict about insider trading, market manipulation, and illegal schemes.""",
+    model_client=AnthropicClient(),
+)
+ethics_agent.add_action_group(ethics_tools)</code></pre>
+
+            <h3>Market Analyst Agent</h3>
+
+            <pre><code class="language-python"># ============================================================
+# Market Analyst Agent
+# ============================================================
+
+market_tools = ActionGroup(name="MarketTools")
+
+
+@market_tools.action(
+    name="get_stock_data",
+    description="Get current stock price and key metrics"
+)
+async def get_stock_data(symbol: str) -> dict:
+    """Fetch stock data (simulated for demo)."""
+    # Simulate API latency
+    await asyncio.sleep(0.5)
+
+    stocks = {
+        "NVDA": {"price": 875.50, "change": "+3.2%", "pe_ratio": 65.4, "market_cap": "2.1T"},
+        "AAPL": {"price": 178.25, "change": "-0.5%", "pe_ratio": 28.1, "market_cap": "2.8T"},
+        "MSFT": {"price": 378.90, "change": "+1.1%", "pe_ratio": 35.2, "market_cap": "2.9T"},
+    }
+
+    if symbol.upper() in stocks:
+        return {"symbol": symbol.upper(), **stocks[symbol.upper()]}
+    return {"error": f"Unknown symbol: {symbol}"}
+
+
+@market_tools.action(
+    name="get_technical_analysis",
+    description="Get technical analysis indicators"
+)
+async def get_technical_analysis(symbol: str) -> dict:
+    """Get technical indicators (simulated)."""
+    await asyncio.sleep(0.3)
+
+    return {
+        "symbol": symbol.upper(),
+        "rsi": 62.5,
+        "macd": "bullish crossover",
+        "moving_avg_50": "above",
+        "moving_avg_200": "above",
+        "trend": "uptrend",
+        "support": 820.00,
+        "resistance": 920.00
+    }
+
+
+market_agent = Agent(
+    name="MarketAnalyst",
+    instruction="""You are a market analyst specializing in stock analysis.
+Use the available tools to gather price data and technical indicators.
+Provide clear, data-driven analysis without making specific buy/sell recommendations.""",
+    model_client=AnthropicClient(),
+)
+market_agent.add_action_group(market_tools)</code></pre>
+
+            <h3>News Researcher Agent</h3>
+
+            <pre><code class="language-python"># ============================================================
+# News Researcher Agent
+# ============================================================
+
+news_tools = ActionGroup(name="NewsTools")
+
+
+@news_tools.action(
+    name="search_news",
+    description="Search for recent news about a company or topic"
+)
+async def search_news(query: str, days: int = 7) -> dict:
+    """Search recent news (simulated)."""
+    await asyncio.sleep(0.4)
+
+    news_db = {
+        "nvidia": [
+            {"headline": "NVIDIA Reports Record Data Center Revenue", "sentiment": "positive", "date": "2024-02-21"},
+            {"headline": "AI Chip Demand Continues to Surge", "sentiment": "positive", "date": "2024-02-20"},
+            {"headline": "NVIDIA Announces New AI Supercomputer", "sentiment": "positive", "date": "2024-02-19"},
+        ],
+        "apple": [
+            {"headline": "Apple Vision Pro Launches to Mixed Reviews", "sentiment": "neutral", "date": "2024-02-21"},
+            {"headline": "iPhone Sales Slow in China", "sentiment": "negative", "date": "2024-02-20"},
+        ]
+    }
+
+    query_lower = query.lower()
+    for company, articles in news_db.items():
+        if company in query_lower:
+            return {"query": query, "articles": articles, "count": len(articles)}
+
+    return {"query": query, "articles": [], "count": 0, "message": "No recent news found"}
+
+
+@news_tools.action(
+    name="analyze_sentiment",
+    description="Analyze overall sentiment from news articles"
+)
+async def analyze_sentiment(articles: list[dict]) -> dict:
+    """Analyze sentiment from news articles."""
+    if not articles:
+        return {"sentiment": "neutral", "confidence": 0.0}
+
+    sentiment_scores = {"positive": 1, "neutral": 0, "negative": -1}
+    total = sum(sentiment_scores.get(a.get("sentiment", "neutral"), 0) for a in articles)
+    avg = total / len(articles)
+
+    if avg > 0.3:
+        sentiment = "bullish"
+    elif avg < -0.3:
+        sentiment = "bearish"
+    else:
+        sentiment = "neutral"
+
+    return {
+        "sentiment": sentiment,
+        "score": avg,
+        "articles_analyzed": len(articles),
+        "confidence": min(abs(avg) + 0.5, 1.0)
+    }
+
+
+news_agent = Agent(
+    name="NewsResearcher",
+    instruction="""You are a news researcher focused on financial news.
+Search for recent news and analyze sentiment.
+Report key headlines and overall market sentiment.""",
+    model_client=AnthropicClient(),
+)
+news_agent.add_action_group(news_tools)</code></pre>
+        </section>
+
+        <!-- Step 2: Supervisor -->
+        <section id="supervisor">
+            <h2><span class="step-number">2</span>Create the Supervisor</h2>
+
+            <p>The supervisor coordinates all three agents:</p>
+
+            <pre><code class="language-python"># ============================================================
+# Investment Advisor Supervisor
+# ============================================================
+
+advisor = Supervisor(
+    name="InvestmentAdvisor",
+    instruction="""You are an investment research advisor that coordinates
+specialized analysts to provide comprehensive stock analysis.
+
+## Your Workflow
+
+1. **Ethics Check First**: ALWAYS delegate to EthicsChecker first
+   - If ethics check fails, stop and explain to the user
+   - If it passes, proceed to research
+
+2. **Parallel Research**: Delegate to BOTH analysts simultaneously:
+   - MarketAnalyst: For price data and technical analysis
+   - NewsResearcher: For recent news and sentiment
+
+   Use parallel delegation like this:
+   delegate(delegations=[
+       {"agent_name": "MarketAnalyst", "task": "Analyze [SYMBOL] stock"},
+       {"agent_name": "NewsResearcher", "task": "Find news about [COMPANY]"}
+   ])
+
+3. **Synthesize**: Combine findings into a comprehensive analysis:
+   - Current price and key metrics
+   - Technical outlook
+   - News sentiment
+   - Overall assessment (without specific buy/sell advice)
+
+## Important
+- Always check ethics BEFORE doing research
+- Use parallel delegation for Market and News to save time
+- Provide balanced analysis, not financial advice""",
+    model_client=AnthropicClient(),
+    memory=InMemory(),
+    collaborators=[ethics_agent, market_agent, news_agent],
+    collaboration_mode="supervisor",  # We want synthesis, not just routing
+    max_iterations=15,
+)</code></pre>
+
+            <div class="info-box note">
+                <div class="info-box-title">Collaboration Mode</div>
+                <p><code>collaboration_mode="supervisor"</code> means the supervisor will synthesize responses from multiple agents. Use <code>"router"</code> if you just want to pick one agent and pass through its response directly.</p>
+            </div>
+        </section>
+
+        <!-- Step 3: Event Handling -->
+        <section id="events">
+            <h2><span class="step-number">3</span>Rich Event Handling</h2>
+
+            <p>This is where Bedsheet shines - full visibility into every step:</p>
+
+            <pre><code class="language-python">async def run_with_rich_events():
+    """Demonstrate rich event streaming."""
+    session_id = "demo-session"
+    user_input = "Can you analyze NVIDIA stock for me?"
+
+    print("\n" + "=" * 70)
+    print("BEDSHEET MULTI-AGENT DEMO")
+    print("=" * 70)
+    print(f"\nUser: {user_input}\n")
+    print("-" * 70)
+
+    # Track timing for parallel execution demo
+    import time
+    start_time = time.time()
+    parallel_agents = []
+
+    async for event in advisor.invoke(session_id=session_id, input_text=user_input):
+
+        # --------------------------------------------------------
+        # Delegation Events - Shows coordination decisions
+        # --------------------------------------------------------
+        if isinstance(event, DelegationEvent):
+            agents = [d["agent_name"] for d in event.delegations]
+            if len(agents) > 1:
+                print(f"\n[PARALLEL DELEGATION] Dispatching {len(agents)} agents simultaneously:")
+                for d in event.delegations:
+                    print(f"   -> {d['agent_name']}: {d['task'][:60]}...")
+                parallel_agents = agents
+            else:
+                print(f"\n[DELEGATION] -> {agents[0]}")
+
+        # --------------------------------------------------------
+        # Collaborator Lifecycle Events
+        # --------------------------------------------------------
+        elif isinstance(event, CollaboratorStartEvent):
+            indicator = "!" if event.agent_name in parallel_agents else "->"
+            print(f"\n{indicator} [{event.agent_name}] Starting...")
+
+        elif isinstance(event, CollaboratorCompleteEvent):
+            elapsed = time.time() - start_time
+            print(f"[ok] [{event.agent_name}] Complete ({elapsed:.1f}s)")
+
+        # --------------------------------------------------------
+        # Inner Events - See inside each collaborator
+        # --------------------------------------------------------
+        elif isinstance(event, CollaboratorEvent):
+            inner = event.inner_event
+            agent = event.agent_name
+            indent = "    "
+
+            if isinstance(inner, ToolCallEvent):
+                print(f"{indent}[tool] [{agent}] Calling: {inner.tool_name}({inner.tool_input})")
+
+            elif isinstance(inner, ToolResultEvent):
+                if inner.error:
+                    print(f"{indent}[error] [{agent}] Error: {inner.error}")
+                else:
+                    # Show truncated result
+                    result_str = str(inner.result)
+                    if len(result_str) > 80:
+                        result_str = result_str[:80] + "..."
+                    print(f"{indent}[ok] [{agent}] Result: {result_str}")
+
+            elif isinstance(inner, CompletionEvent):
+                # Collaborator's response (before supervisor synthesis)
+                preview = inner.response[:100] + "..." if len(inner.response) > 100 else inner.response
+                print(f"{indent}[response] [{agent}] Response: {preview}")
+
+        # --------------------------------------------------------
+        # Final Completion
+        # --------------------------------------------------------
+        elif isinstance(event, CompletionEvent):
+            total_time = time.time() - start_time
+            print("\n" + "-" * 70)
+            print(f"FINAL RESPONSE ({total_time:.1f}s total)")
+            print("-" * 70)
+            print(f"\n{event.response}")
+
+        # --------------------------------------------------------
+        # Error Handling
+        # --------------------------------------------------------
+        elif isinstance(event, ErrorEvent):
+            print(f"\n[WARNING] ERROR: {event.error}")
+            if event.recoverable:
+                print("   (Attempting recovery...)")
+
+    print("\n" + "=" * 70)
+
+
+if __name__ == "__main__":
+    asyncio.run(run_with_rich_events())</code></pre>
+
+            <h3>Example Output</h3>
+
+            <div class="output">======================================================================
+BEDSHEET MULTI-AGENT DEMO
+======================================================================
+
+User: Can you analyze NVIDIA stock for me?
+
+----------------------------------------------------------------------
+
+[DELEGATION] -> EthicsChecker
+
+-> [EthicsChecker] Starting...
+    [tool] [EthicsChecker] Calling: check_investment_request({'request': 'analyze NVIDIA stock'})
+    [ok] [EthicsChecker] Result: {'approved': True, 'reason': 'Request is appropriate...'}
+    [response] [EthicsChecker] Response: The request has been approved...
+[ok] [EthicsChecker] Complete (1.2s)
+
+[PARALLEL DELEGATION] Dispatching 2 agents simultaneously:
+   -> MarketAnalyst: Analyze NVIDIA (NVDA) stock price and technical indicators
+   -> NewsResearcher: Find recent news about NVIDIA and analyze sentiment
+
+! [MarketAnalyst] Starting...
+! [NewsResearcher] Starting...
+    [tool] [MarketAnalyst] Calling: get_stock_data({'symbol': 'NVDA'})
+    [tool] [NewsResearcher] Calling: search_news({'query': 'nvidia', 'days': 7})
+    [ok] [NewsResearcher] Result: {'query': 'nvidia', 'articles': [...], 'count': 3}
+    [ok] [MarketAnalyst] Result: {'symbol': 'NVDA', 'price': 875.50, 'change': '+3.2%'...}
+    [tool] [MarketAnalyst] Calling: get_technical_analysis({'symbol': 'NVDA'})
+    [tool] [NewsResearcher] Calling: analyze_sentiment({'articles': [...]})
+    [ok] [MarketAnalyst] Result: {'rsi': 62.5, 'macd': 'bullish crossover'...}
+    [ok] [NewsResearcher] Result: {'sentiment': 'bullish', 'score': 1.0, 'confidence': 1.0}
+    [response] [MarketAnalyst] Response: NVDA is currently trading at $875.50...
+    [response] [NewsResearcher] Response: News sentiment for NVIDIA is strongly bullish...
+[ok] [MarketAnalyst] Complete (2.1s)
+[ok] [NewsResearcher] Complete (2.0s)
+
+----------------------------------------------------------------------
+FINAL RESPONSE (3.4s total)
+----------------------------------------------------------------------
+
+## NVIDIA (NVDA) Investment Analysis
+
+### Current Market Data
+- **Price**: $875.50 (+3.2% today)
+- **P/E Ratio**: 65.4
+- **Market Cap**: $2.1 Trillion
+
+### Technical Analysis
+The technical indicators paint a bullish picture:
+- RSI at 62.5 (neutral, room to run)
+- MACD showing bullish crossover
+- Trading above both 50-day and 200-day moving averages
+- Current uptrend with support at $820 and resistance at $920
+
+### News & Sentiment
+Recent news is overwhelmingly positive:
+- Record data center revenue reported
+- Continued surge in AI chip demand
+- New AI supercomputer announcement
+
+**Overall Sentiment**: Strongly Bullish (confidence: 100%)
+
+### Summary
+NVIDIA shows strong momentum from both technical and sentiment perspectives.
+The stock is riding the AI wave with record revenue and positive news flow.
+Technical indicators suggest the uptrend remains intact.
+
+*Note: This is analysis only, not financial advice.*
+
+======================================================================</div>
+        </section>
+
+        <!-- Parallel Delegation -->
+        <section id="parallel">
+            <h2><span class="step-number">4</span>Parallel Delegation</h2>
+
+            <p>Notice how MarketAnalyst and NewsResearcher run <strong>simultaneously</strong>:</p>
+
+            <div class="output">! [MarketAnalyst] Starting...
+! [NewsResearcher] Starting...</div>
+
+            <p>Both agents make tool calls at the same time, reducing total response time.</p>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Performance Impact</div>
+                <p>If each agent takes 2 seconds, sequential execution would take 4 seconds. Parallel execution completes in just 2 seconds - a 50% reduction in response time!</p>
+            </div>
+
+            <div class="mermaid">
+gantt
+    title Parallel vs Sequential Delegation
+    dateFormat s
+    axisFormat %S
+
+    section Parallel
+    MarketAnalyst :a1, 0, 2s
+    NewsResearcher :a2, 0, 2s
+
+    section Sequential
+    MarketAnalyst :b1, 0, 2s
+    NewsResearcher :b2, after b1, 2s
+            </div>
+        </section>
+
+        <!-- Event Streaming -->
+        <section id="event-streaming">
+            <h2><span class="step-number">5</span>Event Streaming</h2>
+
+            <p>Every step is visible through Bedsheet's event system:</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>DelegationEvent</h4>
+                    <p>See when and why agents are dispatched</p>
+                </div>
+                <div class="feature-card">
+                    <h4>CollaboratorStartEvent</h4>
+                    <p>Know when each agent begins work</p>
+                </div>
+                <div class="feature-card">
+                    <h4>CollaboratorEvent</h4>
+                    <p>See every tool call and result inside agents</p>
+                </div>
+                <div class="feature-card">
+                    <h4>CollaboratorCompleteEvent</h4>
+                    <p>Know when each agent finishes</p>
+                </div>
+            </div>
+
+            <div class="info-box note">
+                <div class="info-box-title">Why Events Matter</div>
+                <p>Events enable debugging ("why did it call that tool?"), building UIs with progress indicators, logging for observability, and understanding complex agent interactions.</p>
+            </div>
+        </section>
+
+        <!-- Error Handling -->
+        <section id="error-handling">
+            <h2><span class="step-number">6</span>Error Handling</h2>
+
+            <p>Bedsheet gracefully handles agent failures:</p>
+
+            <pre><code class="language-python">@market_tools.action(name="get_stock_data")
+async def get_stock_data(symbol: str) -> dict:
+    if symbol.upper() == "INVALID":
+        raise ValueError("Invalid stock symbol")
+    # ...</code></pre>
+
+            <div class="whats-happening">
+                <h4>What happens when an error occurs</h4>
+                <ol>
+                    <li>The collaborator's error becomes an <code>ErrorEvent</code></li>
+                    <li>The supervisor receives the error as a tool result</li>
+                    <li>The supervisor can decide how to proceed (retry, use different agent, or explain to user)</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Structured Outputs -->
+        <section id="structured-outputs">
+            <h2><span class="step-number">7</span>Structured Outputs for Multi-Agent</h2>
+
+            <p>When building multi-agent systems, <strong>structured outputs</strong> become especially powerful. Instead of parsing free-form text from collaborators, you can guarantee each agent returns data in a predictable format.</p>
+
+            <h3>Use Case: Portfolio Analysis Dashboard</h3>
+
+            <p>Imagine a dashboard that displays analysis from multiple agents. Each agent returns structured JSON that your UI can render directly:</p>
+
+            <pre><code class="language-python">from bedsheet.llm import AnthropicClient, OutputSchema
+
+# Define schemas for each agent's output
+market_schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "symbol": {"type": "string"},
+        "price": {"type": "number"},
+        "trend": {"type": "string", "enum": ["bullish", "bearish", "neutral"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "key_levels": {
+            "type": "object",
+            "properties": {
+                "support": {"type": "number"},
+                "resistance": {"type": "number"}
+            }
+        }
+    },
+    "required": ["symbol", "price", "trend", "confidence"]
+})
+
+news_schema = OutputSchema.from_dict({
+    "type": "object",
+    "properties": {
+        "sentiment": {"type": "string", "enum": ["bullish", "bearish", "neutral"]},
+        "headline_count": {"type": "integer"},
+        "top_headlines": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "risk_factors": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["sentiment", "headline_count"]
+})</code></pre>
+
+            <h3>Why This Matters for Multi-Agent</h3>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Reliable Synthesis</h4>
+                    <p>The supervisor can programmatically combine structured data from multiple agents</p>
+                </div>
+                <div class="feature-card">
+                    <h4>UI-Ready Output</h4>
+                    <p>Frontend can render agent results without parsing markdown</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Type Safety</h4>
+                    <p>Your code knows exactly what shape the data will be</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Error Prevention</h4>
+                    <p>No more "agent returned unexpected format" bugs</p>
+                </div>
+            </div>
+
+            <pre><code class="language-python"># Supervisor can now work with predictable data
+market_data = market_response.parsed_output  # Guaranteed structure
+news_data = news_response.parsed_output      # Guaranteed structure
+
+# Combine programmatically
+combined_score = (
+    market_data["confidence"] * 0.6 +
+    (1.0 if news_data["sentiment"] == "bullish" else 0.5) * 0.4
+)</code></pre>
+
+            <div class="info-box tip">
+                <div class="info-box-title">Pro Tip: Schema Per Agent Role</div>
+                <p>Define a schema that matches each agent's specialty: MarketAnalyst returns price/technicals/trend, NewsResearcher returns sentiment/headlines/risk factors. This turns your multi-agent system from a "chat with experts" into a <strong>structured data pipeline</strong> that happens to use LLMs.</p>
+            </div>
+        </section>
+
+        <!-- Best Practices -->
+        <section id="best-practices">
+            <h2><span class="step-number">8</span>Best Practices</h2>
+
+            <ol>
+                <li><strong>Always check prerequisites first</strong> (ethics, auth, etc.) before expensive operations</li>
+                <li><strong>Use parallel delegation</strong> for independent tasks to reduce latency</li>
+                <li><strong>Handle events appropriately</strong> for your UI (CLI, web, etc.)</li>
+                <li><strong>Keep collaborator instructions focused</strong> - each agent should have a clear specialty</li>
+                <li><strong>Let the supervisor synthesize</strong> - don't just concatenate agent outputs</li>
+            </ol>
+
+            <h3>Next Steps</h3>
+
+            <ul>
+                <li>Add more specialized agents (RiskAnalyst, CompetitorTracker, etc.)</li>
+                <li>Implement real tool integrations (market data APIs, news APIs)</li>
+                <li>Add memory persistence with RedisMemory for conversation continuity</li>
+                <li>Build a web UI that streams events in real-time</li>
+                <li>Use structured outputs for dashboard-ready agent responses</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><strong>Copyright &copy; 2025-2026 Sivan Grunberg, <a href="https://vitakka.co/">Vitakka Consulting</a></strong></p>
+            <p style="margin-top: 8px;">Licensed under the Elastic License 2.0</p>
+            <p style="margin-top: 8px;">
+                <a href="user-guide.html">User Guide</a> &middot;
+                <a href="technical-guide.html">Technical Guide</a> &middot;
+                <a href="https://github.com/sivang/bedsheet">GitHub</a>
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid with light theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#1f2328',
+                primaryBorderColor: '#0969da',
+                lineColor: '#57606a',
+                secondaryColor: '#f0fdf4',
+                tertiaryColor: '#fef3c7'
+            }
+        });
+
+        // Initialize syntax highlighting
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
