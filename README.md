@@ -21,8 +21,8 @@
 ## Quick Start (60 seconds)
 
 ```bash
-pip install bedsheet
 export ANTHROPIC_API_KEY=sk-ant-...
+uvx bedsheet  # Run demo instantly, no install needed
 ```
 
 **A research assistant in 20 lines:**
@@ -60,7 +60,7 @@ asyncio.run(main())
 
 **Want the fancy demo?**
 ```bash
-python -m bedsheet  # Multi-agent investment advisor with parallel execution
+uvx bedsheet  # Multi-agent investment advisor with parallel execution
 ```
 
 <details>
@@ -322,9 +322,13 @@ asyncio.run(main())
 ## Installation
 
 ```bash
-pip install bedsheet              # Basic
-pip install bedsheet[redis]       # + Redis memory backend
-pip install bedsheet[dev]         # + Development tools
+# Recommended: Use uv for fast, reliable installs
+uv pip install bedsheet           # Basic
+uv pip install bedsheet[redis]    # + Redis memory backend
+uv pip install bedsheet[dev]      # + Development tools
+
+# Or run directly without installing
+uvx bedsheet --help
 ```
 
 **Requirements:** Python 3.11+ and an [Anthropic API key](https://console.anthropic.com/)
@@ -369,7 +373,7 @@ Total: ~1,000 lines. Coffee break reading.
 - **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
 - **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
 - **[Deployment Guide](https://sivang.github.io/bedsheet/deployment-guide.html)** — Local, GCP, and AWS deployment
-- **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.md)** — Supervisor deep dive
+- **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.html)** — Supervisor deep dive
 
 ---
 
@@ -390,7 +394,7 @@ Total: ~1,000 lines. Coffee break reading.
 ```bash
 git clone https://github.com/sivang/bedsheet.git
 cd bedsheet
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 pytest -v  # 180 tests, all green
 ```
 
