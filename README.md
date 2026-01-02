@@ -21,7 +21,7 @@
 ## Quick Start (60 seconds)
 
 ```bash
-pip install bedsheet-agents
+pip install bedsheet
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
@@ -322,9 +322,9 @@ asyncio.run(main())
 ## Installation
 
 ```bash
-pip install bedsheet-agents          # Basic
-pip install bedsheet-agents[redis]   # + Redis memory backend
-pip install bedsheet-agents[dev]     # + Development tools
+pip install bedsheet              # Basic
+pip install bedsheet[redis]       # + Redis memory backend
+pip install bedsheet[dev]         # + Development tools
 ```
 
 **Requirements:** Python 3.11+ and an [Anthropic API key](https://console.anthropic.com/)

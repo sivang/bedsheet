@@ -5,7 +5,7 @@ Command-line interface for managing Bedsheet agent deployments.
 ## Installation
 
 ```bash
-pip install bedsheet-agents[deploy]
+pip install bedsheet[deploy]
 ```
 
 Or install from source:

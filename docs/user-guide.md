@@ -24,7 +24,7 @@ A progressive tutorial from your first agent to complex multi-agent orchestratio
 ### Installation
 
 ```bash
-pip install bedsheet-agents
+pip install bedsheet
 ```
 
 ### Set Your API Key

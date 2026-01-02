@@ -418,7 +418,7 @@ async def test_gcp_target_generate_pyproject_toml_content(
         # Check for expected dependencies
         assert "google-adk" in content
         assert "google-genai" in content
-        assert "bedsheet-agents" in content
+        assert "bedsheet" in content
 
 
 @pytest.mark.asyncio
