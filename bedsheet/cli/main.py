@@ -304,7 +304,7 @@ version = "0.1.0"
 description = "A Bedsheet agent project"
 requires-python = ">=3.11"
 dependencies = [
-    "bedsheet-agents>=0.4.0rc1",
+    "bedsheet>=0.4.0",
     "anthropic>=0.18.0",
 ]
 '''

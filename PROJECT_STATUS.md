@@ -37,7 +37,7 @@
    - Bumped version from 0.4.0rc4 to 0.4.0
    - Fixed build: Added node_modules exclusion to pyproject.toml
    - Removed all `--prerelease` flags from docs and templates
-   - https://pypi.org/project/bedsheet-agents/0.4.0/
+   - https://pypi.org/project/bedsheet/
 
 2. **License Cleanup**
    - Updated all Apache 2.0 references to Elastic License 2.0
@@ -54,8 +54,8 @@
 ### Install Options (Now Stable!)
 
 ```bash
-pip install bedsheet-agents
-uv add bedsheet-agents
+pip install bedsheet
+uv add bedsheet
 uvx bedsheet --help
 ```
 
@@ -548,7 +548,7 @@ bedsheet/
 ## Links
 
 - [GitHub Repository](https://github.com/sivang/bedsheet)
-- [PyPI Package](https://pypi.org/project/bedsheet-agents/)
+- [PyPI Package](https://pypi.org/project/bedsheet/)
 - [v0.4 Plan](~/.claude/plans/valiant-sniffing-origami.md)
 
 ---

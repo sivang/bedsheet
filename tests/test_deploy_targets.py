@@ -289,7 +289,7 @@ async def test_local_target_generate_pyproject_toml_content(mock_config, mock_ag
         assert "uvicorn" in content
         assert "pydantic" in content
         assert "anthropic" in content
-        assert "bedsheet-agents" in content
+        assert "bedsheet" in content
 
 
 @pytest.mark.asyncio

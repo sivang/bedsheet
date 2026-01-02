@@ -8,8 +8,8 @@ Thank you for your interest in contributing to Bedsheet Agents! We welcome contr
 
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/bedsheet-agents
-   cd bedsheet-agents
+   git clone https://github.com/YOUR_USERNAME/bedsheet
+   cd bedsheet
    ```
 
 3. **Create a virtual environment**:
