@@ -14,13 +14,13 @@ Thank you for your interest in contributing to Bedsheet Agents! We welcome contr
 
 3. **Create a virtual environment**:
    ```bash
-   python -m venv .venv
+   uv venv
    source .venv/bin/activate  # or .venv\Scripts\activate on Windows
    ```
 
 4. **Install development dependencies**:
    ```bash
-   pip install -e ".[dev]"
+   uv pip install -e ".[dev]"
    ```
 
 5. **Run tests** to make sure everything works:
@@ -53,7 +53,7 @@ Thank you for your interest in contributing to Bedsheet Agents! We welcome contr
 5. **Format your code** (we use standard Python conventions):
    ```bash
    # Optional: install ruff for linting
-   pip install ruff
+   uv pip install ruff
    ruff check .
    ```
 
