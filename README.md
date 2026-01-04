@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Pythonic.png" alt="Bedsheet Agents" width="800">
+  <img src="Pythonic.jpg" alt="Bedsheet Agents" width="800">
 </p>
 
 <p align="center">
