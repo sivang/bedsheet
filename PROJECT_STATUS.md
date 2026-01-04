@@ -24,7 +24,7 @@
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
 | Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
 | Examples | ✅ Investment advisor demo |
-| Demo | ✅ `uvx bedsheet` (requires API key, uses Claude Sonnet 4.5) |
+| Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
 
 ---

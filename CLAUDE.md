@@ -8,7 +8,7 @@
 
 - **Version:** 0.3.0 (Released on PyPI), v0.4.0 in development
 - **Tests:** 179 passing (`pytest -v`)
-- **Demo:** `uvx bedsheet` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
+- **Demo:** `uvx bedsheet demo` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
 - **Default Model:** `claude-sonnet-4-5-20250929`
 - **v0.4 Branch:** `development/v0.4-deploy-anywhere`
 
@@ -71,7 +71,7 @@ pytest -v
 
 # Run demo (requires API key)
 export ANTHROPIC_API_KEY=your-key
-uvx bedsheet
+uvx bedsheet demo
 
 # CLI commands (v0.4)
 bedsheet init my-agent             # Create new agent project

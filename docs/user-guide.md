@@ -38,7 +38,7 @@ export ANTHROPIC_API_KEY=your-key-here
 ### Verify Installation
 
 ```bash
-uvx bedsheet
+uvx bedsheet demo
 ```
 
 This runs a demo showing multi-agent collaboration. If it works, you're ready!
@@ -684,7 +684,7 @@ help_desk = Supervisor(
 
 - **[Multi-Agent Guide](multi-agent-guide.md)**: Deep dive into supervisor patterns
 - **[Technical Guide](technical-guide.html)**: Understand the Python patterns used
-- **Run the demo**: `uvx bedsheet` to see everything in action
+- **Run the demo**: `uvx bedsheet demo` to see everything in action
 
 ---
 

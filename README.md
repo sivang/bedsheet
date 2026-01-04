@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Bedsheet Agents" width="800">
+  <img src="Pythonic.png" alt="Bedsheet Agents" width="800">
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-uvx bedsheet  # Run demo instantly, no install needed
+uvx bedsheet demo  # Run demo instantly, no install needed
 ```
 
 **A research assistant in 20 lines:**
@@ -60,7 +60,7 @@ asyncio.run(main())
 
 **Want the fancy demo?**
 ```bash
-uvx bedsheet  # Multi-agent investment advisor with parallel execution
+uvx bedsheet demo  # Multi-agent investment advisor with parallel execution
 ```
 
 <details>

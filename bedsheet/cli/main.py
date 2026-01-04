@@ -36,7 +36,8 @@ app = typer.Typer(
 console = Console()
 
 # Version from pyproject.toml
-__version__ = "0.4.0rc1"
+__version__ = "0.4.0"
+
 
 # Target mapping
 TARGETS: dict[str, type[DeploymentTarget]] = {
@@ -186,6 +187,20 @@ def _load_and_introspect_agent(
 def version():
     """Show Bedsheet version."""
     rprint(f"[bold cyan]Bedsheet[/bold cyan] version [bold]{__version__}[/bold]")
+
+
+@app.command()
+def demo():
+    """Run the multi-agent investment advisor demo.
+
+    Shows parallel delegation, event streaming, and supervisor synthesis.
+    Requires ANTHROPIC_API_KEY environment variable.
+
+    Example:
+        bedsheet demo
+    """
+    from bedsheet.__main__ import main as demo_main
+    demo_main()
 
 
 @app.command()
