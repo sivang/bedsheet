@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="Pythonic.jpg" alt="Bedsheet Agents" width="800">
+  <img src="Pythonic.jpg" alt="Bedsheet Agents" width="800" height="680">
 </p>
 
 <p align="center">
-  <i>No PhD required. We checked.</i>
+  <!-- <i>No PhD required. We checked.</i>
   <br>
   <i>For developers who value simplicity.</i>
+  --> 
 </p>
 
 <p align="center">
