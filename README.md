@@ -384,8 +384,9 @@ Total: ~1,000 lines. Coffee break reading.
 - [x] v0.3 — Structured outputs
 - [x] v0.4 — Deploy anywhere (Local/GCP/AWS), Debug UI ← *you are here*
 - [ ] v0.5 — Knowledge bases, RAG
-- [ ] v0.6 — Guardrails, safety
+- [ ] v0.6 — Guardrails, safety (classification models for high-speed validation)
 - [ ] v0.7 — GCP Agent Engine, A2A protocol
+- [ ] v0.8 — WASM/Spin support (browser agents, edge deployment, Fermyon Cloud)
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0 ✅ Released on PyPI
 
-**Last Session:** 2026-01-01
+**Last Session:** 2026-01-07
 
 ### Release Status
 
@@ -26,6 +26,84 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2026-01-07) - Post-Release Polish & Roadmap Update
+
+### What Was Done
+
+1. **Package Rename: bedsheet-agents → bedsheet**
+   - Simplified PyPI package name for cleaner `uvx bedsheet` experience
+   - Updated pyproject.toml package name
+
+2. **CLI Demo Command**
+   - Added `bedsheet demo` command to CLI
+   - Fixes "Missing command" error when running `uvx bedsheet`
+   - Demo runs the multi-agent investment advisor
+
+3. **Documentation Updates (pip → uv)**
+   - Updated all documentation to use modern `uv`/`uvx` tooling
+   - Files updated: README.md, CONTRIBUTING.md, CLAUDE.md, PROJECT_STATUS.md
+   - Files updated: docs/user-guide.md, docs/user-guide.html, bedsheet/cli/README.md
+
+4. **Multi-Agent Guide HTML**
+   - Created HTML version of multi-agent-guide.md
+   - Matches styling of other documentation files
+
+5. **README Image Optimization**
+   - Updated image from logo.png to Pythonic.jpg
+   - Optimized file size: 3.9MB → 652KB (JPEG 85% quality)
+   - No visible quality loss
+
+6. **Git History Cleanup**
+   - Removed all Claude attributions from commit messages
+   - Used git-filter-repo for safe history rewrite
+   - Verified integrity via tree hash comparison before force push
+
+7. **Project Conventions**
+   - Created `.claude/rules/dont.md` with lessons learned
+   - Documents: image backup before edits, GitHub Pages links, no Claude attributions
+
+8. **Roadmap Update**
+   - Enhanced v0.6: Added "classification models for high-speed validation"
+   - Added v0.8: WASM/Spin support (browser agents, edge deployment, Fermyon Cloud)
+
+### Commits
+
+```
+52aad0d Reduce size even more
+c7344f7 chore: optimize README image size (3.9MB → 652KB)
+82a4a6d chore: crop README image to 16:9 widescreen
+9cf81f2 feat(cli): add demo command and update README image
+e308f35 docs: update remaining files to use uv tooling
+09d2caf docs: update README to use uvx/uv instead of pip
+798b5ff docs: add HTML version of multi-agent guide
+7c885a5 chore: rename package from bedsheet-agents to bedsheet
+dd7fb6d Fix link format for LICENSE in README.md
+059f2bd Update LICENSE link to LICENSE.md
+```
+
+### Files Modified
+
+**Python Code:**
+- `bedsheet/cli/main.py` - Added demo command, version bump to 0.4.0
+- `pyproject.toml` - Package rename
+
+**Documentation:**
+- `README.md` - uv tooling, new image, roadmap update
+- `CONTRIBUTING.md` - uv tooling
+- `CLAUDE.md` - uv tooling
+- `docs/user-guide.md` - uv tooling
+- `docs/user-guide.html` - uv tooling
+- `docs/multi-agent-guide.html` - New file
+- `bedsheet/cli/README.md` - uv tooling
+
+**Assets:**
+- `Pythonic.jpg` - New optimized README image (652KB)
+
+**Local Config:**
+- `.claude/rules/dont.md` - Project conventions (not committed)
 
 ---
 
@@ -441,17 +519,26 @@ bedsheet/
 - Both GCP and AWS targets must be deployed and tested end-to-end with a real agent
 - Debug UI with streaming for local and GCP targets
 
-### v0.5: Knowledge & Safety (Planned)
+### v0.5: Knowledge Bases, RAG (Planned)
 
 | Feature | Status | Priority |
 |---------|--------|----------|
 | Knowledge Base Protocol | 🔮 Planned | High |
 | RAG Integration | 🔮 Planned | High |
-| Guardrails Protocol | 🔮 Planned | Medium |
-| Content Filtering | 🔮 Planned | Medium |
-| PII Detection | 🔮 Planned | Low |
+| Vector store abstraction | 🔮 Planned | Medium |
 
-### v0.6: GCP Agent Engine Target (Planned)
+### v0.6: Guardrails, Safety (Planned)
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Classification models for high-speed validation | 🔮 Planned | High |
+| Content Filtering | 🔮 Planned | Medium |
+| PII Detection | 🔮 Planned | Medium |
+| Prompt injection detection | 🔮 Planned | Medium |
+
+**Approach:** Use lightweight classification models (not full LLMs) for input/output validation. Fast inference for real-time safety checks.
+
+### v0.7: GCP Agent Engine, A2A Protocol (Planned)
 
 | Feature | Status | Priority |
 |---------|--------|----------|
@@ -462,7 +549,19 @@ bedsheet/
 
 **Why:** Agent Engine provides built-in A2A (Agent-to-Agent) protocol, managed session state, enterprise security (VPC-SC, CMEK), and interop with other enterprise agents (SAP Joule, Microsoft Copilot, etc.). Cloud Run remains the "flexible" option; Agent Engine is the "managed" option.
 
-### v0.7: Advanced Features (Planned)
+### v0.8: WASM/Spin Support (Planned)
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Browser-based agents via WASM | 🔮 Planned | High |
+| Edge deployment (Cloudflare Workers, Deno Deploy) | 🔮 Planned | High |
+| Fermyon Spin deployment target | 🔮 Planned | High |
+| Sandboxed tool execution | 🔮 Planned | Medium |
+| Plugin system via WASM modules | 🔮 Planned | Low |
+
+**Why:** WASM enables running agents in browsers, edge runtimes, and with near-instant cold starts. Spin provides serverless WASM deployment to Fermyon Cloud.
+
+### Future: Advanced Features
 
 | Feature | Status | Priority |
 |---------|--------|----------|
