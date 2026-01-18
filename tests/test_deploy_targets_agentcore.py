@@ -607,9 +607,10 @@ async def test_agentcore_target_generate_supervisor_filters_delegate_tool(
 
         # Check OpenAPI schema doesn't have delegate tool
         openapi_file = next(f for f in files if f.path.name == "openapi.yaml")
-        content = openapi_file.content.lower()
+        openapi_content = openapi_file.content.lower()
         # delegate should not be in the OpenAPI schema since it's filtered
         # Note: The schema is generated from filtered_agent, not original agent
+        assert "delegate" not in openapi_content
 
 
 @pytest.mark.asyncio
@@ -672,4 +673,6 @@ async def test_agentcore_target_generate_agent_without_tools():
 
         file_names = [f.path.name for f in files]
         # Lambda files should NOT be present
-        assert "handler.py" not in [f.path.name for f in files if f.path.parent.name == "lambda"]
+        lambda_files = [f.path.name for f in files if f.path.parent.name == "lambda"]
+        assert "handler.py" not in lambda_files
+        assert "handler.py" not in file_names or len(lambda_files) == 0
