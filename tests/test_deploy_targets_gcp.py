@@ -508,3 +508,229 @@ async def test_gcp_target_generate_with_default_config(mock_single_agent_metadat
         agent_file = next(f for f in files if f.path.name == "agent.py")
         # Default model should be claude from Vertex AI
         assert "claude" in agent_file.content.lower() or "model=" in agent_file.content
+
+
+# =============================================================================
+# Google Search Grounding Tests
+# =============================================================================
+
+
+def test_gcp_config_builtin_tools_default_empty():
+    """Test GCPTargetConfig.builtin_tools defaults to empty list."""
+    config = GCPTargetConfig(project="my-project")
+    assert config.builtin_tools == []
+
+
+def test_gcp_config_builtin_tools_google_search():
+    """Test GCPTargetConfig accepts google_search as builtin tool."""
+    config = GCPTargetConfig(
+        project="my-project",
+        builtin_tools=["google_search"],
+    )
+    assert config.builtin_tools == ["google_search"]
+
+
+def test_gcp_config_builtin_tools_code_execution():
+    """Test GCPTargetConfig accepts code_execution as builtin tool."""
+    config = GCPTargetConfig(
+        project="my-project",
+        builtin_tools=["code_execution"],
+    )
+    assert config.builtin_tools == ["code_execution"]
+
+
+def test_gcp_config_builtin_tools_multiple():
+    """Test GCPTargetConfig accepts multiple builtin tools."""
+    config = GCPTargetConfig(
+        project="my-project",
+        builtin_tools=["google_search", "code_execution"],
+    )
+    assert config.builtin_tools == ["google_search", "code_execution"]
+
+
+def test_gcp_config_builtin_tools_invalid():
+    """Test GCPTargetConfig rejects invalid builtin tool names."""
+    with pytest.raises(ValueError) as exc_info:
+        GCPTargetConfig(
+            project="my-project",
+            builtin_tools=["invalid_tool"],
+        )
+    assert "Invalid built-in tool: invalid_tool" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_gcp_target_generate_with_google_search(mock_single_agent_metadata):
+    """Test GCPTarget.generate includes Google Search import and tool."""
+    config = BedsheetConfig(
+        name="search-agent",
+        agents=[
+            AgentConfig(
+                name="searcher",
+                module="myapp.agents.searcher",
+                class_name="SearchAgent",
+            )
+        ],
+        target="gcp",
+        targets={
+            "gcp": GCPTargetConfig(
+                project="my-test-project",
+                region="us-central1",
+                builtin_tools=["google_search"],
+            ),
+        },
+    )
+
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(config, mock_single_agent_metadata, output_dir)
+
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        content = agent_file.content
+
+        # Check for Google Search import
+        assert "from google.adk.tools import google_search" in content
+
+        # Check that google_search is in tools list
+        assert "google_search" in content
+        assert "tools=" in content
+
+
+@pytest.mark.asyncio
+async def test_gcp_target_generate_with_code_execution(mock_single_agent_metadata):
+    """Test GCPTarget.generate includes code_execution import and tool."""
+    config = BedsheetConfig(
+        name="code-agent",
+        agents=[
+            AgentConfig(
+                name="coder",
+                module="myapp.agents.coder",
+                class_name="CodeAgent",
+            )
+        ],
+        target="gcp",
+        targets={
+            "gcp": GCPTargetConfig(
+                project="my-test-project",
+                region="us-central1",
+                builtin_tools=["code_execution"],
+            ),
+        },
+    )
+
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(config, mock_single_agent_metadata, output_dir)
+
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        content = agent_file.content
+
+        # Check for code_execution import
+        assert "from google.adk.tools import code_execution" in content
+
+        # Check that code_execution is in tools list
+        assert "code_execution" in content
+        assert "tools=" in content
+
+
+@pytest.mark.asyncio
+async def test_gcp_target_generate_with_multiple_builtin_tools(mock_single_agent_metadata):
+    """Test GCPTarget.generate includes multiple builtin tools."""
+    config = BedsheetConfig(
+        name="multi-tool-agent",
+        agents=[
+            AgentConfig(
+                name="multi",
+                module="myapp.agents.multi",
+                class_name="MultiAgent",
+            )
+        ],
+        target="gcp",
+        targets={
+            "gcp": GCPTargetConfig(
+                project="my-test-project",
+                region="us-central1",
+                builtin_tools=["google_search", "code_execution"],
+            ),
+        },
+    )
+
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(config, mock_single_agent_metadata, output_dir)
+
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        content = agent_file.content
+
+        # Check for both imports
+        assert "from google.adk.tools import google_search, code_execution" in content
+
+        # Check both are in tools list
+        assert "google_search" in content
+        assert "code_execution" in content
+
+
+@pytest.mark.asyncio
+async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_agent_metadata):
+    """Test GCPTarget.generate combines custom tools with builtin tools."""
+    config = BedsheetConfig(
+        name="hybrid-agent",
+        agents=[
+            AgentConfig(
+                name="hybrid",
+                module="myapp.agents.hybrid",
+                class_name="HybridAgent",
+            )
+        ],
+        target="gcp",
+        targets={
+            "gcp": GCPTargetConfig(
+                project="my-test-project",
+                region="us-central1",
+                builtin_tools=["google_search"],
+            ),
+        },
+    )
+
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(config, mock_single_agent_metadata, output_dir)
+
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        content = agent_file.content
+
+        # Check for builtin tool import
+        assert "from google.adk.tools import google_search" in content
+
+        # Check for custom tool definitions (from mock_single_agent_metadata)
+        assert "def add(" in content
+        assert "def multiply(" in content
+
+        # Check tools list includes both custom and builtin
+        assert "tools=" in content
+        assert "google_search" in content
+        assert "add" in content
+        assert "multiply" in content
+
+
+@pytest.mark.asyncio
+async def test_gcp_target_generate_no_builtin_tools_no_import(mock_gcp_config, mock_single_agent_metadata):
+    """Test GCPTarget.generate does not import builtin tools when none specified."""
+    target = GCPTarget()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir)
+        files = target.generate(mock_gcp_config, mock_single_agent_metadata, output_dir)
+
+        agent_file = next(f for f in files if f.path.name == "agent.py")
+        content = agent_file.content
+
+        # Should NOT have builtin tools import line
+        assert "from google.adk.tools import" not in content

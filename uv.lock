@@ -53,11 +53,16 @@ wheels = [
 ]
 
 [[package]]
-name = "bedsheet-agents"
-version = "0.4.0rc1"
+name = "bedsheet"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "jinja2" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -95,22 +100,27 @@ redis = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.39.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'aws'", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'deploy'", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'gcp'", specifier = ">=3.1.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic", marker = "extra == 'aws'", specifier = ">=2.0.0" },
     { name = "pydantic", marker = "extra == 'deploy'", specifier = ">=2.0.0" },
     { name = "pydantic", marker = "extra == 'dev'", specifier = ">=2.0.0" },
     { name = "pydantic", marker = "extra == 'gcp'", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "pyyaml", marker = "extra == 'aws'", specifier = ">=6.0.0" },
     { name = "pyyaml", marker = "extra == 'deploy'", specifier = ">=6.0.0" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "pyyaml", marker = "extra == 'gcp'", specifier = ">=6.0.0" },
     { name = "redis", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
+    { name = "rich", specifier = ">=13.0.0" },
+    { name = "typer", specifier = ">=0.9.0" },
     { name = "typer", marker = "extra == 'aws'", specifier = ">=0.9.0" },
     { name = "typer", marker = "extra == 'deploy'", specifier = ">=0.9.0" },
     { name = "typer", marker = "extra == 'dev'", specifier = ">=0.9.0" },
