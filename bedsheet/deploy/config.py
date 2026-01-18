@@ -84,6 +84,10 @@ class GCPTargetConfig(BaseModel):
         default=GCPDeploymentStyle.CLOUD_RUN,
         description="Deployment style: agent_engine, cloud_run, or cloud_functions",
     )
+    builtin_tools: list[str] = Field(
+        default=[],
+        description="ADK built-in tools to enable: google_search, code_execution",
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -93,6 +97,18 @@ class GCPTargetConfig(BaseModel):
         """Validate Cloud Run memory format."""
         if not re.match(r"^\d+(Mi|Gi)$", v):
             raise ValueError(f"Invalid memory format: {v}. Use format like '512Mi' or '1Gi'")
+        return v
+
+    @field_validator("builtin_tools")
+    @classmethod
+    def validate_builtin_tools(cls, v: list[str]) -> list[str]:
+        """Validate ADK built-in tool names."""
+        valid_tools = {"google_search", "code_execution"}
+        for tool in v:
+            if tool not in valid_tools:
+                raise ValueError(
+                    f"Invalid built-in tool: {tool}. Valid options: {', '.join(sorted(valid_tools))}"
+                )
         return v
 
 
