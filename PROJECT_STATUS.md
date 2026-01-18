@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.0 ✅ Released on PyPI
 
-**Last Session:** 2026-01-07
+**Last Session:** 2026-01-18
 
 ### Release Status
 
@@ -26,6 +26,60 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2026-01-18) - AgentCore Target + Strands Comparison
+
+### What Was Done
+
+1. **AgentCore Deployment Target - COMPLETE! (EXPERIMENTAL)**
+   - Added new `agentcore` target for Amazon Bedrock AgentCore
+   - ⚠️ **Experimental**: AgentCore is in preview, APIs may change
+   - Full stack: Runtime + Gateway + Lambda for tools
+   - Terraform-based infrastructure
+   - 16 template files created
+   - 26 unit tests added (all passing)
+
+2. **Strands vs Bedsheet Research**
+   - Comprehensive feature comparison analysis
+   - Strands has more features: Swarms, Graphs, Workflows, multi-provider LLM
+   - Bedsheet has unique strengths: multi-cloud deployment, CLI, structured outputs
+   - Decision: Keep Bedsheet simple, document patterns
+
+3. **Multi-Agent Patterns Documentation**
+   - Created `docs/multi-agent-patterns.md`
+   - Shows how to implement Swarms, Graphs, Workflows, A2A with current constructs
+   - No new features needed - just creative use of Supervisor + @action + asyncio
+
+4. **Roadmap Update**
+   - Added "Advanced Orchestration (v0.9+)" section
+   - ReWOO, Reflexion, Autonomous Loops planned for future
+   - Multi-agent patterns documented as achievable today
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `bedsheet/deploy/targets/agentcore.py` | AgentCore target implementation |
+| `bedsheet/deploy/templates/agentcore/` | 16 Jinja2 templates |
+| `tests/test_deploy_targets_agentcore.py` | 26 unit tests |
+| `docs/multi-agent-patterns.md` | Pattern implementation guide |
+| `docs/strands-advanced-patterns.md` | Detailed pattern explanations |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/deploy/config.py` | Added `AgentCoreTargetConfig` |
+| `bedsheet/deploy/__init__.py` | Exported new config class |
+| `bedsheet/deploy/targets/__init__.py` | Exported `AgentCoreTarget` |
+| `bedsheet/cli/main.py` | Added `agentcore` to TARGETS |
+| `PROJECT_STATUS.md` | Updated roadmap with orchestration styles |
+
+### Branch
+
+`feature/agentcore-target` - Ready for merge
 
 ---
 
@@ -560,6 +614,16 @@ bedsheet/
 | Plugin system via WASM modules | 🔮 Planned | Low |
 
 **Why:** WASM enables running agents in browsers, edge runtimes, and with near-instant cold starts. Spin provides serverless WASM deployment to Fermyon Cloud.
+
+### Future: Advanced Orchestration (v0.9+)
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| **ReWOO** | Plan-Execute-Synthesize pattern (fewer LLM calls) | Medium |
+| **Reflexion** | Self-critique and iterative improvement loop | Medium |
+| **Autonomous Loops** | Long-running agents with checkpointing | Medium |
+
+**Note:** Multi-agent patterns (Swarms, Graphs, Workflows, A2A) are already achievable with current constructs. See [docs/multi-agent-patterns.md](docs/multi-agent-patterns.md).
 
 ### Future: Advanced Features
 

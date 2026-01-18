@@ -96,6 +96,53 @@ class GCPTargetConfig(BaseModel):
         return v
 
 
+class AgentCoreTargetConfig(BaseModel):
+    """Configuration for Amazon Bedrock AgentCore deployment target.
+
+    .. warning:: EXPERIMENTAL
+       This target is experimental. AgentCore is in preview and APIs may change.
+       Report bugs at: https://github.com/sivang/bedsheet/issues
+    """
+
+    region: str = Field(..., description="AWS region (e.g., us-east-1)")
+    runtime_memory: int = Field(
+        default=1024,
+        ge=512,
+        le=8192,
+        description="AgentCore Runtime memory in MB",
+    )
+    runtime_vcpu: float = Field(
+        default=0.5,
+        ge=0.25,
+        le=4,
+        description="AgentCore Runtime vCPU allocation",
+    )
+    lambda_memory: int = Field(
+        default=512,
+        ge=128,
+        le=10240,
+        description="Lambda memory in MB for Gateway tools",
+    )
+    bedrock_model: str = Field(
+        default="anthropic.claude-sonnet-4-5-v2:0",
+        description="Bedrock model ID for the agent",
+    )
+    ecr_repository: str = Field(
+        default="",
+        description="ECR repository name (auto-generated if empty)",
+    )
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v: str) -> str:
+        """Validate AWS region format."""
+        if not re.match(r"^[a-z]{2}-[a-z]+-\d+$", v):
+            raise ValueError(f"Invalid AWS region format: {v}")
+        return v
+
+
 class AgentConfig(BaseModel):
     """Configuration for a single agent."""
 
@@ -124,7 +171,7 @@ class BedsheetConfig(BaseModel):
     name: str = Field(..., description="Project name")
     agents: list[AgentConfig] = Field(..., description="List of agents to deploy")
     target: str = Field(..., description="Active target: local, aws, or gcp")
-    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig] = Field(
+    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = Field(
         ..., description="Target configurations"
     )
     enhancements: EnhancementsConfig = Field(
@@ -154,11 +201,13 @@ class BedsheetConfig(BaseModel):
                 raise ValueError("Target 'aws' must use AWSTargetConfig")
             elif key == "gcp" and not isinstance(config, GCPTargetConfig):
                 raise ValueError("Target 'gcp' must use GCPTargetConfig")
+            elif key == "agentcore" and not isinstance(config, AgentCoreTargetConfig):
+                raise ValueError("Target 'agentcore' must use AgentCoreTargetConfig")
         return self
 
     def get_active_target_config(
         self,
-    ) -> LocalTargetConfig | AWSTargetConfig | GCPTargetConfig:
+    ) -> LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig:
         """Get the configuration for the active target."""
         return self.targets[self.target]
 
@@ -236,7 +285,7 @@ def load_config(path: str | Path) -> BedsheetConfig:
 
     # Parse targets with proper type discrimination
     if "targets" in interpolated_data:
-        targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig] = {}
+        targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = {}
         for key, config in interpolated_data["targets"].items():
             if key == "local":
                 targets[key] = LocalTargetConfig(**config)
@@ -244,8 +293,10 @@ def load_config(path: str | Path) -> BedsheetConfig:
                 targets[key] = AWSTargetConfig(**config)
             elif key == "gcp":
                 targets[key] = GCPTargetConfig(**config)
+            elif key == "agentcore":
+                targets[key] = AgentCoreTargetConfig(**config)
             else:
-                raise ValueError(f"Unknown target type: {key}. Must be 'local', 'aws', 'aws-terraform', or 'gcp'")
+                raise ValueError(f"Unknown target type: {key}. Must be 'local', 'aws', 'aws-terraform', 'gcp', or 'agentcore'")
         interpolated_data["targets"] = targets
 
     return BedsheetConfig(**interpolated_data)
