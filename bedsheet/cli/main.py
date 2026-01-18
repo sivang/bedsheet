@@ -19,11 +19,19 @@ from bedsheet.deploy.config import (
     LocalTargetConfig,
     AWSTargetConfig,
     GCPTargetConfig,
+    AgentCoreTargetConfig,
     load_config,
     save_config,
 )
 from bedsheet.deploy.introspect import AgentMetadata, extract_agent_metadata
-from bedsheet.deploy.targets import LocalTarget, GCPTarget, AWSTarget, AWSTerraformTarget, DeploymentTarget
+from bedsheet.deploy.targets import (
+    LocalTarget,
+    GCPTarget,
+    AWSTarget,
+    AWSTerraformTarget,
+    AgentCoreTarget,
+    DeploymentTarget,
+)
 
 # Initialize Typer app
 app = typer.Typer(
@@ -40,11 +48,13 @@ __version__ = "0.4.0"
 
 
 # Target mapping
+# Note: "agentcore" is EXPERIMENTAL - AgentCore is in preview and APIs may change
 TARGETS: dict[str, type[DeploymentTarget]] = {
     "local": LocalTarget,
     "gcp": GCPTarget,
     "aws": AWSTarget,
     "aws-terraform": AWSTerraformTarget,
+    "agentcore": AgentCoreTarget,  # EXPERIMENTAL
 }
 
 
@@ -241,9 +251,9 @@ def init(
         raise typer.Exit(1)
 
     # Validate target
-    if target not in ["local", "gcp", "aws"]:
+    if target not in ["local", "gcp", "aws", "agentcore"]:
         rprint(f"[bold red]Error:[/bold red] Invalid target '{target}'")
-        rprint("Valid targets: local, gcp, aws")
+        rprint("Valid targets: local, gcp, aws, agentcore")
         raise typer.Exit(1)
 
     # Create project directory
@@ -326,7 +336,7 @@ dependencies = [
     (project_dir / "pyproject.toml").write_text(pyproject)
 
     # Create target configurations
-    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig] = {}
+    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = {}
 
     if target == "local":
         targets["local"] = LocalTargetConfig(port=8000, hot_reload=True)
@@ -343,6 +353,14 @@ dependencies = [
         aws_region = typer.prompt("AWS Region", default="eu-central-1")
         targets["aws"] = AWSTargetConfig(
             region=aws_region,
+            lambda_memory=512,
+            bedrock_model="anthropic.claude-sonnet-4-5-v2:0",
+        )
+    elif target == "agentcore":
+        aws_region = typer.prompt("AWS Region", default="us-east-1")
+        targets["agentcore"] = AgentCoreTargetConfig(
+            region=aws_region,
+            runtime_memory=1024,
             lambda_memory=512,
             bedrock_model="anthropic.claude-sonnet-4-5-v2:0",
         )
@@ -685,6 +703,18 @@ def generate(
     # Get target generator
     target_generator = _get_target(target_name)
 
+    # Warn about experimental targets
+    if target_name == "agentcore":
+        rprint(Panel(
+            "[bold yellow]⚠️  EXPERIMENTAL TARGET[/bold yellow]\n\n"
+            "The AgentCore deployment target is experimental.\n"
+            "Amazon Bedrock AgentCore is in preview and APIs may change without notice.\n"
+            "Use in production at your own risk.\n\n"
+            "Please report bugs at: [link=https://github.com/sivang/bedsheet/issues]github.com/sivang/bedsheet/issues[/link]",
+            title="Warning",
+            border_style="yellow",
+        ))
+
     # Validate configuration for this target
     validation_errors = target_generator.validate(config)
     if validation_errors:
@@ -799,9 +829,16 @@ def generate(
         console.print("  make setup")
         console.print("  make dev-ui-local    # Local testing with ADK Dev UI")
         console.print("  make deploy          # Production deployment")
-    elif target_name == "aws":
+    elif target_name in ("aws", "aws-terraform"):
         console.print(f"  cd {output_dir}")
         console.print("  make setup && make deploy")
+    elif target_name == "agentcore":
+        console.print(f"  cd {output_dir}")
+        console.print("  cp .env.example .env")
+        console.print("  cp terraform.tfvars.example terraform.tfvars")
+        console.print("  make init            # Initialize Terraform")
+        console.print("  make dev             # Local development server")
+        console.print("  make deploy          # Deploy to AgentCore")
     console.print()
 
 

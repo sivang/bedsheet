@@ -1,6 +1,7 @@
 """Deploy module for agent metadata extraction and deployment."""
 from bedsheet.deploy.config import (
     AgentConfig,
+    AgentCoreTargetConfig,
     AWSDeploymentStyle,
     AWSTargetConfig,
     BedsheetConfig,
@@ -20,6 +21,7 @@ from bedsheet.deploy.introspect import (
 __all__ = [
     # Configuration
     "AgentConfig",
+    "AgentCoreTargetConfig",
     "AWSDeploymentStyle",
     "AWSTargetConfig",
     "BedsheetConfig",
