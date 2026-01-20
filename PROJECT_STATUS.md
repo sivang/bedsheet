@@ -1,8 +1,8 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.4.0 ✅ Released on PyPI
+## Current Version: v0.4.2rc5 (in development)
 
-**Last Session:** 2026-01-18
+**Last Session:** 2026-01-21
 
 ### Release Status
 
@@ -26,6 +26,65 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Session Summary (2026-01-21) - GCP ADC Auth Improvements + E2E Test Progress
+
+### What Was Done
+
+1. **GCP Templates Updated for ADC (Application Default Credentials)**
+   - Removed API key requirement - now uses user's GCP credentials
+   - `make init` auto-triggers browser auth if needed
+   - ADC quota project set explicitly to target project
+   - GOOGLE_CLOUD_PROJECT passed to all Terraform commands
+
+2. **Removed google_project_service from Terraform**
+   - APIs now enabled via gcloud CLI in Makefile (avoids ADC permission issues)
+   - Terraform focuses on resource creation only
+   - Fixed dependency issues between resources
+
+3. **Added IAM API to enabled services**
+   - Prevents permission errors during service account creation
+
+4. **Published Multiple Release Candidates**
+   - v0.4.2rc3: Initial ADC changes
+   - v0.4.2rc4: Quota project + ADC validation
+   - v0.4.2rc5: Removed google_project_service from Terraform
+
+5. **GCP E2E Test Progress**
+   - search-assistant agent configured with Google Search grounding
+   - Authentication working (gcloud auth + ADC)
+   - APIs enabled successfully
+   - Terraform still encountering permission issues (ADC vs gcloud auth difference)
+
+### Key Technical Insight
+
+**ADC vs gcloud CLI auth difference:**
+- `gcloud auth login` → full account permissions for gcloud CLI
+- `gcloud auth application-default login` → limited OAuth scopes for SDKs
+- Terraform google provider uses ADC, which has fewer permissions than gcloud CLI
+- Solution: Enable APIs with gcloud, create resources with Terraform
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/deploy/templates/gcp/Makefile.j2` | ADC validation, quota project, GOOGLE_CLOUD_PROJECT |
+| `bedsheet/deploy/templates/gcp/main.tf.j2` | Removed google_project_service resources |
+| `pyproject.toml` | Version bumped to 0.4.2rc5 |
+
+### Pending Work
+
+1. **Complete GCP E2E Test** - Terraform apply still failing, may need service account key
+2. **Commit template changes** - All changes ready for commit
+3. **Release v0.4.2** - After E2E validation
+
+### Next Steps
+
+Option A: Use service account key for Terraform (traditional approach)
+Option B: Further investigate ADC permission scopes
+Option C: Test with user who has simpler GCP setup
 
 ---
 

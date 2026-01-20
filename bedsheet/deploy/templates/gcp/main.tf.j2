@@ -4,7 +4,7 @@
 # This creates:
 # - Cloud Run service for the agent
 # - IAM bindings for invocation
-# - Secret Manager for API keys
+# - Vertex AI access for Gemini models
 
 terraform {
   required_version = ">= 1.0.0"
@@ -22,41 +22,42 @@ provider "google" {
   region  = var.region
 }
 
-# Enable required APIs
-resource "google_project_service" "run" {
-  service            = "run.googleapis.com"
-  disable_on_destroy = false
+# NOTE: APIs are enabled by `make init` using gcloud CLI before Terraform runs.
+# This avoids ADC permission issues with google_project_service resources.
+
+# Artifact Registry repository for container images
+# Note: GCP resource names can't have underscores, so we replace with hyphens
+resource "google_artifact_registry_repository" "agent_repo" {
+  location      = var.region
+  repository_id = "{{ project_name | replace('_', '-') }}-repo"
+  description   = "Docker repository for {{ project_name }} agent"
+  format        = "DOCKER"
 }
 
-resource "google_project_service" "secretmanager" {
-  service            = "secretmanager.googleapis.com"
-  disable_on_destroy = false
+# Service account for the agent (created first so Cloud Run can reference it)
+# Note: GCP service account IDs can't have underscores, so we replace with hyphens
+resource "google_service_account" "agent" {
+  account_id   = "{{ project_name | replace('_', '-') }}-sa"
+  display_name = "{{ config.name }} Agent Service Account"
 }
 
-resource "google_project_service" "cloudbuild" {
-  service            = "cloudbuild.googleapis.com"
-  disable_on_destroy = false
-}
-
-# Secret for API key (create manually or via gcloud)
-resource "google_secret_manager_secret" "api_key" {
-  secret_id = "{{ project_name }}-api-key"
-
-  replication {
-    auto {}
-  }
-
-  depends_on = [google_project_service.secretmanager]
+# Grant service account access to Vertex AI
+resource "google_project_iam_member" "agent_vertex_ai" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.agent.email}"
 }
 
 # Cloud Run service
 resource "google_cloud_run_v2_service" "agent" {
-  name     = "{{ project_name }}"
+  name     = "{{ project_name | replace('_', '-') }}"
   location = var.region
 
   template {
+    service_account = google_service_account.agent.email
+
     containers {
-      image = "gcr.io/${var.project_id}/{{ project_name }}:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.agent_repo.repository_id}/{{ project_name | replace('_', '-') }}:latest"
 
       ports {
         container_port = 8080
@@ -69,14 +70,15 @@ resource "google_cloud_run_v2_service" "agent" {
         }
       }
 
+      # Environment variables for Vertex AI (ADC is automatic)
       env {
-        name = "GOOGLE_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.api_key.secret_id
-            version = "latest"
-          }
-        }
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+
+      env {
+        name  = "GOOGLE_CLOUD_LOCATION"
+        value = var.region
       }
     }
 
@@ -91,7 +93,7 @@ resource "google_cloud_run_v2_service" "agent" {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
 
-  depends_on = [google_project_service.run]
+  depends_on = [google_project_iam_member.agent_vertex_ai]
 }
 
 # Allow unauthenticated access (optional - remove for private agents)
@@ -105,15 +107,14 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
   member   = "allUsers"
 }
 
-# Service account for the agent
-resource "google_service_account" "agent" {
-  account_id   = "{{ project_name }}-sa"
-  display_name = "{{ config.name }} Agent Service Account"
-}
+# Log-based metric for agent invocations
+resource "google_logging_metric" "agent_invocations" {
+  name        = "{{ project_name | replace('_', '-') }}-invocations"
+  description = "Count of agent invocations"
+  filter      = "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"{{ project_name | replace('_', '-') }}\" AND textPayload=~\"invoke\""
 
-# Grant service account access to secrets
-resource "google_secret_manager_secret_iam_member" "agent_access" {
-  secret_id = google_secret_manager_secret.api_key.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.agent.email}"
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
 }
