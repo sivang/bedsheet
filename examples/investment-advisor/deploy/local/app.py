@@ -1,0 +1,159 @@
+"""FastAPI wrapper for investment-advisor."""
+import json
+import os
+import sys
+import uuid
+from dataclasses import asdict
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from bedsheet.events import TextTokenEvent, CompletionEvent, CollaboratorEvent
+from bedsheet.llm import AnthropicClient
+from bedsheet.agent import Agent
+from bedsheet.supervisor import Supervisor
+
+# Dynamic agent loading from bedsheet.yaml config
+# Agent module: agents
+# Agent name: InvestmentAdvisor
+# Add current directory to path for relative imports
+if str(Path.cwd()) not in sys.path:
+    sys.path.insert(0, str(Path.cwd()))
+
+# Import the agent module - try common export names
+import agents as _agent_module
+
+# Find the agent by checking common export patterns
+_imported_agent = None
+_export_names = [
+    'agent',  # Most common: agent = Supervisor(...) or agent = Agent(...)
+    'investmentadvisor',  # Lowercase class name
+    'InvestmentAdvisor',  # Exact class name (variable export)
+    'root_agent',
+    'advisor',
+    'assistant',
+]
+for _name in _export_names:
+    if hasattr(_agent_module, _name):
+        _candidate = getattr(_agent_module, _name)
+        if isinstance(_candidate, (Agent, Supervisor)):
+            _imported_agent = _candidate
+            break
+
+if _imported_agent is None:
+    raise ImportError(
+        f"Could not find agent in module 'agents'. "
+        f"Export your agent as one of: {_export_names}"
+    )
+
+# Inject AnthropicClient if agent has no model_client (target-agnostic pattern)
+def _configure_agent(agent_instance):
+    """Configure an agent with AnthropicClient if needed."""
+    if isinstance(agent_instance, (Agent, Supervisor)):
+        if agent_instance.model_client is None:
+            agent_instance.model_client = AnthropicClient()
+        # Also configure collaborators for Supervisors
+        if isinstance(agent_instance, Supervisor):
+            for collab in agent_instance.collaborators:
+                if collab.model_client is None:
+                    collab.model_client = AnthropicClient()
+    return agent_instance
+
+agent = _configure_agent(_imported_agent)
+
+app = FastAPI(title="investment-advisor")
+
+# Serve Debug UI if enabled and static files exist
+DEBUG_UI_ENABLED = os.environ.get("BEDSHEET_DEBUG_UI", "true").lower() == "true"
+STATIC_DIR = Path(__file__).parent / "static"
+
+if DEBUG_UI_ENABLED and STATIC_DIR.exists():
+    # Mount static assets (JS, CSS)
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+
+class InvokeRequest(BaseModel):
+    """Request model for agent invocation."""
+    message: str
+    session_id: str | None = None
+
+
+class InvokeResponse(BaseModel):
+    """Response model for agent invocation."""
+    response: str
+    session_id: str
+
+
+@app.get("/")
+async def root():
+    """Serve Debug UI or health check."""
+    if DEBUG_UI_ENABLED and STATIC_DIR.exists():
+        return FileResponse(STATIC_DIR / "index.html")
+    return {"status": "ok", "agent": agent.name}
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok", "agent": agent.name, "debug_ui": DEBUG_UI_ENABLED}
+
+
+def serialize_event(event) -> str:
+    """Serialize an event to JSON, handling nested CollaboratorEvents."""
+    data = asdict(event)
+    # CollaboratorEvent has inner_event which is also a dataclass
+    if isinstance(event, CollaboratorEvent):
+        data["inner_event"] = asdict(event.inner_event)
+    return json.dumps(data)
+
+
+@app.post("/invoke")
+async def invoke(request: InvokeRequest) -> InvokeResponse:
+    """Invoke the agent with a message."""
+    session_id = request.session_id or str(uuid.uuid4())
+    response_text = ""
+    async for event in agent.invoke(session_id, request.message):
+        if isinstance(event, TextTokenEvent):
+            response_text += event.token
+        elif isinstance(event, CompletionEvent):
+            response_text = event.response
+    return InvokeResponse(response=response_text, session_id=session_id)
+
+
+@app.post("/invoke/stream")
+async def invoke_stream(request: InvokeRequest):
+    """Stream agent events as Server-Sent Events (SSE)."""
+    session_id = request.session_id or str(uuid.uuid4())
+
+    async def event_generator():
+        # Send session_id as first event
+        yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
+
+        async for event in agent.invoke(session_id, request.message):
+            # For CollaboratorEvent, emit wrapper then inner event separately
+            if isinstance(event, CollaboratorEvent):
+                # Emit wrapper (without inner_event serialized)
+                wrapper_data = {
+                    "type": event.type,
+                    "agent_name": event.agent_name,
+                }
+                yield f"data: {json.dumps(wrapper_data)}\n\n"
+                # Emit inner event
+                yield f"data: {serialize_event(event.inner_event)}\n\n"
+            else:
+                yield f"data: {serialize_event(event)}\n\n"
+
+        # Signal end of stream
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )

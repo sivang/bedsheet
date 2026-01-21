@@ -39,10 +39,14 @@ class LocalTarget(DeploymentTarget):
         if not isinstance(local_config, LocalTargetConfig):
             local_config = LocalTargetConfig()
 
+        # Get agent config from bedsheet.yaml
+        agent_config = config.agents[0] if config.agents else None
+
         context = {
             "config": config,
             "local": local_config,
             "agent": agent_metadata,
+            "agent_config": agent_config,  # Has module, class_name, etc.
             "project_name": config.name.replace("-", "_").replace(" ", "_"),
         }
 

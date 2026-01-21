@@ -1,6 +1,7 @@
 """FastAPI wrapper for {{ config.name }}."""
 import json
 import os
+import sys
 import uuid
 from dataclasses import asdict
 from pathlib import Path
@@ -11,9 +12,61 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from bedsheet.events import TextTokenEvent, CompletionEvent, CollaboratorEvent
+from bedsheet.llm import AnthropicClient
+from bedsheet.agent import Agent
+from bedsheet.supervisor import Supervisor
 
-# Import the agent from the scaffolded project
+# Dynamic agent loading from bedsheet.yaml config
+# Agent module: {{ agent_config.module if agent_config else 'agents.assistant' }}
+# Agent name: {{ agent.name if agent else 'assistant' }}
+{% if agent_config %}
+# Add current directory to path for relative imports
+if str(Path.cwd()) not in sys.path:
+    sys.path.insert(0, str(Path.cwd()))
+
+# Import the agent module - try common export names
+import {{ agent_config.module.replace('/', '.') }} as _agent_module
+
+# Find the agent by checking common export patterns
+_imported_agent = None
+_export_names = [
+    'agent',  # Most common: agent = Supervisor(...) or agent = Agent(...)
+    '{{ agent.name.lower().replace("-", "_").replace(" ", "_") }}',  # Lowercase class name
+    '{{ agent.name.replace("-", "_").replace(" ", "_") }}',  # Exact class name (variable export)
+    'root_agent',
+    'advisor',
+    'assistant',
+]
+for _name in _export_names:
+    if hasattr(_agent_module, _name):
+        _candidate = getattr(_agent_module, _name)
+        if isinstance(_candidate, (Agent, Supervisor)):
+            _imported_agent = _candidate
+            break
+
+if _imported_agent is None:
+    raise ImportError(
+        f"Could not find agent in module '{{ agent_config.module }}'. "
+        f"Export your agent as one of: {_export_names}"
+    )
+
+# Inject AnthropicClient if agent has no model_client (target-agnostic pattern)
+def _configure_agent(agent_instance):
+    """Configure an agent with AnthropicClient if needed."""
+    if isinstance(agent_instance, (Agent, Supervisor)):
+        if agent_instance.model_client is None:
+            agent_instance.model_client = AnthropicClient()
+        # Also configure collaborators for Supervisors
+        if isinstance(agent_instance, Supervisor):
+            for collab in agent_instance.collaborators:
+                if collab.model_client is None:
+                    collab.model_client = AnthropicClient()
+    return agent_instance
+
+agent = _configure_agent(_imported_agent)
+{% else %}
 from agents.assistant import assistant as agent
+{% endif %}
 
 app = FastAPI(title="{{ config.name }}")
 

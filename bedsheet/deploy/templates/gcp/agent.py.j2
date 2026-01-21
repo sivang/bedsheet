@@ -9,19 +9,43 @@ from google.adk.agents import LlmAgent{% if orchestration != "single" %}, {{ orc
 
 {% if gcp.builtin_tools %}
 # ADK Built-in tools
+{% if 'google_search' in gcp.builtin_tools and agent.tools %}
+# Use GoogleSearchTool with bypass_multi_tools_limit to mix with custom tools
+from google.adk.tools.google_search_tool import GoogleSearchTool
+{% for tool in gcp.builtin_tools if tool != 'google_search' %}
+from google.adk.tools import {{ tool }}
+{% endfor %}
+{% else %}
 from google.adk.tools import {{ gcp.builtin_tools | join(', ') }}
+{% endif %}
 {% endif %}
 
 {% if agent.tools %}
-# Tool definitions (converted from Bedsheet @action decorators)
+# Tool definitions for {{ agent.name }} (converted from Bedsheet @action decorators)
 {% for tool in agent.tools %}
+{% for imp in tool.imports %}
+{{ imp }}
+{% endfor %}
 
-def {{ tool.name }}({% for param in tool.parameters %}{{ param.name }}: {{ param.type_hint }}{% if not loop.last %}, {% endif %}{% endfor %}) -> str:
-    """{{ tool.description }}"""
-    # TODO: Implement tool logic
-    # Original Bedsheet action: {{ tool.name }}
-    raise NotImplementedError("Implement {{ tool.name }} tool logic")
+{{ tool.source_code }}
 
+{% endfor %}
+{% endif %}
+
+{% if agent.collaborators %}
+# Tool definitions for collaborator agents
+{% for collab in agent.collaborators %}
+{% if collab.tools %}
+# Tools for {{ collab.name }}
+{% for tool in collab.tools %}
+{% for imp in tool.imports %}
+{{ imp }}
+{% endfor %}
+
+{{ tool.source_code }}
+
+{% endfor %}
+{% endif %}
 {% endfor %}
 {% endif %}
 
@@ -34,7 +58,8 @@ root_agent = LlmAgent(
     {% if agent.tools or gcp.builtin_tools %}
     tools=[
         {%- for tool in agent.tools %}{{ tool.name }}, {% endfor %}
-        {%- for builtin in gcp.builtin_tools %}{{ builtin }}, {% endfor %}
+        {%- if 'google_search' in gcp.builtin_tools and agent.tools %}GoogleSearchTool(bypass_multi_tools_limit=True), {% endif %}
+        {%- for builtin in gcp.builtin_tools if builtin != 'google_search' or not agent.tools %}{{ builtin }}, {% endfor %}
     ],
     {% endif %}
 )
@@ -48,7 +73,8 @@ root_agent = LlmAgent(
     {% if collab.tools or gcp.builtin_tools %}
     tools=[
         {%- for tool in collab.tools %}{{ tool.name }}, {% endfor %}
-        {%- for builtin in gcp.builtin_tools %}{{ builtin }}, {% endfor %}
+        {%- if 'google_search' in gcp.builtin_tools and collab.tools %}GoogleSearchTool(bypass_multi_tools_limit=True), {% endif %}
+        {%- for builtin in gcp.builtin_tools if builtin != 'google_search' or not collab.tools %}{{ builtin }}, {% endfor %}
     ],
     {% endif %}
 )

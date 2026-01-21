@@ -1,0 +1,25 @@
+version: '1.0'
+name: investment-advisor
+agents:
+- name: InvestmentAdvisor
+  module: agents
+  class_name: InvestmentAdvisor
+  description: Multi-agent investment advisor with parallel delegation
+
+target: gcp
+
+targets:
+  local:
+    port: 8000
+    hot_reload: true
+  gcp:
+    project: my-gcp-project
+    region: europe-west1
+    cloud_run_memory: 1Gi
+    model: gemini-2.5-flash
+    style: cloud_run
+
+enhancements:
+  trace: false
+  metrics: false
+  auth: false

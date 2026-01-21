@@ -18,5 +18,5 @@ COPY agent/ ./agent/
 # Cloud Run expects PORT env var
 ENV PORT=8080
 
-# ADK serves the agent
-CMD ["python", "-m", "google.adk.cli", "api_server", "--agent_module", "agent.agent"]
+# ADK serves the agent - AGENTS_DIR is "." so it finds "agent/" subdirectory
+CMD ["python", "-m", "google.adk.cli", "api_server", "--host", "0.0.0.0", "--port", "8080", "."]

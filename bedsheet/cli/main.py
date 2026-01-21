@@ -44,7 +44,7 @@ app = typer.Typer(
 console = Console()
 
 # Version from pyproject.toml
-__version__ = "0.4.0"
+__version__ = "0.4.2rc3"
 
 
 # Target mapping
@@ -68,12 +68,14 @@ def _get_target(target_name: str) -> DeploymentTarget:
 def _load_and_introspect_agent(
     agent_config: AgentConfig,
     console: Console,
+    target: str = "local",
 ) -> tuple[AgentMetadata | None, str | None]:
     """Dynamically load an agent module and introspect it.
 
     Args:
         agent_config: The agent configuration from bedsheet.yaml
         console: Rich console for output
+        target: Deployment target for code transformation ("local", "gcp", "aws")
 
     Returns:
         Tuple of (AgentMetadata, None) on success, or (None, error_message) on failure.
@@ -110,7 +112,7 @@ def _load_and_introspect_agent(
                 return None, f"Class '{class_name}' not found in module '{module_path}'"
 
             # Introspect the existing instance
-            metadata = extract_agent_metadata(agent_instance)
+            metadata = extract_agent_metadata(agent_instance, target=target)
             return metadata, None
 
         agent_class = getattr(module, class_name)
@@ -119,7 +121,7 @@ def _load_and_introspect_agent(
         from bedsheet.agent import Agent
         if isinstance(agent_class, Agent):
             console.print(f"  [dim]Found agent instance: {class_name}[/dim]")
-            metadata = extract_agent_metadata(agent_class)
+            metadata = extract_agent_metadata(agent_class, target=target)
             return metadata, None
 
         # It's a class - we need to instantiate it
@@ -184,7 +186,7 @@ def _load_and_introspect_agent(
 
         # Introspect the agent
         console.print("  [dim]Introspecting agent...[/dim]")
-        metadata = extract_agent_metadata(agent_instance)
+        metadata = extract_agent_metadata(agent_instance, target=target)
         return metadata, None
 
     except ImportError as e:
@@ -405,17 +407,15 @@ dependencies = [
 
 @app.command()
 def deploy(
+    config_file: Path = typer.Argument(
+        "bedsheet.yaml",
+        help="Path to bedsheet.yaml configuration file"
+    ),
     target: Optional[str] = typer.Option(
         None,
         "--target",
         "-t",
         help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml"
-    ),
-    config_file: Path = typer.Option(
-        "bedsheet.yaml",
-        "--config",
-        "-c",
-        help="Path to bedsheet.yaml configuration file"
     ),
     dry_run: bool = typer.Option(
         False,
@@ -430,7 +430,8 @@ def deploy(
 
     Example:
         bedsheet deploy --target gcp
-        bedsheet deploy --config custom.yaml --dry-run
+        bedsheet deploy path/to/bedsheet.yaml --target gcp
+        bedsheet deploy --dry-run
     """
     # Check if config file exists
     if not config_file.exists():
@@ -570,10 +571,8 @@ def _deploy_aws(config: BedsheetConfig, target_config: AWSTargetConfig, dry_run:
 
 @app.command()
 def validate(
-    config_file: Path = typer.Option(
+    config_file: Path = typer.Argument(
         "bedsheet.yaml",
-        "--config",
-        "-c",
         help="Path to bedsheet.yaml configuration file"
     ),
 ):
@@ -581,6 +580,10 @@ def validate(
 
     Checks that the configuration file is valid and all required
     fields are present for the specified deployment target.
+
+    Example:
+        bedsheet validate
+        bedsheet validate path/to/bedsheet.yaml
     """
     if not config_file.exists():
         rprint(f"[bold red]Error:[/bold red] Configuration file not found: {config_file}")
@@ -636,17 +639,15 @@ def validate(
 
 @app.command()
 def generate(
+    config_file: Path = typer.Argument(
+        "bedsheet.yaml",
+        help="Path to bedsheet.yaml configuration file"
+    ),
     target: Optional[str] = typer.Option(
         None,
         "--target",
         "-t",
         help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml"
-    ),
-    config_file: Path = typer.Option(
-        "bedsheet.yaml",
-        "--config",
-        "-c",
-        help="Path to bedsheet.yaml configuration file"
     ),
     output_dir: Path = typer.Option(
         None,
@@ -672,8 +673,8 @@ def generate(
     agent to a specific platform (local Docker, GCP, or AWS).
 
     Example:
-        bedsheet generate --target local
-        bedsheet generate --target gcp --output my-deploy/
+        bedsheet generate bedsheet.yaml --target local
+        bedsheet generate path/to/bedsheet.yaml --target gcp --output my-deploy/
         bedsheet generate --target aws --dry-run
     """
     # Check if config file exists
@@ -739,7 +740,7 @@ def generate(
 
     # Try to introspect the actual agent
     console.print("[bold]Introspecting agent...[/bold]")
-    introspected_metadata, introspection_error = _load_and_introspect_agent(agent_config, console)
+    introspected_metadata, introspection_error = _load_and_introspect_agent(agent_config, console, target=target_name)
 
     if introspection_error or introspected_metadata is None:
         # Introspection failed - fall back to config-based metadata with warning
@@ -823,12 +824,10 @@ def generate(
         console.print("  docker-compose up")
     elif target_name == "gcp":
         console.print(f"  cd {output_dir}")
-        console.print("  cp .env.example .env")
-        console.print("  # Edit .env and add your GOOGLE_API_KEY")
-        console.print("  # Get a FREE key at: https://aistudio.google.com/apikey")
-        console.print("  make setup")
-        console.print("  make dev-ui-local    # Local testing with ADK Dev UI")
-        console.print("  make deploy          # Production deployment")
+        console.print("  make init     # One-time setup (auth, APIs, infrastructure)")
+        console.print("  make deploy   # Deploy to Cloud Run")
+        console.print("")
+        console.print("  [dim]Or test locally first: make dev[/dim]")
     elif target_name in ("aws", "aws-terraform"):
         console.print(f"  cd {output_dir}")
         console.print("  make setup && make deploy")

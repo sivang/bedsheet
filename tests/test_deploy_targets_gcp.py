@@ -294,7 +294,7 @@ async def test_gcp_target_generate_creates_all_files(mock_gcp_config, mock_singl
         files = target.generate(mock_gcp_config, mock_single_agent_metadata, output_dir)
 
         # Check we got all expected files
-        assert len(files) == 13
+        assert len(files) == 15
 
         file_names = [f.path.name for f in files]
         assert "agent.py" in [f.path.name for f in files if f.path.parent.name == "agent"]
@@ -342,7 +342,7 @@ async def test_gcp_target_generate_agent_py_content_single_agent(
 async def test_gcp_target_generate_agent_py_content_supervisor(
     mock_gcp_config, mock_supervisor_metadata
 ):
-    """Test GCPTarget.generate creates agent.py with SequentialAgent for supervisor."""
+    """Test GCPTarget.generate creates agent.py with ParallelAgent for supervisor."""
     target = GCPTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -353,14 +353,14 @@ async def test_gcp_target_generate_agent_py_content_supervisor(
         content = agent_file.content
 
         # Check for expected ADK imports for multi-agent
-        assert "from google.adk.agents import LlmAgent, SequentialAgent" in content
+        assert "from google.adk.agents import LlmAgent, ParallelAgent" in content
 
         # Check for collaborator agent definitions
         assert "Calculator" in content
         assert "Weather" in content
 
-        # Check for SequentialAgent usage
-        assert "SequentialAgent" in content
+        # Check for ParallelAgent usage (parallel delegation for supervisor pattern)
+        assert "ParallelAgent" in content
         assert "sub_agents=" in content
 
 
@@ -374,10 +374,11 @@ async def test_gcp_target_determine_orchestration_single(mock_single_agent_metad
 
 @pytest.mark.asyncio
 async def test_gcp_target_determine_orchestration_supervisor(mock_supervisor_metadata):
-    """Test _determine_orchestration returns 'sequential' for supervisor."""
+    """Test _determine_orchestration returns 'parallel' for supervisor pattern."""
     target = GCPTarget()
     orchestration = target._determine_orchestration(mock_supervisor_metadata)
-    assert orchestration == "sequential"
+    # Supervisor pattern uses parallel delegation for concurrent collaborator execution
+    assert orchestration == "parallel"
 
 
 @pytest.mark.asyncio
@@ -502,7 +503,7 @@ async def test_gcp_target_generate_with_default_config(mock_single_agent_metadat
         files = target.generate(config, mock_single_agent_metadata, output_dir)
 
         # Should still generate all files with defaults
-        assert len(files) == 13
+        assert len(files) == 15
 
         # Check that default model is used (claude-sonnet-4-5@20250929 from GCPTargetConfig)
         agent_file = next(f for f in files if f.path.name == "agent.py")
@@ -589,11 +590,11 @@ async def test_gcp_target_generate_with_google_search(mock_single_agent_metadata
         agent_file = next(f for f in files if f.path.name == "agent.py")
         content = agent_file.content
 
-        # Check for Google Search import
-        assert "from google.adk.tools import google_search" in content
+        # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
+        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
 
-        # Check that google_search is in tools list
-        assert "google_search" in content
+        # Check that GoogleSearchTool is in tools list with bypass flag
+        assert "GoogleSearchTool(bypass_multi_tools_limit=True)" in content
         assert "tools=" in content
 
 
@@ -667,11 +668,12 @@ async def test_gcp_target_generate_with_multiple_builtin_tools(mock_single_agent
         agent_file = next(f for f in files if f.path.name == "agent.py")
         content = agent_file.content
 
-        # Check for both imports
-        assert "from google.adk.tools import google_search, code_execution" in content
+        # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
+        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
+        assert "from google.adk.tools import code_execution" in content
 
         # Check both are in tools list
-        assert "google_search" in content
+        assert "GoogleSearchTool(bypass_multi_tools_limit=True)" in content
         assert "code_execution" in content
 
 
@@ -706,8 +708,8 @@ async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_age
         agent_file = next(f for f in files if f.path.name == "agent.py")
         content = agent_file.content
 
-        # Check for builtin tool import
-        assert "from google.adk.tools import google_search" in content
+        # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
+        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
 
         # Check for custom tool definitions (from mock_single_agent_metadata)
         assert "def add(" in content
@@ -715,7 +717,7 @@ async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_age
 
         # Check tools list includes both custom and builtin
         assert "tools=" in content
-        assert "google_search" in content
+        assert "GoogleSearchTool(bypass_multi_tools_limit=True)" in content
         assert "add" in content
         assert "multiply" in content
 

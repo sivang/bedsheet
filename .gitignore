@@ -51,3 +51,9 @@ Thumbs.db
 docs/internal/
 .claude/
 firebase-debug.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

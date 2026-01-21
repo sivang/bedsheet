@@ -43,8 +43,8 @@ If no agent is appropriate, respond directly.
         self,
         name: str,
         instruction: str,
-        model_client: LLMClient,
         collaborators: list[Agent],
+        model_client: LLMClient | None = None,
         collaboration_mode: Literal["supervisor", "router"] = "supervisor",
         orchestration_template: str | None = None,
         memory: Memory | None = None,
@@ -157,7 +157,20 @@ If no agent is appropriate, respond directly.
         input_text: str,
         stream: bool = False,
     ) -> AsyncIterator[Event]:
-        """Invoke the supervisor, handling delegations specially."""
+        """Invoke the supervisor, handling delegations specially.
+
+        Raises:
+            RuntimeError: If model_client is None. Use bedsheet CLI to inject the
+                         appropriate client for your deployment target.
+        """
+        # Check that model_client is configured
+        if self.model_client is None:
+            raise RuntimeError(
+                f"Supervisor '{self.name}' has no model_client configured. "
+                "Either pass a model_client when creating the agent, or use "
+                "'bedsheet deploy --target <target>' to inject the appropriate client."
+            )
+
         messages = await self.memory.get_messages(session_id)
 
         user_message = Message(role="user", content=input_text)

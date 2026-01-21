@@ -60,6 +60,7 @@ class GCPTarget(DeploymentTarget):
             ("cloudbuild.yaml.j2", "cloudbuild.yaml", False),
             # Terraform IaC
             ("main.tf.j2", "terraform/main.tf", False),
+            ("terraform/backend.tf.j2", "terraform/backend.tf", False),
             ("variables.tf.j2", "terraform/variables.tf", False),
             ("outputs.tf.j2", "terraform/outputs.tf", False),
             ("terraform.tfvars.example.j2", "terraform/terraform.tfvars.example", False),
@@ -69,6 +70,8 @@ class GCPTarget(DeploymentTarget):
             # Development
             ("Makefile.j2", "Makefile", False),
             ("env.example.j2", ".env.example", False),
+            # Documentation
+            ("DEPLOYMENT_GUIDE.md.j2", "DEPLOYMENT_GUIDE.md", False),
         ]
 
         for template_name, output_name, executable in templates:
@@ -85,11 +88,17 @@ class GCPTarget(DeploymentTarget):
         return files
 
     def _determine_orchestration(self, agent_metadata: AgentMetadata) -> str:
-        """Determine ADK orchestration type from agent metadata."""
+        """Determine ADK orchestration type from agent metadata.
+
+        Maps Bedsheet patterns to ADK orchestration:
+        - Single agent → "single" (LlmAgent)
+        - Supervisor with collaborators → "parallel" (ParallelAgent)
+          The supervisor pattern typically delegates in parallel
+        """
         if not agent_metadata.collaborators:
             return "single"
-        # Default to sequential for supervisor pattern
-        return "sequential"
+        # Use parallel for supervisor pattern (parallel delegation)
+        return "parallel"
 
     def validate(self, config: BedsheetConfig) -> list[str]:
         """Validate GCP target configuration."""

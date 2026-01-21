@@ -11,7 +11,16 @@ from bedsheet.memory.in_memory import InMemory
 
 
 class Agent:
-    """An agent that orchestrates LLM calls and tool execution."""
+    """An agent that orchestrates LLM calls and tool execution.
+
+    The model_client parameter is optional to support target-agnostic agent definitions.
+    When model_client is None, the agent can be introspected for metadata (tools,
+    instruction, etc.) but cannot be invoked. The bedsheet CLI will inject the
+    appropriate client based on the deployment target:
+      - local: AnthropicClient (Claude)
+      - gcp: Translated to ADK LlmAgent (Gemini via Vertex AI)
+      - aws: Bedrock client
+    """
 
     DEFAULT_ORCHESTRATION_TEMPLATE = """$instruction$
 
@@ -23,7 +32,7 @@ Current date: $current_datetime$
         self,
         name: str,
         instruction: str,
-        model_client: LLMClient,
+        model_client: LLMClient | None = None,
         orchestration_template: str | None = None,
         memory: Memory | None = None,
         max_iterations: int = 10,
@@ -77,7 +86,20 @@ Current date: $current_datetime$
         input_text: str,
         stream: bool = False,
     ) -> AsyncIterator[Event]:
-        """Invoke the agent with user input, yielding events as execution progresses."""
+        """Invoke the agent with user input, yielding events as execution progresses.
+
+        Raises:
+            RuntimeError: If model_client is None. Use bedsheet CLI to inject the
+                         appropriate client for your deployment target.
+        """
+        # Check that model_client is configured
+        if self.model_client is None:
+            raise RuntimeError(
+                f"Agent '{self.name}' has no model_client configured. "
+                "Either pass a model_client when creating the agent, or use "
+                "'bedsheet deploy --target <target>' to inject the appropriate client."
+            )
+
         # 1. Load history from memory
         messages = await self.memory.get_messages(session_id)
 

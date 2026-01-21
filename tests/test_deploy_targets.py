@@ -225,7 +225,10 @@ async def test_local_target_generate_app_py_content(mock_config, mock_agent_meta
         # Check for expected FastAPI app elements
         assert "from fastapi import FastAPI" in content
         assert 'title="test-agent"' in content  # Config name
-        assert "from agents.assistant import assistant as agent" in content  # Agent import
+        # New dynamic import pattern (injects AnthropicClient for target-agnostic agents)
+        assert "import myapp.agents.calculator as _agent_module" in content
+        assert "_configure_agent" in content  # AnthropicClient injection
+        assert "AnthropicClient" in content
         assert "agent.name" in content  # Dynamic agent name
         assert "/invoke" in content
         assert "agent.invoke" in content  # Actually invokes the agent

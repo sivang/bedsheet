@@ -12,13 +12,11 @@ logger.setLevel(logging.INFO)
 
 
 {% for tool in agent.tools %}
-def {{ tool.name }}({% for param in tool.parameters %}{{ param.name }}: {{ param.type_hint or 'str' }}{% if param.default is not none %} = {{ param.default | tojson }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}) -> str:
-    """{{ tool.description }}"""
-    # TODO: Implement tool logic
-    # Original Bedsheet action: {{ tool.name }}
-    logger.info(f"Executing {{ tool.name }}")
-    raise NotImplementedError("Implement {{ tool.name }} tool logic")
+{% for imp in tool.imports %}
+{{ imp }}
+{% endfor %}
 
+{{ tool.source_code }}
 
 {% endfor %}
 
