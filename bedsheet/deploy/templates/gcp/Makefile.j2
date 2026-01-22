@@ -7,7 +7,7 @@
 #
 # Your agent will be live on Cloud Run in minutes!
 
-.PHONY: help setup deploy dev test logs status url clean destroy
+.PHONY: help setup deploy dev test logs status url clean destroy preflight
 .SILENT: help _banner
 
 # Configuration (set in terraform.tfvars or override here)
@@ -36,6 +36,7 @@ help:
 	@printf "\n"
 	@printf "$(GREEN)QUICK START$(NC)\n"
 	@printf "  make setup      Configure GCP project (run once, guided)\n"
+	@printf "  make preflight  Check credentials & environment (recommended!)\n"
 	@printf "  make deploy     Deploy agent to Cloud Run\n"
 	@printf "\n"
 	@printf "$(GREEN)DEVELOPMENT$(NC)\n"
@@ -190,13 +191,56 @@ _setup_terraform:
 # DEPLOY - Build and deploy to Cloud Run
 # =============================================================================
 
-deploy: _preflight _build _post_deploy
+deploy: _check_credentials _preflight _build _post_deploy
 	@printf "\n"
 	@printf "$(GREEN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"
 	@printf "$(GREEN)║  🚀 Deployment Complete!                                     ║$(NC)\n"
 	@printf "$(GREEN)╚══════════════════════════════════════════════════════════════╝$(NC)\n"
 	@printf "\n"
 	@$(MAKE) url --no-print-directory
+
+preflight: _check_credentials _preflight
+	@printf "$(GREEN)✓ All preflight checks passed$(NC)\n"
+	@printf "\n"
+
+_check_credentials:
+	@printf "$(BLUE)Checking credentials...$(NC)\n"
+	@printf "\n"
+	@# CRITICAL: Check if GOOGLE_APPLICATION_CREDENTIALS is set
+	@if [ -n "$$GOOGLE_APPLICATION_CREDENTIALS" ]; then \
+		printf "$(RED)╔══════════════════════════════════════════════════════════════════════════╗$(NC)\n"; \
+		printf "$(RED)║  ⚠️  WARNING: GOOGLE_APPLICATION_CREDENTIALS is set!                     ║$(NC)\n"; \
+		printf "$(RED)╚══════════════════════════════════════════════════════════════════════════╝$(NC)\n"; \
+		printf "\n"; \
+		printf "  Current value: $(YELLOW)$$GOOGLE_APPLICATION_CREDENTIALS$(NC)\n"; \
+		printf "\n"; \
+		printf "  This environment variable overrides Application Default Credentials (ADC).\n"; \
+		printf "  If it points to a service account for a DIFFERENT project, your deployment\n"; \
+		printf "  will fail with $(RED)403 PERMISSION_DENIED$(NC) errors at runtime.\n"; \
+		printf "\n"; \
+		printf "  $(CYAN)To fix:$(NC)\n"; \
+		printf "    1. Unset it:  $(GREEN)unset GOOGLE_APPLICATION_CREDENTIALS$(NC)\n"; \
+		printf "    2. Or ensure it points to a service account for project: $(BLUE)$$(gcloud config get-value project 2>/dev/null)$(NC)\n"; \
+		printf "\n"; \
+		printf "  $(YELLOW)Continue anyway? (y/N):$(NC) "; \
+		read -r confirm; \
+		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+			printf "\n$(RED)Aborted.$(NC) Unset GOOGLE_APPLICATION_CREDENTIALS and try again.\n\n"; \
+			exit 1; \
+		fi; \
+		printf "\n"; \
+		printf "  $(YELLOW)⚠ Proceeding with GOOGLE_APPLICATION_CREDENTIALS set$(NC)\n"; \
+		printf "\n"; \
+	else \
+		printf "  $(GREEN)✓$(NC) GOOGLE_APPLICATION_CREDENTIALS not set (using ADC - correct!)\n"; \
+	fi
+	@# Check ADC exists
+	@if [ ! -f ~/.config/gcloud/application_default_credentials.json ]; then \
+		printf "  $(YELLOW)⚠$(NC) ADC not configured. Run: gcloud auth application-default login\n"; \
+	else \
+		printf "  $(GREEN)✓$(NC) Application Default Credentials configured\n"; \
+	fi
+	@printf "\n"
 
 _preflight:
 	@printf "$(BLUE)Preflight checks...$(NC)\n"
@@ -257,7 +301,7 @@ _post_deploy:
 # DEVELOPMENT
 # =============================================================================
 
-dev:
+dev: _check_credentials
 	@printf "$(BLUE)Starting ADK Dev UI locally...$(NC)\n"
 	@printf "\n"
 	@printf "Open $(GREEN)http://localhost:8000$(NC) in your browser\n"

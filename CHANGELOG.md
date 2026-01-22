@@ -5,6 +5,22 @@ All notable changes to Bedsheet Agents will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-01-22
+
+### Added
+
+- **Credential Preflight Check** - New `make preflight` command warns if `GOOGLE_APPLICATION_CREDENTIALS` is set
+  - Detects potential cross-project credential issues before deployment
+  - Prevents silent 403 errors at runtime
+  - Interactive prompt to continue or abort
+- **Credential Warning in Docs** - Prominent warning box in `DEPLOYMENT_GUIDE.md` explaining SDK credential priority
+- **Troubleshooting Guide** - Added "#1 gotcha" section for credential issues
+
+### Changed
+
+- `make deploy` and `make dev` now automatically run credential checks
+- Updated preflight checks list in deployment guide
+
 ## [0.4.3] - 2026-01-22
 
 ### Fixed

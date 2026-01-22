@@ -15,6 +15,42 @@ This deployment will create the following GCP resources:
 **Estimated deployment time**: 5-10 minutes
 **Estimated monthly cost**: $0-10 (with Cloud Run's generous free tier)
 
+---
+
+## ⚠️ Critical: Credential Priority Warning
+
+> **IMPORTANT**: If you have `GOOGLE_APPLICATION_CREDENTIALS` set in your shell, it will **override** Application Default Credentials (ADC). This can cause silent failures!
+
+**The Problem:**
+If `GOOGLE_APPLICATION_CREDENTIALS` points to a service account for a **different** GCP project:
+- Deployment appears to succeed
+- But your agent gets `403 PERMISSION_DENIED` errors at runtime
+- The error message won't tell you it's a credentials issue
+
+**Check if you're affected:**
+```bash
+echo $GOOGLE_APPLICATION_CREDENTIALS
+# If this prints a path, you may have an issue
+```
+
+**Fix:**
+```bash
+# Option 1: Unset it (recommended)
+unset GOOGLE_APPLICATION_CREDENTIALS
+
+# Option 2: Point it to correct project's service account
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/correct-project-sa.json
+```
+
+**SDK Credential Priority (highest to lowest):**
+1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+2. Application Default Credentials (`gcloud auth application-default login`)
+3. Compute Engine / Cloud Run metadata server
+
+Run `make preflight` to automatically check for this issue.
+
+---
+
 ## Prerequisites Checklist
 
 Before you begin, ensure you have:
@@ -97,13 +133,13 @@ make preflight
 ```
 
 This command checks:
+- **GOOGLE_APPLICATION_CREDENTIALS** - warns if set (potential cross-project issue)
+- Application Default Credentials (ADC) - ensures configured
 - gcloud authentication status
-- Application Default Credentials (ADC)
-- Terraform installation
-- Docker daemon status
-- Environment file exists
+- Terraform initialization
+- Project configuration
 
-**Fix any issues before proceeding.**
+**Fix any issues before proceeding.** The credential check is especially important - see warning above.
 
 ### Step 4: Set Up GCP Resources
 
@@ -300,7 +336,43 @@ gcloud monitoring policies create \
 
 ### Common Issues
 
-#### "Permission denied" errors
+#### 🔴 "403 PERMISSION_DENIED" but IAM looks correct
+
+**This is the #1 gotcha!** If you get permission errors but your IAM roles look correct, check for `GOOGLE_APPLICATION_CREDENTIALS`:
+
+```bash
+# Check if it's set
+echo $GOOGLE_APPLICATION_CREDENTIALS
+
+# If it shows a path, that's likely the problem!
+# The SDK is using credentials for a DIFFERENT project.
+```
+
+**Fix:**
+```bash
+# Unset it to use ADC instead
+unset GOOGLE_APPLICATION_CREDENTIALS
+
+# Then retry your operation
+make deploy
+```
+
+**Why this happens:**
+The Google Cloud SDK checks credentials in this order:
+1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable (if set, ALWAYS used)
+2. Application Default Credentials (ADC)
+3. Compute Engine metadata
+
+If `GOOGLE_APPLICATION_CREDENTIALS` points to a service account for project A, but you're deploying to project B, you get permission denied even though your ADC has access to project B.
+
+**Prevention:**
+- Run `make preflight` before deploying
+- Don't set `GOOGLE_APPLICATION_CREDENTIALS` globally in your shell profile
+- Use `gcloud auth application-default login` instead
+
+---
+
+#### "Permission denied" errors (IAM issues)
 
 Ensure your account has the required roles:
 
