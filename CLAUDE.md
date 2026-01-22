@@ -6,11 +6,10 @@
 
 ## Quick Facts
 
-- **Version:** 0.3.0 (Released on PyPI), v0.4.0 in development
+- **Version:** 0.4.2 (Released on PyPI)
 - **Tests:** 179 passing (`pytest -v`)
 - **Demo:** `uvx bedsheet demo` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
 - **Default Model:** `claude-sonnet-4-5-20250929`
-- **v0.4 Branch:** `development/v0.4-deploy-anywhere`
 
 ## Key Features
 
@@ -82,6 +81,26 @@ bedsheet deploy --target gcp       # Deploy to target
 # Open documentation
 open docs/user-guide.html
 open docs/technical-guide.html
+```
+
+## Python Environment Rules
+
+- **Always use `uvx`** when testing published packages (e.g., `uvx bedsheet demo`)
+- **Always use a venv** - never install into system Python
+- **Prefer `uv` over `pip`** - use `uv pip install` or `uv add` instead of `pip install`
+- **For E2E testing published packages:** use `uvx <package>` which auto-creates isolated env
+
+```bash
+# GOOD - testing published package
+uvx bedsheet demo
+uvx bedsheet init my-agent
+
+# GOOD - development with venv
+uv venv && source .venv/bin/activate
+uv pip install -e .
+
+# AVOID - don't use pip directly
+pip install bedsheet  # NO - use uv pip install or uvx
 ```
 
 ## Code Style
