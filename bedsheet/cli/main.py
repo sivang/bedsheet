@@ -43,8 +43,12 @@ app = typer.Typer(
 
 console = Console()
 
-# Version from pyproject.toml
-__version__ = "0.4.2rc3"
+# Version - dynamically read from package metadata
+try:
+    from importlib.metadata import version as get_version
+    __version__ = get_version("bedsheet")
+except Exception:
+    __version__ = "0.4.3"  # fallback
 
 
 # Target mapping
