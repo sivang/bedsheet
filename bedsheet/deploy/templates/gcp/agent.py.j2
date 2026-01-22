@@ -53,7 +53,7 @@ from google.adk.tools import {{ gcp.builtin_tools | join(', ') }}
 {% if orchestration == "single" %}
 root_agent = LlmAgent(
     name="{{ agent.name }}",
-    model="{{ gcp.model or 'gemini-2.5-flash' }}",
+    model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
     instruction="""{{ agent.instruction | replace('"""', '\\"\\"\\"') }}""",
     {% if agent.tools or gcp.builtin_tools %}
     tools=[
@@ -68,7 +68,7 @@ root_agent = LlmAgent(
 {% for collab in agent.collaborators %}
 {{ collab.name | replace('-', '_') }}_agent = LlmAgent(
     name="{{ collab.name }}",
-    model="{{ gcp.model or 'gemini-2.5-flash' }}",
+    model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
     instruction="""{{ collab.instruction | replace('"""', '\\"\\"\\"') }}""",
     {% if collab.tools or gcp.builtin_tools %}
     tools=[

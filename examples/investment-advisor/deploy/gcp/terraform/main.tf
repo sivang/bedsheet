@@ -49,7 +49,7 @@ locals {
   # Common labels for all resources (governance, cost tracking)
   common_labels = {
     managed_by       = "bedsheet"
-    bedsheet_version = "0.4"
+    bedsheet_version = "0-4"
     project          = "investment-advisor"
     environment      = var.environment
   }
@@ -58,18 +58,19 @@ locals {
 # =============================================================================
 # API ENABLEMENT
 # =============================================================================
-# Enable required GCP APIs. These must complete before creating resources.
+# Enable required GCP APIs. Cloud Build's service account has permissions.
 
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com",           # Cloud Run
-    "artifactregistry.googleapis.com", # Container Registry
-    "aiplatform.googleapis.com",    # Vertex AI
-    "cloudbuild.googleapis.com",    # Cloud Build (for deployments)
-    "logging.googleapis.com",       # Cloud Logging
-    "monitoring.googleapis.com",    # Cloud Monitoring
-    "iam.googleapis.com",           # IAM (for service accounts)
-    "iamcredentials.googleapis.com", # IAM credentials
+    "cloudresourcemanager.googleapis.com", # Resource Manager (for IAM)
+    "run.googleapis.com",                  # Cloud Run
+    "artifactregistry.googleapis.com",     # Container Registry
+    "aiplatform.googleapis.com",           # Vertex AI
+    "cloudbuild.googleapis.com",           # Cloud Build
+    "logging.googleapis.com",              # Cloud Logging
+    "monitoring.googleapis.com",           # Cloud Monitoring
+    "iam.googleapis.com",                  # IAM
+    "iamcredentials.googleapis.com",       # IAM credentials
   ])
 
   project            = var.project_id
@@ -82,56 +83,28 @@ resource "google_project_service" "required_apis" {
   }
 }
 
-# Wait for APIs to propagate (GCP can take up to 60s for API enablement)
+# Wait for APIs to propagate
 resource "time_sleep" "api_propagation" {
-  depends_on = [google_project_service.required_apis]
-
+  depends_on      = [google_project_service.required_apis]
   create_duration = "30s"
 }
 
 # =============================================================================
-# SERVICE ACCOUNT (Least Privilege)
+# SERVICE ACCOUNT
 # =============================================================================
+# Creates the service account. IAM role bindings are handled by Cloud Build
+# using gcloud commands (more reliable than Terraform in CI/CD context).
 
 resource "google_service_account" "agent" {
-  depends_on = [time_sleep.api_propagation]
-
+  depends_on   = [time_sleep.api_propagation]
   account_id   = "${local.service_name}-sa"
   display_name = "investment-advisor Agent Service Account"
   description  = "Service account for investment-advisor ADK agent on Cloud Run"
   project      = var.project_id
 }
 
-# IAM Roles - Least Privilege Principle
-# Grant only the minimum permissions needed for the agent to function
-
-# Vertex AI User - Access to Gemini/Claude models via Vertex AI
-resource "google_project_iam_member" "agent_vertex_ai" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.agent.email}"
-}
-
-# Cloud Logging Writer - Write application logs
-resource "google_project_iam_member" "agent_logging" {
-  project = var.project_id
-  role    = "roles/logging.logWriter"
-  member  = "serviceAccount:${google_service_account.agent.email}"
-}
-
-# Cloud Monitoring Metric Writer - Write custom metrics
-resource "google_project_iam_member" "agent_monitoring" {
-  project = var.project_id
-  role    = "roles/monitoring.metricWriter"
-  member  = "serviceAccount:${google_service_account.agent.email}"
-}
-
-# Cloud Trace Agent - Distributed tracing (optional but recommended)
-resource "google_project_iam_member" "agent_trace" {
-  project = var.project_id
-  role    = "roles/cloudtrace.agent"
-  member  = "serviceAccount:${google_service_account.agent.email}"
-}
+# NOTE: IAM role bindings (aiplatform.user, logging.logWriter, etc.) are
+# granted via gcloud commands in cloudbuild.yaml for better CI/CD reliability.
 
 # =============================================================================
 # ARTIFACT REGISTRY
@@ -139,7 +112,6 @@ resource "google_project_iam_member" "agent_trace" {
 
 resource "google_artifact_registry_repository" "agent_repo" {
   depends_on = [time_sleep.api_propagation]
-
   location      = var.region
   repository_id = "${local.service_name}-repo"
   description   = "Docker repository for investment-advisor ADK agent"
@@ -162,135 +134,12 @@ resource "google_artifact_registry_repository" "agent_repo" {
 # =============================================================================
 # CLOUD RUN SERVICE
 # =============================================================================
-
-resource "google_cloud_run_v2_service" "agent" {
-  depends_on = [
-    time_sleep.api_propagation,
-    google_project_iam_member.agent_vertex_ai,
-  ]
-
-  name     = local.service_name
-  location = var.region
-  project  = var.project_id
-
-  labels = local.common_labels
-
-  template {
-    labels          = local.common_labels
-    service_account = google_service_account.agent.email
-
-    # Execution environment settings
-    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
-
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.agent_repo.repository_id}/${local.service_name}:${var.image_tag}"
-
-      ports {
-        container_port = 8080
-      }
-
-      resources {
-        limits = {
-          cpu    = var.cpu_limit
-          memory = var.memory_limit
-        }
-        cpu_idle = true  # Cost optimization: CPU only allocated during request processing
-      }
-
-      # Environment variables for Vertex AI (ADC handles authentication)
-      env {
-        name  = "GOOGLE_CLOUD_PROJECT"
-        value = var.project_id
-      }
-
-      env {
-        name  = "GOOGLE_CLOUD_LOCATION"
-        value = var.region
-      }
-
-      env {
-        name  = "GOOGLE_GENAI_USE_VERTEXAI"
-        value = "True"
-      }
-
-      # Optional: Enable structured logging for better observability
-      env {
-        name  = "LOG_LEVEL"
-        value = var.log_level
-      }
-
-      # Startup and liveness probes for reliability
-      startup_probe {
-        http_get {
-          path = "/health"
-          port = 8080
-        }
-        initial_delay_seconds = 5
-        timeout_seconds       = 3
-        period_seconds        = 10
-        failure_threshold     = 3
-      }
-
-      liveness_probe {
-        http_get {
-          path = "/health"
-          port = 8080
-        }
-        timeout_seconds   = 3
-        period_seconds    = 30
-        failure_threshold = 3
-      }
-    }
-
-    scaling {
-      min_instance_count = var.min_instances
-      max_instance_count = var.max_instances
-    }
-
-    # Request timeout (default 5 minutes for LLM responses)
-    timeout = "${var.request_timeout_seconds}s"
-  }
-
-  traffic {
-    percent = 100
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-  }
-
-  # Lifecycle: Ignore image changes (CI/CD handles deployments)
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-      client,
-      client_version,
-    ]
-  }
-}
-
-# =============================================================================
-# IAM - Public vs Private Access
-# =============================================================================
-
-# Public access (only if explicitly enabled)
-resource "google_cloud_run_v2_service_iam_member" "public_access" {
-  count = var.allow_unauthenticated ? 1 : 0
-
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.agent.name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
-# Private access - Grant specific users/service accounts (more secure)
-resource "google_cloud_run_v2_service_iam_member" "authorized_invokers" {
-  for_each = toset(var.authorized_invokers)
-
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.agent.name
-  role     = "roles/run.invoker"
-  member   = each.value
-}
+# NOTE: Cloud Run service is created by `gcloud run deploy` in cloudbuild.yaml.
+# This approach is more reliable in CI/CD (follows ADK Starter Pack pattern):
+# 1. Terraform creates infrastructure (SA, Artifact Registry, metrics)
+# 2. gcloud grants IAM roles to service account
+# 3. Docker builds and pushes image
+# 4. gcloud run deploy creates/updates the Cloud Run service
 
 # =============================================================================
 # OBSERVABILITY
@@ -299,7 +148,6 @@ resource "google_cloud_run_v2_service_iam_member" "authorized_invokers" {
 # Log-based metric for tracking agent invocations
 resource "google_logging_metric" "agent_invocations" {
   depends_on = [time_sleep.api_propagation]
-
   name        = "${local.service_name}-invocations"
   description = "Count of agent invocations for investment-advisor"
   project     = var.project_id
@@ -320,7 +168,6 @@ resource "google_logging_metric" "agent_invocations" {
 # Log-based metric for tracking errors
 resource "google_logging_metric" "agent_errors" {
   depends_on = [time_sleep.api_propagation]
-
   name        = "${local.service_name}-errors"
   description = "Count of errors for investment-advisor"
   project     = var.project_id

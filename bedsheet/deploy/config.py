@@ -77,8 +77,8 @@ class GCPTargetConfig(BaseModel):
     region: str = Field(default="europe-west1", description="GCP region")
     cloud_run_memory: str = Field(default="512Mi", description="Cloud Run memory limit")
     model: str = Field(
-        default="gemini-2.5-flash",
-        description="Model ID (gemini-2.5-flash recommended, or claude-sonnet-4-5@20250929 for Vertex AI)",
+        default="gemini-2.0-flash-001",
+        description="Model ID (gemini-2.0-flash recommended via global endpoint)",
     )
     style: GCPDeploymentStyle = Field(
         default=GCPDeploymentStyle.CLOUD_RUN,

@@ -11,7 +11,7 @@
 # =============================================================================
 
 # Your GCP project ID (run `gcloud projects list` to see your projects)
-project_id = "my-gcp-project"
+project_id = "bedsheet-e2e-test"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

@@ -77,7 +77,7 @@ def get_position_recommendation(symbol: str, risk_tolerance: str) -> dict:
 # Collaborator agents
 MarketAnalyst_agent = LlmAgent(
     name="MarketAnalyst",
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     instruction="""You are a market analyst specializing in stock analysis.
 Use get_stock_data and get_technical_analysis to gather comprehensive data.
 Provide clear, data-driven analysis with specific numbers and metrics.""",
@@ -86,7 +86,7 @@ Provide clear, data-driven analysis with specific numbers and metrics.""",
 
 NewsResearcher_agent = LlmAgent(
     name="NewsResearcher",
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     instruction="""You are a news researcher focused on financial news.
 Use search_news to find recent articles, then analyze_sentiment for overall mood.
 Report key headlines and the overall sentiment (bullish/bearish/neutral).""",
@@ -95,7 +95,7 @@ Report key headlines and the overall sentiment (bullish/bearish/neutral).""",
 
 RiskAnalyst_agent = LlmAgent(
     name="RiskAnalyst",
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     instruction="""You are a risk analysis specialist.
 Use analyze_volatility to assess stock risk metrics.
 Use get_position_recommendation to suggest position sizing.

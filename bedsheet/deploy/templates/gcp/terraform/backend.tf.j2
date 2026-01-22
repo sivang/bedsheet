@@ -1,19 +1,12 @@
 # Terraform Backend Configuration
-# This stores Terraform state in Google Cloud Storage for team collaboration
-# and state locking.
-#
-# FIRST TIME SETUP:
-# 1. Create the GCS bucket manually or via gcloud:
-#    gcloud storage buckets create gs://{{ config.name }}-tfstate --location={{ gcp.region }}
-# 2. Uncomment the backend block below
-# 3. Run: terraform init -migrate-state
+# Stores Terraform state in Google Cloud Storage for CI/CD and team collaboration.
+# The bucket is created automatically by Cloud Build.
+# Bucket name is configured via -backend-config during terraform init.
 
-# terraform {
-#   backend "gcs" {
-#     bucket  = "{{ config.name }}-tfstate"
-#     prefix  = "terraform/state"
-#   }
-# }
-
-# For local development, Terraform uses local state by default.
-# Uncomment the backend block above for production/team use.
+terraform {
+  backend "gcs" {
+    # Bucket name is passed via -backend-config="bucket=NAME" during init
+    # Default: {{ config.name }}-tfstate-$PROJECT_ID
+    prefix = "terraform/state"
+  }
+}

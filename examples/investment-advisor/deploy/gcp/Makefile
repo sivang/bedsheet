@@ -11,7 +11,7 @@
 .SILENT: help _banner
 
 # Configuration (set in terraform.tfvars or override here)
-PROJECT ?= my-gcp-project
+PROJECT ?= bedsheet-e2e-test
 REGION ?= europe-west1
 SERVICE = investment-advisor
 IMAGE = $(REGION)-docker.pkg.dev/$(PROJECT)/$(SERVICE)-repo/$(SERVICE)
@@ -148,7 +148,22 @@ _setup_project:
 	@printf "\n"
 
 _setup_terraform:
-	@printf "$(BLUE)Step 4/4: Initializing infrastructure...$(NC)\n"
+	@printf "$(BLUE)Step 4/5: Enabling required GCP APIs...$(NC)\n"
+	@printf "\n"
+	@printf "  Enabling APIs (this may take a minute)...\n"
+	@gcloud services enable \
+		run.googleapis.com \
+		artifactregistry.googleapis.com \
+		aiplatform.googleapis.com \
+		cloudbuild.googleapis.com \
+		logging.googleapis.com \
+		monitoring.googleapis.com \
+		iam.googleapis.com \
+		iamcredentials.googleapis.com \
+		--quiet 2>/dev/null || true
+	@printf "  $(GREEN)✓$(NC) APIs enabled\n"
+	@printf "\n"
+	@printf "$(BLUE)Step 5/5: Initializing infrastructure...$(NC)\n"
 	@printf "\n"
 	@# Create terraform.tfvars if it doesn't exist
 	@if [ ! -f terraform/terraform.tfvars ]; then \
@@ -175,7 +190,7 @@ _setup_terraform:
 # DEPLOY - Build and deploy to Cloud Run
 # =============================================================================
 
-deploy: _preflight _build _apply _post_deploy
+deploy: _preflight _build _post_deploy
 	@printf "\n"
 	@printf "$(GREEN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"
 	@printf "$(GREEN)║  🚀 Deployment Complete!                                     ║$(NC)\n"
@@ -190,8 +205,8 @@ _preflight:
 		printf "$(YELLOW)Terraform not initialized. Running setup...$(NC)\n"; \
 		$(MAKE) setup; \
 	fi
-	@# Check project is set
-	@PROJECT_ID=$$(cd terraform && terraform output -raw project_id 2>/dev/null || gcloud config get-value project); \
+	@# Check project is set (strip ANSI codes from terraform output, fallback to gcloud)
+	@PROJECT_ID=$$(cd terraform && terraform output -raw project_id 2>/dev/null | tr -d '\033' | sed 's/\[[0-9;]*m//g' | grep -E '^[a-z][-a-z0-9]*[a-z0-9]$$' || gcloud config get-value project 2>/dev/null); \
 	if [ -z "$$PROJECT_ID" ] || [ "$$PROJECT_ID" = "your-project-id" ]; then \
 		printf "$(RED)GCP project not configured. Run 'make setup' first.$(NC)\n"; \
 		exit 1; \
@@ -200,17 +215,23 @@ _preflight:
 	@printf "\n"
 
 _build:
-	@printf "$(BLUE)Building and pushing container image...$(NC)\n"
+	@printf "$(BLUE)Deploying via Cloud Build...$(NC)\n"
 	@printf "\n"
-	@PROJECT_ID=$$(cd terraform && terraform output -raw project_id 2>/dev/null || gcloud config get-value project); \
-	REGISTRY_URL=$$(cd terraform && terraform output -raw artifact_registry_url 2>/dev/null || echo "$(REGION)-docker.pkg.dev/$$PROJECT_ID/$(SERVICE)-repo"); \
-	printf "  Building image...\n"; \
+	@printf "  Cloud Build will:\n"
+	@printf "    1. Enable required GCP APIs\n"
+	@printf "    2. Create Artifact Registry repo\n"
+	@printf "    3. Create service account\n"
+	@printf "    4. Build container image\n"
+	@printf "    5. Deploy to Cloud Run\n"
+	@printf "\n"
+	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null); \
+	printf "  Submitting to Cloud Build (project: $$PROJECT_ID)...\n"; \
 	gcloud builds submit \
 		--config cloudbuild.yaml \
 		--project $$PROJECT_ID \
 		--substitutions=_REGION=$(REGION),_SERVICE=$(SERVICE) \
 		--quiet
-	@printf "  $(GREEN)✓$(NC) Image built and pushed\n"
+	@printf "  $(GREEN)✓$(NC) Deployment complete\n"
 	@printf "\n"
 
 _apply:
@@ -223,13 +244,12 @@ _apply:
 
 _post_deploy:
 	@printf "$(BLUE)Verifying deployment...$(NC)\n"
-	@# Wait for Cloud Run to be ready
-	@sleep 5
-	@SERVICE_URL=$$(cd terraform && terraform output -raw service_url 2>/dev/null); \
+	@# Get Cloud Run service URL via gcloud
+	@SERVICE_URL=$$(gcloud run services describe $(SERVICE) --region $(REGION) --format 'value(status.url)' 2>/dev/null); \
 	if [ -n "$$SERVICE_URL" ]; then \
-		printf "  $(GREEN)✓$(NC) Service is live\n"; \
+		printf "  $(GREEN)✓$(NC) Service is live at $$SERVICE_URL\n"; \
 	else \
-		printf "  $(YELLOW)⚠$(NC) Deployment may still be in progress\n"; \
+		printf "  $(YELLOW)⚠$(NC) Service not found yet. It may still be deploying.\n"; \
 	fi
 	@printf "\n"
 
@@ -243,12 +263,12 @@ dev:
 	@printf "Open $(GREEN)http://localhost:8000$(NC) in your browser\n"
 	@printf "\n"
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null); \
-	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=$(REGION) python -m google.adk.cli web .
+	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=global GOOGLE_GENAI_USE_VERTEXAI=True uv run python -m google.adk.cli web .
 
 test:
 	@printf "$(BLUE)Testing agent via CLI...$(NC)\n"
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null); \
-	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=$(REGION) python -m google.adk.cli run agent.agent
+	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=global GOOGLE_GENAI_USE_VERTEXAI=True uv run python -m google.adk.cli run agent.agent
 
 # =============================================================================
 # STATUS & INFO
@@ -267,31 +287,26 @@ status:
 	@printf "\n"
 
 url:
-	@if [ -d terraform/.terraform ]; then \
-		SERVICE_URL=$$(cd terraform && terraform output -raw service_url 2>/dev/null); \
-		if [ -n "$$SERVICE_URL" ]; then \
-			printf "\n"; \
-			printf "$(GREEN)🌐 Your agent is live at:$(NC)\n"; \
-			printf "\n"; \
-			printf "   $$SERVICE_URL\n"; \
-			printf "\n"; \
-			printf "$(BLUE)Test it:$(NC)\n"; \
-			printf "   curl -X POST $$SERVICE_URL/invoke \\\\\n"; \
-			printf "     -H 'Content-Type: application/json' \\\\\n"; \
-			printf "     -H 'Authorization: Bearer '\$$(gcloud auth print-identity-token) \\\\\n"; \
-			printf "     -d '{\"message\": \"Hello!\"}'\n"; \
-			printf "\n"; \
-		else \
-			printf "$(YELLOW)Agent not deployed yet. Run 'make deploy' first.$(NC)\n"; \
-		fi; \
+	@SERVICE_URL=$$(gcloud run services describe $(SERVICE) --region $(REGION) --format 'value(status.url)' 2>/dev/null); \
+	if [ -n "$$SERVICE_URL" ]; then \
+		printf "\n"; \
+		printf "$(GREEN)🌐 Your agent is live at:$(NC)\n"; \
+		printf "\n"; \
+		printf "   $$SERVICE_URL\n"; \
+		printf "\n"; \
+		printf "$(BLUE)Test it:$(NC)\n"; \
+		printf "   curl -X POST $$SERVICE_URL/invoke \\\\\n"; \
+		printf "     -H 'Content-Type: application/json' \\\\\n"; \
+		printf "     -d '{\"message\": \"Hello!\"}'\n"; \
+		printf "\n"; \
 	else \
-		printf "$(YELLOW)Not initialized. Run 'make setup' first.$(NC)\n"; \
+		printf "$(YELLOW)Agent not deployed yet. Run 'make deploy' first.$(NC)\n"; \
 	fi
 
 logs:
 	@printf "$(BLUE)Streaming logs...$(NC)\n"
 	@printf "(Press Ctrl+C to stop)\n\n"
-	@PROJECT_ID=$$(cd terraform && terraform output -raw project_id 2>/dev/null || gcloud config get-value project); \
+	@PROJECT_ID=$$(cd terraform && terraform output -raw project_id 2>/dev/null | tr -d '\033' | sed 's/\[[0-9;]*m//g' | grep -E '^[a-z][-a-z0-9]*[a-z0-9]$$' || gcloud config get-value project 2>/dev/null); \
 	gcloud run logs tail $(SERVICE) --region $(REGION) --project $$PROJECT_ID
 
 # =============================================================================

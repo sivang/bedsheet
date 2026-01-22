@@ -13,13 +13,13 @@ targets:
     port: 8000
     hot_reload: true
   gcp:
-    project: my-gcp-project
+    project: bedsheet-e2e-test
     region: europe-west1
     cloud_run_memory: 1Gi
-    model: gemini-2.5-flash
+    model: gemini-3-flash-preview
     style: cloud_run
 
 enhancements:
-  trace: false
-  metrics: false
-  auth: false
+  trace: true
+  metrics: true
+  auth: true

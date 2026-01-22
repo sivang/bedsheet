@@ -40,7 +40,7 @@ If you're comfortable with the defaults, deploy in three commands:
 # 1. Authenticate (uses your existing GCP account)
 gcloud auth login
 gcloud auth application-default login
-gcloud config set project my-gcp-project
+gcloud config set project bedsheet-e2e-test
 
 # 2. Set up environment and infrastructure
 cp .env.example .env
@@ -68,7 +68,7 @@ gcloud auth login
 gcloud auth application-default login
 
 # Set your project
-gcloud config set project my-gcp-project
+gcloud config set project bedsheet-e2e-test
 ```
 
 ### Step 2: Configure Environment
@@ -82,7 +82,7 @@ cp .env.example .env
 Edit `.env` with your project settings:
 
 ```bash
-GOOGLE_CLOUD_PROJECT=my-gcp-project
+GOOGLE_CLOUD_PROJECT=bedsheet-e2e-test
 GOOGLE_CLOUD_LOCATION=europe-west1
 ```
 
@@ -267,9 +267,9 @@ gcloud run logs tail investment_advisor \
 
 Access the full monitoring suite at:
 
-- **Cloud Run Dashboard**: [console.cloud.google.com/run](https://console.cloud.google.com/run?project=my-gcp-project)
-- **Logs Explorer**: [console.cloud.google.com/logs](https://console.cloud.google.com/logs?project=my-gcp-project)
-- **Error Reporting**: [console.cloud.google.com/errors](https://console.cloud.google.com/errors?project=my-gcp-project)
+- **Cloud Run Dashboard**: [console.cloud.google.com/run](https://console.cloud.google.com/run?project=bedsheet-e2e-test)
+- **Logs Explorer**: [console.cloud.google.com/logs](https://console.cloud.google.com/logs?project=bedsheet-e2e-test)
+- **Error Reporting**: [console.cloud.google.com/errors](https://console.cloud.google.com/errors?project=bedsheet-e2e-test)
 
 ### Key Metrics to Monitor
 
@@ -306,16 +306,16 @@ Ensure your account has the required roles:
 
 ```bash
 # Check current permissions
-gcloud projects get-iam-policy my-gcp-project \
+gcloud projects get-iam-policy bedsheet-e2e-test \
   --flatten="bindings[].members" \
   --filter="bindings.members:YOUR_EMAIL"
 
 # Grant required roles (run as project owner)
-gcloud projects add-iam-policy-binding my-gcp-project \
+gcloud projects add-iam-policy-binding bedsheet-e2e-test \
   --member="user:YOUR_EMAIL" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding my-gcp-project \
+gcloud projects add-iam-policy-binding bedsheet-e2e-test \
   --member="user:YOUR_EMAIL" \
   --role="roles/aiplatform.user"
 ```
@@ -330,7 +330,7 @@ gcloud services enable \
   aiplatform.googleapis.com \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
-  --project=my-gcp-project
+  --project=bedsheet-e2e-test
 ```
 
 #### Container build failures
@@ -353,8 +353,8 @@ Ensure the service account has Vertex AI access:
 
 ```bash
 # Grant Vertex AI user role to the service account
-gcloud projects add-iam-policy-binding my-gcp-project \
-  --member="serviceAccount:investment_advisor-sa@my-gcp-project.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding bedsheet-e2e-test \
+  --member="serviceAccount:investment_advisor-sa@bedsheet-e2e-test.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 ```
 
@@ -431,7 +431,7 @@ gcloud run services delete investment_advisor \
 
 # Delete container images from Artifact Registry
 gcloud artifacts docker images delete \
-  europe-west1-docker.pkg.dev/my-gcp-project/investment_advisor-repo/investment_advisor \
+  europe-west1-docker.pkg.dev/bedsheet-e2e-test/investment_advisor-repo/investment_advisor \
   --delete-tags \
   --quiet
 
@@ -441,7 +441,7 @@ gcloud artifacts repositories delete investment_advisor-repo \
   --quiet
 
 # Delete service account
-gcloud iam service-accounts delete investment_advisor-sa@my-gcp-project.iam.gserviceaccount.com \
+gcloud iam service-accounts delete investment_advisor-sa@bedsheet-e2e-test.iam.gserviceaccount.com \
   --quiet
 ```
 

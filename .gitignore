@@ -57,3 +57,10 @@ firebase-debug.log
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+
+# ADK
+.adk/
+uv.lock
+
+# Test environments
+.venv-test/
