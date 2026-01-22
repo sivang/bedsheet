@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bedsheet"
-version = "0.4.6"
+version = "0.4.7"
 description = "Pythonic framework for AI agents. Build single agents or multi-agent teams with streaming events, parallel execution, and full observability."
 readme = "README.md"
 requires-python = ">=3.11"

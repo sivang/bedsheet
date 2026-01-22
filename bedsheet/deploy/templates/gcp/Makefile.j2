@@ -346,6 +346,19 @@ dev: _check_credentials
 ui:
 	@printf "$(BLUE)Opening Dev UI for deployed agent...$(NC)\n"
 	@printf "\n"
+	@# Check if cloud-run-proxy component is installed
+	@if ! gcloud components list 2>/dev/null | grep -q "cloud-run-proxy.*Installed"; then \
+		printf "$(YELLOW)First-time setup required:$(NC)\n"; \
+		printf "\n"; \
+		printf "  The Cloud Run proxy component is not installed.\n"; \
+		printf "  Run this command first:\n"; \
+		printf "\n"; \
+		printf "    $(GREEN)gcloud components install cloud-run-proxy$(NC)\n"; \
+		printf "\n"; \
+		printf "  Then run $(CYAN)make ui$(NC) again.\n"; \
+		printf "\n"; \
+		exit 1; \
+	fi
 	@SERVICE_URL=$$(gcloud run services describe $(SERVICE) --region $(REGION) --format 'value(status.url)' 2>/dev/null); \
 	if [ -z "$$SERVICE_URL" ]; then \
 		printf "$(RED)Agent not deployed yet. Run 'make deploy' first.$(NC)\n"; \
@@ -354,9 +367,10 @@ ui:
 	printf "  Service: $(CYAN)$$SERVICE_URL$(NC)\n"; \
 	printf "\n"; \
 	printf "  Starting authenticated proxy on $(GREEN)http://localhost:8080$(NC)...\n"; \
+	printf "  Dev UI will be at $(GREEN)http://localhost:8080/dev-ui/$(NC)\n"; \
 	printf "  (Press Ctrl+C to stop)\n"; \
 	printf "\n"; \
-	sleep 1 && (which open > /dev/null 2>&1 && open http://localhost:8080 || which xdg-open > /dev/null 2>&1 && xdg-open http://localhost:8080 || true) & \
+	sleep 1 && (which open > /dev/null 2>&1 && open http://localhost:8080/dev-ui/ || which xdg-open > /dev/null 2>&1 && xdg-open http://localhost:8080/dev-ui/ || true) & \
 	gcloud run services proxy $(SERVICE) --region $(REGION) --port 8080
 
 test:
