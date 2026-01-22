@@ -42,7 +42,6 @@ This session focused on **GCP deployment UX improvements**, **end-to-end testing
 
 ### Earlier in Session (from summary)
 
-- Security audit: Sanitized `zeteo-8227d` project references from git history
 - Fixed hardcoded CLI version (now uses importlib.metadata)
 - Added Python environment rules to CLAUDE.md
 
