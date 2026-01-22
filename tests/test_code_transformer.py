@@ -2,7 +2,59 @@
 import pytest
 
 from bedsheet.deploy.code_transformer import CodeTransformer, AsyncToSyncTransformer
-from bedsheet.deploy.source_extractor import SourceExtractor, SourceInfo, ParameterInfo
+from bedsheet.deploy.source_extractor import SourceExtractor
+
+
+# Mock async functions used in test function bodies (never actually called)
+# These are referenced in test functions for AST analysis but never executed
+async def get_data(url: str) -> str:
+    """Mock async function."""
+    return ""
+
+
+async def transform(data: dict) -> dict:
+    """Mock async function."""
+    return data
+
+
+async def make_request(endpoint: str) -> str:
+    """Mock async function."""
+    return ""
+
+
+async def process(value: object) -> object:
+    """Mock async function."""
+    return value
+
+
+async def fetch(value: object) -> object:
+    """Mock async function."""
+    return value
+
+
+async def open_file(path: str) -> str:
+    """Mock async function."""
+    return ""
+
+
+async def create_user(name: str) -> dict:
+    """Mock async function."""
+    return {}
+
+
+async def fetch_list() -> list:
+    """Mock async function."""
+    return []
+
+
+async def get_value(key: str) -> object:
+    """Mock async function."""
+    return None
+
+
+async def get_connection() -> object:
+    """Mock async function."""
+    return None
 
 
 class TestCodeTransformerSyncFunctions:

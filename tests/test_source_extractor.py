@@ -1,12 +1,10 @@
 """Tests for source code extraction module."""
-import pytest
 from typing import Any, Optional
 
 from bedsheet import ActionGroup
 from bedsheet.deploy.source_extractor import (
     SourceExtractor,
     SourceInfo,
-    ParameterInfo,
     PYTHON_TO_JSON_TYPE,
 )
 
@@ -26,7 +24,7 @@ class TestSourceExtractorBasics:
         assert "def greet" in info.source_code
         assert info.is_async is False
         assert "return" in info.function_body
-        assert f"Hello, {{name}}!" in info.function_body or "f'Hello, {name}!'" in info.function_body
+        assert "Hello, {name}!" in info.function_body or "f'Hello, {name}!'" in info.function_body
 
     def test_extract_async_function(self):
         """Test extracting an asynchronous function."""

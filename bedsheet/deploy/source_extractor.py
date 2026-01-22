@@ -213,7 +213,7 @@ class SourceExtractor:
 
         Note: This is a heuristic - complex import patterns may need manual handling.
         """
-        imports = []
+        imports: list[str] = []
 
         # Walk the function body looking for module attribute access
         for node in ast.walk(func_node):

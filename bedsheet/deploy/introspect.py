@@ -1,6 +1,6 @@
 """Agent introspection module for extracting metadata from agents."""
 from dataclasses import dataclass, field
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from bedsheet.agent import Agent
 from bedsheet.supervisor import Supervisor
@@ -32,7 +32,7 @@ class AgentMetadata:
     is_supervisor: bool
 
 
-def extract_agent_metadata(agent: Agent, target: str = "local") -> AgentMetadata:
+def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] = "local") -> AgentMetadata:
     """Extract metadata from an agent.
 
     Args:

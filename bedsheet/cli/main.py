@@ -6,7 +6,7 @@ agent deployments. Use `bedsheet --help` to see available commands.
 import importlib
 import sys
 from pathlib import Path
-from typing import Optional, cast
+from typing import Literal, Optional, cast
 
 import typer
 from rich import print as rprint
@@ -69,10 +69,26 @@ def _get_target(target_name: str) -> DeploymentTarget:
     return TARGETS[target_name]()
 
 
+TargetType = Literal["local", "gcp", "aws"]
+
+
+def _get_introspection_target(target_name: str) -> TargetType:
+    """Map deployment target names to introspection targets.
+
+    The introspection system only supports local/gcp/aws for code transformation.
+    AWS-based targets (aws-terraform, agentcore) map to "aws".
+    """
+    if target_name in ("aws", "aws-terraform", "agentcore"):
+        return "aws"
+    elif target_name == "gcp":
+        return "gcp"
+    return "local"
+
+
 def _load_and_introspect_agent(
     agent_config: AgentConfig,
     console: Console,
-    target: str = "local",
+    target: TargetType = "local",
 ) -> tuple[AgentMetadata | None, str | None]:
     """Dynamically load an agent module and introspect it.
 
@@ -744,7 +760,9 @@ def generate(
 
     # Try to introspect the actual agent
     console.print("[bold]Introspecting agent...[/bold]")
-    introspected_metadata, introspection_error = _load_and_introspect_agent(agent_config, console, target=target_name)
+    introspected_metadata, introspection_error = _load_and_introspect_agent(
+        agent_config, console, target=_get_introspection_target(target_name)
+    )
 
     if introspection_error or introspected_metadata is None:
         # Introspection failed - fall back to config-based metadata with warning

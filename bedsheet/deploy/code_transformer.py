@@ -7,7 +7,6 @@ This module transforms extracted source code for different target platforms
 - Handling edge cases (async for, async with, await expressions)
 """
 import ast
-import copy
 from typing import Literal
 
 from .source_extractor import SourceInfo, ParameterInfo
@@ -28,16 +27,20 @@ class AsyncToSyncTransformer(ast.NodeTransformer):
         # First, recursively transform the body
         new_body = [self.visit(stmt) for stmt in node.body]
 
-        # Create a regular FunctionDef with the same attributes
-        return ast.FunctionDef(
-            name=node.name,
-            args=node.args,
-            body=new_body,
-            decorator_list=node.decorator_list,
-            returns=node.returns,
-            type_comment=node.type_comment,
-            type_params=getattr(node, 'type_params', []),  # Python 3.12+
-        )
+        # Build kwargs for FunctionDef - type_params is Python 3.12+ only
+        kwargs: dict[str, object] = {
+            "name": node.name,
+            "args": node.args,
+            "body": new_body,
+            "decorator_list": node.decorator_list,
+            "returns": node.returns,
+            "type_comment": node.type_comment,
+        }
+        # Add type_params if available (Python 3.12+)
+        if hasattr(node, 'type_params'):
+            kwargs["type_params"] = node.type_params
+
+        return ast.FunctionDef(**kwargs)  # type: ignore[arg-type]
 
     def visit_Await(self, node: ast.Await) -> ast.AST:
         """Unwrap await expressions, returning just the awaited value.
