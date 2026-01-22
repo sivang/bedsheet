@@ -204,8 +204,41 @@ preflight: _check_credentials _preflight
 	@printf "\n"
 
 _check_credentials:
-	@printf "$(BLUE)Checking credentials...$(NC)\n"
+	@printf "$(BLUE)Checking credentials and project configuration...$(NC)\n"
 	@printf "\n"
+	@# Check project consistency between terraform.tfvars and gcloud config
+	@TFVARS_PROJECT=$$(grep -E '^project_id' terraform/terraform.tfvars 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1); \
+	GCLOUD_PROJECT=$$(gcloud config get-value project 2>/dev/null); \
+	if [ -n "$$TFVARS_PROJECT" ] && [ "$$TFVARS_PROJECT" != "my-project" ] && [ "$$TFVARS_PROJECT" != "your-project-id" ]; then \
+		if [ "$$TFVARS_PROJECT" != "$$GCLOUD_PROJECT" ]; then \
+			printf "$(RED)╔══════════════════════════════════════════════════════════════════════════╗$(NC)\n"; \
+			printf "$(RED)║  ⚠️  WARNING: Project mismatch detected!                                 ║$(NC)\n"; \
+			printf "$(RED)╚══════════════════════════════════════════════════════════════════════════╝$(NC)\n"; \
+			printf "\n"; \
+			printf "  terraform.tfvars: $(CYAN)$$TFVARS_PROJECT$(NC)\n"; \
+			printf "  gcloud config:    $(YELLOW)$$GCLOUD_PROJECT$(NC)\n"; \
+			printf "\n"; \
+			printf "  Deployment may use the WRONG project!\n"; \
+			printf "\n"; \
+			printf "  $(CYAN)To fix:$(NC)\n"; \
+			printf "    gcloud config set project $$TFVARS_PROJECT\n"; \
+			printf "\n"; \
+			printf "  $(YELLOW)Fix now? (Y/n):$(NC) "; \
+			read -r confirm; \
+			if [ "$$confirm" != "n" ] && [ "$$confirm" != "N" ]; then \
+				gcloud config set project $$TFVARS_PROJECT --quiet; \
+				gcloud auth application-default set-quota-project $$TFVARS_PROJECT --quiet 2>/dev/null || true; \
+				printf "  $(GREEN)✓$(NC) Project set to $$TFVARS_PROJECT\n"; \
+			else \
+				printf "\n$(YELLOW)⚠ Continuing with mismatched projects - deployment may fail$(NC)\n"; \
+			fi; \
+			printf "\n"; \
+		else \
+			printf "  $(GREEN)✓$(NC) Project consistent: $$TFVARS_PROJECT\n"; \
+		fi; \
+	else \
+		printf "  $(YELLOW)⚠$(NC) Project not configured in terraform.tfvars. Run 'make setup' first.\n"; \
+	fi
 	@# CRITICAL: Check if GOOGLE_APPLICATION_CREDENTIALS is set
 	@if [ -n "$$GOOGLE_APPLICATION_CREDENTIALS" ]; then \
 		printf "$(RED)╔══════════════════════════════════════════════════════════════════════════╗$(NC)\n"; \

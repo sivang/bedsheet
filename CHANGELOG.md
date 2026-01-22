@@ -5,6 +5,16 @@ All notable changes to Bedsheet Agents will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-01-22
+
+### Added
+
+- **Project Consistency Check** - Preflight now detects mismatches between `terraform.tfvars` and `gcloud config`
+  - Warns when projects don't match
+  - Offers to auto-fix by running `gcloud config set project`
+  - Prevents silent deployment to wrong project
+- **Project Consistency Documentation** - Added warning section in `DEPLOYMENT_GUIDE.md`
+
 ## [0.4.4] - 2026-01-22
 
 ### Added

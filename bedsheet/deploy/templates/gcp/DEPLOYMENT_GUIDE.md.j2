@@ -51,6 +51,40 @@ Run `make preflight` to automatically check for this issue.
 
 ---
 
+## ⚠️ Project Consistency Warning
+
+The deployment involves multiple places where the GCP project is configured:
+
+| Source | Purpose |
+|--------|---------|
+| `terraform/terraform.tfvars` | Infrastructure deployment |
+| `gcloud config` | CLI commands and ADC |
+| `.env` file | Local development |
+
+**If these don't match, deployment may silently use the wrong project!**
+
+**Check for mismatches:**
+```bash
+# Check terraform.tfvars
+grep project_id terraform/terraform.tfvars
+
+# Check gcloud config
+gcloud config get-value project
+
+# They should match!
+```
+
+**Fix mismatches:**
+```bash
+# Set gcloud to match terraform.tfvars
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+```
+
+The `make preflight` command automatically detects and offers to fix this.
+
+---
+
 ## Prerequisites Checklist
 
 Before you begin, ensure you have:
