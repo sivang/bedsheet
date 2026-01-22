@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet - GCP Deployment Deep Dive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            margin: 2px 0;
+            border-radius: 6px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .nav-link .icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 48px 64px;
+            max-width: 1000px;
+        }
+
+        .hero {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 8px;
+        }
+
+        .badge-blue { background: #ddf4ff; color: #0969da; }
+        .badge-green { background: #dafbe1; color: #1a7f37; }
+        .badge-purple { background: #fbefff; color: #8250df; }
+        .badge-orange { background: #fff8c5; color: #9a6700; }
+        .badge-red { background: #ffebe9; color: #cf222e; }
+
+        /* Section Styling */
+        .section {
+            margin-bottom: 64px;
+        }
+
+        .section h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section h3 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .section h4 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .section p {
+            margin-bottom: 16px;
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        pre code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: var(--bg-secondary);
+        }
+
+        /* Mermaid Diagrams */
+        .mermaid {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        /* Info Boxes */
+        .info-box {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.tip {
+            background: #dafbe1;
+            border-color: var(--accent-green);
+        }
+
+        .info-box.warning {
+            background: #fff8c5;
+            border-color: var(--accent-orange);
+        }
+
+        .info-box.danger {
+            background: #ffebe9;
+            border-color: var(--accent-red);
+        }
+
+        .info-box.info {
+            background: #ddf4ff;
+            border-color: var(--accent-blue);
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        /* Links */
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Timeline/Story Section */
+        .story-timeline {
+            position: relative;
+            padding-left: 32px;
+            margin: 24px 0;
+        }
+
+        .story-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .story-item {
+            position: relative;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .story-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            border: 2px solid white;
+        }
+
+        .story-item.success::before {
+            background: var(--accent-green);
+        }
+
+        .story-item.error::before {
+            background: var(--accent-red);
+        }
+
+        /* Quick Reference Card */
+        .quick-ref {
+            background: linear-gradient(135deg, #1f2328, #2d333b);
+            color: white;
+            padding: 32px;
+            border-radius: 12px;
+            margin: 32px 0;
+        }
+
+        .quick-ref h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .quick-ref pre {
+            background: rgba(255,255,255,0.1);
+            border: none;
+        }
+
+        .quick-ref code {
+            color: #7ee787;
+            background: none;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>🛏️ Bedsheet</h1>
+            <div class="subtitle">GCP Deployment Deep Dive</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Overview</div>
+            <a href="#architecture" class="nav-link"><span class="icon">🏗️</span> Architecture</a>
+            <a href="#authentication" class="nav-link"><span class="icon">🔐</span> Authentication</a>
+            <a href="#adk" class="nav-link"><span class="icon">🤖</span> ADK Integration</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Implementation</div>
+            <a href="#templates" class="nav-link"><span class="icon">📄</span> Template System</a>
+            <a href="#deployment" class="nav-link"><span class="icon">🚀</span> Deployment Flow</a>
+            <a href="#troubleshooting" class="nav-link"><span class="icon">🔧</span> Troubleshooting</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Case Study</div>
+            <a href="#debugging-story" class="nav-link"><span class="icon">🔍</span> The Great Debug</a>
+            <a href="#lessons" class="nav-link"><span class="icon">📚</span> Lessons Learned</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Reference</div>
+            <a href="#quick-ref" class="nav-link"><span class="icon">⚡</span> Quick Reference</a>
+            <a href="#future" class="nav-link"><span class="icon">🔮</span> Future Work</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="hero">
+            <h1>GCP Deployment Deep Dive</h1>
+            <p class="description">
+                Complete guide to deploying Bedsheet AI agents on Google Cloud Platform -
+                architecture, authentication, templates, troubleshooting, and battle-tested lessons from production.
+            </p>
+            <div style="margin-top: 16px;">
+                <span class="badge badge-blue">v0.4.x</span>
+                <span class="badge badge-green">Production Ready</span>
+                <span class="badge badge-purple">Gemini 3 Flash</span>
+            </div>
+        </header>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="section">
+            <h2>🏗️ Architecture Overview</h2>
+
+            <h3>High-Level System Architecture</h3>
+            <p>
+                Bedsheet's GCP deployment target creates a complete serverless infrastructure using Cloud Run,
+                Cloud Build, and Vertex AI. The generated artifacts include Terraform for infrastructure and
+                a Makefile for developer experience.
+            </p>
+
+            <div class="mermaid">
+graph TB
+    subgraph "Developer Machine"
+        DEV[Developer]
+        CLI[bedsheet CLI]
+        TEMPLATES[Jinja2 Templates]
+    end
+
+    subgraph "Google Cloud Platform"
+        subgraph "Build Pipeline"
+            CB[Cloud Build]
+            AR[Artifact Registry]
+        end
+
+        subgraph "Runtime"
+            CR[Cloud Run Service]
+            ADK[ADK Web Server]
+            AGENT[Bedsheet Agent]
+        end
+
+        subgraph "AI Services"
+            GEMINI[Gemini 3 Flash]
+            GLOBAL[Global Endpoint]
+        end
+    end
+
+    DEV -->|bedsheet generate| CLI
+    CLI -->|renders| TEMPLATES
+    TEMPLATES -->|creates| DEPLOY[deploy/gcp/]
+    DEPLOY -->|make deploy| CB
+    CB --> AR
+    AR --> CR
+    CR --> ADK
+    ADK --> AGENT
+    AGENT --> GEMINI
+            </div>
+
+            <h3>Component Responsibilities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Responsibility</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>bedsheet CLI</code></td>
+                        <td>Generates deployment artifacts from templates</td>
+                    </tr>
+                    <tr>
+                        <td><code>Jinja2 Templates</code></td>
+                        <td>Define infrastructure-as-code and runtime configuration</td>
+                    </tr>
+                    <tr>
+                        <td><code>Cloud Build</code></td>
+                        <td>CI/CD pipeline for building and deploying containers</td>
+                    </tr>
+                    <tr>
+                        <td><code>Artifact Registry</code></td>
+                        <td>Docker image storage</td>
+                    </tr>
+                    <tr>
+                        <td><code>Cloud Run</code></td>
+                        <td>Serverless container hosting with auto-scaling</td>
+                    </tr>
+                    <tr>
+                        <td><code>ADK Web Server</code></td>
+                        <td>Google's Agent Development Kit runtime with Dev UI</td>
+                    </tr>
+                    <tr>
+                        <td><code>Vertex AI</code></td>
+                        <td>Gemini model API (global endpoint for Gemini 3)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Multi-Agent Architecture</h3>
+            <p>
+                Bedsheet supports multi-agent systems with a Supervisor pattern. The Investment Advisor
+                example demonstrates this with three specialized collaborators:
+            </p>
+
+            <div class="mermaid">
+graph LR
+    subgraph "Cloud Run Container"
+        ROOT[InvestmentAdvisor<br/>Supervisor]
+        MA[MarketAnalyst]
+        NR[NewsResearcher]
+        RA[RiskAnalyst]
+    end
+
+    USER[User] -->|HTTP| ROOT
+    ROOT -->|delegate| MA
+    ROOT -->|delegate| NR
+    ROOT -->|delegate| RA
+
+    MA --> TOOLS1[get_stock_data<br/>get_technical_analysis]
+    NR --> TOOLS2[search_news<br/>analyze_sentiment]
+    RA --> TOOLS3[analyze_volatility<br/>get_position_recommendation]
+            </div>
+        </section>
+
+        <!-- Authentication Section -->
+        <section id="authentication" class="section">
+            <h2>🔐 Authentication Deep Dive</h2>
+
+            <div class="info-box danger">
+                <strong>⚠️ Critical Knowledge</strong>
+                Understanding GCP authentication is essential for debugging. Most "permission denied" errors
+                stem from credential misconfiguration, not actual IAM issues.
+            </div>
+
+            <h3>The Authentication Stack</h3>
+            <p>
+                The Google Cloud SDK and Python libraries check credentials in a specific priority order.
+                Understanding this order is crucial for debugging.
+            </p>
+
+            <div class="mermaid">
+graph TB
+    subgraph "Priority Order"
+        P1["1️⃣ GOOGLE_APPLICATION_CREDENTIALS<br/>(Environment Variable)"]
+        P2["2️⃣ Application Default Credentials<br/>(ADC from gcloud auth)"]
+        P3["3️⃣ Metadata Server<br/>(GCE/Cloud Run SA)"]
+    end
+
+    P1 --> CHECK1{Set?}
+    CHECK1 -->|Yes| USE1[Use Service Account from file]
+    CHECK1 -->|No| P2
+
+    P2 --> CHECK2{Exists?}
+    CHECK2 -->|Yes| USE2[Use ADC credentials]
+    CHECK2 -->|No| P3
+
+    P3 --> CHECK3{On GCP?}
+    CHECK3 -->|Yes| USE3[Use instance SA]
+    CHECK3 -->|No| FAIL[No credentials!]
+
+    style P1 fill:#ff6b6b,color:white
+    style USE1 fill:#ff6b6b,color:white
+            </div>
+
+            <h3>The January 2026 Bug</h3>
+            <p>
+                This diagram explains exactly what happened during our debugging session:
+            </p>
+
+            <div class="mermaid">
+sequenceDiagram
+    participant Dev as Developer
+    participant SDK as google-genai SDK
+    participant ENV as Environment
+    participant Gemini as Vertex AI
+
+    Note over Dev,Gemini: ❌ The Bug
+
+    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
+    ENV-->>SDK: /path/to/other-project-service-account.json
+    SDK->>SDK: Load other-project SA credentials
+    SDK->>Gemini: Request to bedsheet project
+    Gemini-->>SDK: 403 PERMISSION_DENIED
+
+    Note over Dev,Gemini: ✅ The Fix
+
+    Dev->>ENV: unset GOOGLE_APPLICATION_CREDENTIALS
+    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
+    ENV-->>SDK: Not set
+    SDK->>SDK: Fall back to ADC
+    SDK->>Gemini: Request to bedsheet project
+    Gemini-->>SDK: 200 OK
+            </div>
+
+            <h3>Authentication Checklist</h3>
+            <p>Before deploying or debugging, always verify:</p>
+
+            <pre><code class="language-bash"># 1. Check if GOOGLE_APPLICATION_CREDENTIALS is set
+echo $GOOGLE_APPLICATION_CREDENTIALS
+# If set to wrong project's SA, unset it:
+unset GOOGLE_APPLICATION_CREDENTIALS
+
+# 2. Check current gcloud auth
+gcloud auth list
+
+# 3. Check ADC configuration
+cat ~/.config/gcloud/application_default_credentials.json | jq '.quota_project_id'
+
+# 4. Test direct API access (bypasses Python SDK)
+curl -s -X POST \
+  "https://aiplatform.googleapis.com/v1/projects/YOUR_PROJECT/locations/global/publishers/google/models/gemini-3-flash-preview:generateContent" \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  -d '{"contents":[{"role":"user","parts":[{"text":"Hi"}]}]}'</code></pre>
+
+            <div class="info-box tip">
+                <strong>💡 Pro Tip</strong>
+                If <code>curl</code> works but Python SDK fails, you likely have a
+                <code>GOOGLE_APPLICATION_CREDENTIALS</code> environment variable pointing to the wrong
+                service account.
+            </div>
+        </section>
+
+        <!-- ADK Section -->
+        <section id="adk" class="section">
+            <h2>🤖 The ADK Integration</h2>
+
+            <h3>What is ADK?</h3>
+            <p>
+                <strong>Agent Development Kit (ADK)</strong> is Google's framework for building AI agents.
+                Bedsheet generates ADK-compatible agents for GCP deployment, leveraging ADK's runtime
+                and development tools.
+            </p>
+
+            <h3>ADK Server Modes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Command</th>
+                        <th>Features</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>api_server</code></td>
+                        <td><code>adk api_server</code></td>
+                        <td>/run, /run_sse, /apps/*</td>
+                        <td>API-only production</td>
+                    </tr>
+                    <tr style="background: #dafbe1;">
+                        <td><code>web</code> ✅</td>
+                        <td><code>adk web</code></td>
+                        <td>All API + /dev-ui/</td>
+                        <td>Development & debugging</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box info">
+                <strong>📌 Bedsheet uses <code>web</code> mode</strong>
+                We chose <code>web</code> mode for all deployments because:
+                <ul>
+                    <li>Includes all API endpoints from <code>api_server</code></li>
+                    <li>Adds interactive Dev UI at <code>/dev-ui/</code></li>
+                    <li>Enables trace visualization for debugging</li>
+                    <li>No performance penalty</li>
+                </ul>
+            </div>
+
+            <h3>ADK Directory Structure</h3>
+            <pre><code class="language-bash">deploy/gcp/
+├── agent/                    # ADK agent directory
+│   ├── __init__.py          # Exports root_agent
+│   ├── agent.py             # Agent definition
+│   └── tools.py             # Tool implementations
+├── Dockerfile               # Container definition
+├── pyproject.toml           # Dependencies
+├── Makefile                 # Deployment commands
+├── cloudbuild.yaml          # CI/CD pipeline
+└── terraform/               # Infrastructure as code
+    ├── main.tf
+    ├── variables.tf
+    └── outputs.tf</code></pre>
+
+            <h3>The root_agent Pattern</h3>
+            <p>ADK discovers agents by looking for <code>root_agent</code> in the agent module:</p>
+
+            <pre><code class="language-python"># agent/__init__.py
+from .agent import root_agent
+
+# agent/agent.py
+from google.adk.agents import LlmAgent
+
+root_agent = LlmAgent(
+    name="InvestmentAdvisor",
+    model="gemini-3-flash-preview",
+    instruction="You are an investment advisor...",
+    sub_agents=[market_analyst, news_researcher, risk_analyst]
+)</code></pre>
+        </section>
+
+        <!-- Templates Section -->
+        <section id="templates" class="section">
+            <h2>📄 Template System</h2>
+
+            <h3>How Templates Work</h3>
+            <div class="mermaid">
+graph LR
+    YAML[bedsheet.yaml] --> PARSE[Parse Config]
+    AGENT[agents.py] --> INTRO[Introspect]
+    PARSE --> RENDER[Render Templates]
+    INTRO --> RENDER
+    TEMPLATES[templates/gcp/*.j2] --> RENDER
+    RENDER --> OUTPUT[deploy/gcp/]
+            </div>
+
+            <h3>Key Template: Dockerfile.j2</h3>
+            <pre><code class="language-dockerfile"># {{ config.name }} - Cloud Run Container
+# Generated by: bedsheet generate --target gcp
+
+FROM python:3.11-slim
+
+# Install uv (fast Python package manager)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+# Install dependencies
+COPY pyproject.toml .
+RUN uv pip install --system -r pyproject.toml
+
+# Copy agent code
+COPY agent/ ./agent/
+
+# Cloud Run expects PORT env var
+ENV PORT=8080
+
+# ADK serves the agent with Dev UI
+CMD ["python", "-m", "google.adk.cli", "web", "--host", "0.0.0.0", "--port", "8080", "."]</code></pre>
+
+            <h3>Template Variables</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Source</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>config.name</code></td>
+                        <td>bedsheet.yaml</td>
+                        <td><code>investment-advisor</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>gcp.project</code></td>
+                        <td>bedsheet.yaml targets.gcp</td>
+                        <td><code>bedsheet-e2e-test</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>gcp.region</code></td>
+                        <td>bedsheet.yaml targets.gcp</td>
+                        <td><code>europe-west1</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>gcp.model</code></td>
+                        <td>bedsheet.yaml targets.gcp</td>
+                        <td><code>gemini-3-flash-preview</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Deployment Flow Section -->
+        <section id="deployment" class="section">
+            <h2>🚀 Deployment Flow</h2>
+
+            <h3>Complete Sequence</h3>
+            <div class="mermaid">
+sequenceDiagram
+    participant Dev as Developer
+    participant CLI as bedsheet CLI
+    participant Make as Makefile
+    participant CB as Cloud Build
+    participant CR as Cloud Run
+
+    Note over Dev,CR: Phase 1: Generate
+    Dev->>CLI: bedsheet generate --target gcp
+    CLI-->>Dev: deploy/gcp/ created
+
+    Note over Dev,CR: Phase 2: Setup (one-time)
+    Dev->>Make: make setup
+    Make-->>Dev: Auth configured
+
+    Note over Dev,CR: Phase 3: Deploy
+    Dev->>Make: make deploy
+    Make->>CB: gcloud builds submit
+    CB->>CB: Build container
+    CB->>CR: Deploy to Cloud Run
+    CR-->>Dev: Service URL
+            </div>
+
+            <h3>Make Targets</h3>
+            <pre><code class="language-bash"># Quick reference
+make help      # Show all commands
+make setup     # One-time setup (auth, project, APIs)
+make deploy    # Deploy to Cloud Run via Cloud Build
+make dev       # Run locally with ADK Dev UI
+make logs      # Stream Cloud Run logs
+make url       # Get service URL
+make destroy   # Remove all resources</code></pre>
+        </section>
+
+        <!-- Troubleshooting Section -->
+        <section id="troubleshooting" class="section">
+            <h2>🔧 Troubleshooting Guide</h2>
+
+            <h3>Decision Tree</h3>
+            <div class="mermaid">
+graph TD
+    A[403 PERMISSION_DENIED] --> B{GOOGLE_APPLICATION_CREDENTIALS set?}
+    B -->|Yes| C{Points to correct project?}
+    B -->|No| D{ADC configured?}
+
+    C -->|No| E["unset GOOGLE_APPLICATION_CREDENTIALS"]
+    C -->|Yes| F{API enabled?}
+
+    D -->|No| G["gcloud auth application-default login"]
+    D -->|Yes| H{Quota project correct?}
+
+    F -->|No| I["gcloud services enable aiplatform.googleapis.com"]
+    F -->|Yes| J{User has Vertex AI role?}
+
+    H -->|No| K["gcloud auth application-default set-quota-project PROJECT"]
+    H -->|Yes| J
+
+    J -->|No| L["Grant roles/aiplatform.user"]
+    J -->|Yes| M[Check model region]
+
+    E --> N[✅ Fixed!]
+    G --> N
+    I --> N
+    K --> N
+    L --> N
+
+    style N fill:#51cf66,color:white
+            </div>
+
+            <h3>Common Issues</h3>
+
+            <h4>1. 403 PERMISSION_DENIED on Vertex AI</h4>
+            <pre><code class="language-bash"># Quick fix
+unset GOOGLE_APPLICATION_CREDENTIALS
+gcloud auth application-default login --scopes="https://www.googleapis.com/auth/cloud-platform"
+gcloud auth application-default set-quota-project YOUR_PROJECT</code></pre>
+
+            <h4>2. Gemini 3 Model Not Found</h4>
+            <pre><code class="language-bash"># Gemini 3 requires global endpoint
+export GOOGLE_CLOUD_LOCATION=global
+
+# Check SDK version (need >= 1.51.0)
+pip show google-genai | grep Version</code></pre>
+
+            <h4>3. ADK Dev UI Returns 404</h4>
+            <pre><code class="language-dockerfile"># Wrong - api_server has no UI
+CMD ["python", "-m", "google.adk.cli", "api_server", ...]
+
+# Correct - web mode includes Dev UI
+CMD ["python", "-m", "google.adk.cli", "web", ...]</code></pre>
+        </section>
+
+        <!-- Debugging Story Section -->
+        <section id="debugging-story" class="section">
+            <h2>🔍 The Great Debugging of January 2026</h2>
+
+            <p>
+                This is the story of how we spent hours debugging a 403 error that turned out to be
+                a single environment variable. It's now documented here so no one else has to suffer.
+            </p>
+
+            <h3>The Mystery</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>curl</code> with <code>gcloud auth print-access-token</code></td>
+                        <td><span class="badge badge-green">✅ Worked</span></td>
+                    </tr>
+                    <tr>
+                        <td>Python SDK with project <code>other-project-id</code></td>
+                        <td><span class="badge badge-green">✅ Worked</span></td>
+                    </tr>
+                    <tr>
+                        <td>Python SDK with project <code>bedsheet-e2e-test</code></td>
+                        <td><span class="badge badge-red">❌ 403 Error</span></td>
+                    </tr>
+                    <tr>
+                        <td>Both projects had same APIs enabled</td>
+                        <td><span class="badge badge-green">✅ Verified</span></td>
+                    </tr>
+                    <tr>
+                        <td>User has Owner role on both</td>
+                        <td><span class="badge badge-green">✅ Verified</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>The Investigation Timeline</h3>
+            <div class="story-timeline">
+                <div class="story-item error">
+                    <strong>❌ Initial Symptom</strong><br>
+                    Investment Advisor returns 403 PERMISSION_DENIED when deployed to bedsheet-e2e-test
+                </div>
+
+                <div class="story-item">
+                    <strong>🔍 Hypothesis 1: API Not Enabled</strong><br>
+                    Checked - both projects have aiplatform.googleapis.com enabled ✓
+                </div>
+
+                <div class="story-item">
+                    <strong>🔍 Hypothesis 2: IAM Issue</strong><br>
+                    User has Owner role, includes all Vertex AI permissions ✓
+                </div>
+
+                <div class="story-item">
+                    <strong>🔍 Hypothesis 3: Model Access</strong><br>
+                    Tried curl directly - it worked! So the API is accessible ✓
+                </div>
+
+                <div class="story-item">
+                    <strong>💡 Key Insight</strong><br>
+                    curl works, SDK fails → Different authentication paths!
+                </div>
+
+                <div class="story-item">
+                    <strong>🔍 Checked Environment</strong><br>
+                    <code>echo $GOOGLE_APPLICATION_CREDENTIALS</code><br>
+                    Output: <code>/path/to/other-project-service-account.json</code>
+                </div>
+
+                <div class="story-item success">
+                    <strong>✅ Root Cause Found!</strong><br>
+                    GOOGLE_APPLICATION_CREDENTIALS pointed to another project's service account!<br>
+                    SDK used other-project SA → No access to bedsheet project → 403
+                </div>
+
+                <div class="story-item success">
+                    <strong>✅ Fix Applied</strong><br>
+                    <code>unset GOOGLE_APPLICATION_CREDENTIALS</code><br>
+                    Now SDK uses ADC → Correct project → Success!
+                </div>
+            </div>
+
+            <div class="info-box tip">
+                <strong>🎯 The Lesson</strong>
+                When debugging auth issues: <strong>check environment variables first!</strong>
+                <code>GOOGLE_APPLICATION_CREDENTIALS</code> takes priority over everything else.
+            </div>
+        </section>
+
+        <!-- Lessons Section -->
+        <section id="lessons" class="section">
+            <h2>📚 Lessons Learned</h2>
+
+            <ol>
+                <li>
+                    <strong>Check environment variables FIRST</strong> when debugging auth issues.
+                    <code>GOOGLE_APPLICATION_CREDENTIALS</code> overrides ADC.
+                </li>
+                <li>
+                    <strong>Credential priority matters:</strong> ENV &gt; ADC &gt; Metadata Server.
+                    Know the order.
+                </li>
+                <li>
+                    <strong>curl working but SDK failing</strong> = different auth sources.
+                    This is the key diagnostic.
+                </li>
+                <li>
+                    <strong>Trust your instincts:</strong> "It works on another project" means
+                    the API works - the issue is auth.
+                </li>
+                <li>
+                    <strong>Multiple GCP projects</strong> require careful credential management.
+                    Service accounts are project-specific.
+                </li>
+            </ol>
+        </section>
+
+        <!-- Quick Reference Section -->
+        <section id="quick-ref" class="section">
+            <h2>⚡ Quick Reference</h2>
+
+            <div class="quick-ref">
+                <h3>Deploy a New Agent to GCP</h3>
+                <pre><code class="language-bash"># 1. Create agent
+bedsheet init my-agent && cd my-agent
+
+# 2. Configure bedsheet.yaml
+# Set your GCP project, region, model
+
+# 3. Generate deployment artifacts
+bedsheet generate --target gcp
+
+# 4. Deploy
+cd deploy/gcp
+make setup   # One-time
+make deploy  # Deploy to Cloud Run
+
+# 5. Access Dev UI
+open $(make url)/dev-ui/</code></pre>
+            </div>
+
+            <h3>Environment Variables</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Purpose</th>
+                        <th>Required</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>GOOGLE_CLOUD_PROJECT</code></td>
+                        <td>Target GCP project</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td><code>GOOGLE_CLOUD_LOCATION</code></td>
+                        <td>Model location (<code>global</code> for Gemini 3)</td>
+                        <td>Yes</td>
+                    </tr>
+                    <tr>
+                        <td><code>GOOGLE_GENAI_USE_VERTEXAI</code></td>
+                        <td>Use Vertex AI (not AI Studio)</td>
+                        <td>Yes (<code>True</code>)</td>
+                    </tr>
+                    <tr>
+                        <td><code>GOOGLE_APPLICATION_CREDENTIALS</code></td>
+                        <td>Service account key path</td>
+                        <td>No (use ADC)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Future Section -->
+        <section id="future" class="section">
+            <h2>🔮 Future Considerations</h2>
+
+            <h3>Potential Improvements</h3>
+
+            <h4>1. Credential Validation in Makefile</h4>
+            <pre><code class="language-makefile">_validate_credentials:
+    @if [ -n "$$GOOGLE_APPLICATION_CREDENTIALS" ]; then \
+        echo "⚠️  WARNING: GOOGLE_APPLICATION_CREDENTIALS is set"; \
+        echo "   Value: $$GOOGLE_APPLICATION_CREDENTIALS"; \
+        echo "   This may cause auth issues with different projects."; \
+    fi</code></pre>
+
+            <h4>2. Project-Specific Service Account</h4>
+            <pre><code class="language-hcl">resource "google_service_account" "agent_sa" {
+  account_id   = "${var.service_name}-sa"
+  display_name = "Service Account for ${var.service_name}"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "vertex_ai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.agent_sa.email}"
+}</code></pre>
+
+            <h3>Roadmap</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Feature</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>v0.4.2</td>
+                        <td>GCP E2E Testing</td>
+                        <td><span class="badge badge-green">✅ Done</span></td>
+                    </tr>
+                    <tr>
+                        <td>v0.4.2</td>
+                        <td>ADK Dev UI in Cloud Run</td>
+                        <td><span class="badge badge-green">✅ Done</span></td>
+                    </tr>
+                    <tr>
+                        <td>v0.5.0</td>
+                        <td>Knowledge Bases / RAG</td>
+                        <td><span class="badge badge-blue">Planned</span></td>
+                    </tr>
+                    <tr>
+                        <td>v0.7.0</td>
+                        <td>Agent Engine (managed)</td>
+                        <td><span class="badge badge-blue">Planned</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>
+                <strong>Bedsheet</strong> - Build Once, Deploy Anywhere<br>
+                Document created: January 22, 2026<br>
+                <a href="https://github.com/sivang/bedsheet">GitHub</a> ·
+                <a href="https://pypi.org/project/bedsheet/">PyPI</a>
+            </p>
+            <p style="margin-top: 16px; font-size: 24px;">
+                🖖 Live Long and Prosper!
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        // Initialize Highlight.js
+        hljs.highlightAll();
+
+        // Active nav link on scroll
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
