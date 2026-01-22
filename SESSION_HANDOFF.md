@@ -1,8 +1,8 @@
-# Session Handoff - 2026-01-22
+# Session Handoff - 2026-01-22 (Final)
 
 ## Session Summary
 
-This session focused on **replacing all mock/simulated data** in the Investment Advisor demo with **real data** from Yahoo Finance and DuckDuckGo, and publishing the v0.4.7 "Hermes" GitHub Release.
+This session focused on **replacing all mock/simulated data** in the Investment Advisor demo with **real data** from Yahoo Finance and DuckDuckGo, publishing the v0.4.7 "Hermes" GitHub Release, and updating all documentation to reflect real data.
 
 ## What Was Accomplished
 
@@ -45,9 +45,14 @@ All 3 demo locations now use real APIs with no API keys required for data:
 - **265 passing**, 2 expected failures (API credit tests)
 - Real data verified: NVDA $184.61, RSI 47.09, Beta 1.84, 5 real news articles
 
-## Uncommitted Changes
+## Commits Pushed
 
-These files contain the real data implementation:
+| Commit | Description |
+|--------|-------------|
+| `2057b07` | `feat: replace all mock data with real APIs (yfinance + ddgs)` - 8 files, +997/-297 |
+| `bcebaa0` | `docs: update guides and README to reflect real data tools` - 3 files, +182/-102 |
+
+### Files Changed (All Committed & Pushed)
 
 | File | Change |
 |------|--------|
@@ -57,6 +62,10 @@ These files contain the real data implementation:
 | `examples/investment-advisor/deploy/gcp/pyproject.toml` | Added yfinance, ddgs deps |
 | `examples/investment-advisor/pyproject.toml` | Added yfinance, ddgs deps |
 | `pyproject.toml` | Added `[demo]` optional dependency group |
+| `README.md` | Demo output shows REAL DATA EDITION banner |
+| `docs/multi-agent-guide.md` | Replaced simulated tools with real implementations |
+| `docs/multi-agent-guide.html` | Same as .md, plus styled dependency callout |
+| `PROJECT_STATUS.md` | Updated session history, test counts |
 
 ## Key Technical Notes
 
@@ -95,8 +104,9 @@ make deploy
 ## Git Status
 
 - Branch: `main`
-- 6 modified files (real data implementation) - need commit+push
+- Clean working tree (all changes committed and pushed)
 - All releases pushed to PyPI and GitHub
+- GitHub Release: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
 
 ---
 *Session ended: 2026-01-22*
