@@ -5,7 +5,34 @@ All notable changes to Bedsheet Agents will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - Unreleased
+## [0.4.2] - 2026-01-22
+
+### Added
+
+- **Comprehensive GCP Deployment Documentation** - Deep dive guide with Mermaid diagrams
+  - `docs/gcp-deployment-deep-dive.md` and `.html`
+  - Architecture diagrams, authentication flows, troubleshooting guides
+  - "The Great Debugging" story documenting credential priority issues
+
+### Fixed
+
+- **GCP ADK Dev UI** - Dockerfile template now uses `web` mode instead of `api_server`
+  - Dev UI accessible at `/dev-ui/` on Cloud Run deployments
+  - Local development with `make dev` includes interactive UI
+- **GCP Authentication Documentation** - Clarified SDK credential priority:
+  1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable (highest)
+  2. Application Default Credentials (ADC)
+  3. Compute Engine / Cloud Run service account
+- **GCP Terraform** - Improved ADC handling and removed google_project_service resources
+  - APIs now enabled via gcloud CLI (avoids ADC permission issues)
+  - Terraform focuses on resource creation only
+
+### Changed
+
+- **Gemini Model** - Updated to `gemini-2.0-flash` (was `gemini-1.5-flash`)
+- **Global Endpoint** - GCP target uses `global` location for Gemini 2.0+ models
+
+## [0.4.0] - 2026-01-18
 
 ### Added
 

@@ -1,6 +1,6 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.4.2rc5 (in development)
+## Current Version: v0.4.2 (releasing)
 
 **Last Session:** 2026-01-22
 
@@ -10,6 +10,7 @@
 |---------|--------|--------|
 | v0.3.0 | ✅ Released on PyPI | main |
 | v0.4.0 | ✅ Released on PyPI | main |
+| v0.4.2 | 🚀 Releasing | main |
 
 ### Release Artifacts
 
