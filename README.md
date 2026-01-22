@@ -61,7 +61,8 @@ asyncio.run(main())
 
 **Want the fancy demo?**
 ```bash
-uvx bedsheet demo  # Multi-agent investment advisor with parallel execution
+pip install bedsheet[demo]  # Installs yfinance + ddgs for REAL DATA
+uvx bedsheet demo           # Multi-agent investment advisor with parallel execution
 ```
 
 <details>
@@ -70,7 +71,13 @@ uvx bedsheet demo  # Multi-agent investment advisor with parallel execution
 ```
 ============================================================
   BEDSHEET AGENTS - Investment Advisor Demo
+  *** REAL DATA EDITION ***
 ============================================================
+
+  This demo uses REAL DATA:
+  - Stock data: Yahoo Finance (live prices)
+  - News: DuckDuckGo (current articles)
+  - Technical analysis: Calculated from real history
 
 User: Analyze NVIDIA stock for me
 
@@ -81,7 +88,7 @@ User: Analyze NVIDIA stock for me
 [18.2s] || [MarketAnalyst] Starting...
         [MarketAnalyst] -> get_stock_data({'symbol': 'NVDA'})
         [MarketAnalyst] -> get_technical_analysis({'symbol': 'NVDA'})
-        [MarketAnalyst] <- {'symbol': 'NVDA', 'price': 875.5, ...}
+        [MarketAnalyst] <- {'symbol': 'NVDA', 'price': 184.61, ...}
 
 [18.2s] || [NewsResearcher] Starting...
         [NewsResearcher] -> search_news({'query': 'NVIDIA'})
@@ -98,6 +105,8 @@ FINAL RESPONSE (32.3s)
 NVIDIA shows **strong bullish signals** across both technical
 indicators and fundamental news sentiment...
 ```
+
+All data is **REAL** - no mocks, no simulations. Prices from Yahoo Finance, news from DuckDuckGo.
 
 </details>
 

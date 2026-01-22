@@ -567,6 +567,10 @@ flowchart TB
 
         <!-- Step 1: Collaborator Agents -->
         <section id="collaborators">
+            <div style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 12px 16px; margin-bottom: 16px; border-radius: 4px;">
+                <strong>Dependencies:</strong> This example uses REAL data. Install with: <code>pip install bedsheet[demo]</code>
+                (adds <code>yfinance</code> for Yahoo Finance stock data and <code>ddgs</code> for DuckDuckGo news search)
+            </div>
             <h2><span class="step-number">1</span>Define the Collaborator Agents</h2>
 
             <h3>Ethics Checker Agent</h3>
@@ -633,49 +637,80 @@ market_tools = ActionGroup(name="MarketTools")
 
 @market_tools.action(
     name="get_stock_data",
-    description="Get current stock price and key metrics"
+    description="Get REAL current stock price and key metrics from Yahoo Finance"
 )
 async def get_stock_data(symbol: str) -> dict:
-    """Fetch stock data (simulated for demo)."""
-    # Simulate API latency
-    await asyncio.sleep(0.5)
+    """Fetch REAL stock data from Yahoo Finance."""
+    import yfinance as yf
 
-    stocks = {
-        "NVDA": {"price": 875.50, "change": "+3.2%", "pe_ratio": 65.4, "market_cap": "2.1T"},
-        "AAPL": {"price": 178.25, "change": "-0.5%", "pe_ratio": 28.1, "market_cap": "2.8T"},
-        "MSFT": {"price": 378.90, "change": "+1.1%", "pe_ratio": 35.2, "market_cap": "2.9T"},
+    ticker = yf.Ticker(symbol.upper())
+    info = ticker.info
+    fast = ticker.fast_info
+
+    current_price = fast.last_price
+    prev_close = fast.previous_close
+    change = ((current_price - prev_close) / prev_close) * 100
+
+    return {
+        "symbol": symbol.upper(),
+        "price": round(current_price, 2),
+        "change": f"{change:+.2f}%",
+        "pe_ratio": round(info.get("trailingPE", 0), 2) if info.get("trailingPE") else "N/A",
+        "market_cap": f"${fast.market_cap/1e12:.2f}T" if fast.market_cap >= 1e12 else f"${fast.market_cap/1e9:.2f}B",
+        "data_source": "Yahoo Finance (REAL DATA)",
     }
-
-    if symbol.upper() in stocks:
-        return {"symbol": symbol.upper(), **stocks[symbol.upper()]}
-    return {"error": f"Unknown symbol: {symbol}"}
 
 
 @market_tools.action(
     name="get_technical_analysis",
-    description="Get technical analysis indicators"
+    description="Get REAL technical indicators calculated from historical price data"
 )
 async def get_technical_analysis(symbol: str) -> dict:
-    """Get technical indicators (simulated)."""
-    await asyncio.sleep(0.3)
+    """Calculate REAL technical indicators from Yahoo Finance historical data."""
+    import yfinance as yf
+
+    ticker = yf.Ticker(symbol.upper())
+    hist = ticker.history(period="6mo")
+    close = hist["Close"]
+
+    # RSI (14-day)
+    delta = close.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rsi = 100 - (100 / (1 + gain / loss))
+
+    # Moving averages and trend
+    sma_20 = close.rolling(window=20).mean().iloc[-1]
+    sma_50 = close.rolling(window=50).mean().iloc[-1]
+    current_price = close.iloc[-1]
+
+    if current_price > sma_20 > sma_50:
+        trend = "strong uptrend"
+    elif current_price > sma_20:
+        trend = "uptrend"
+    elif current_price < sma_20 < sma_50:
+        trend = "strong downtrend"
+    else:
+        trend = "downtrend"
 
     return {
         "symbol": symbol.upper(),
-        "rsi": 62.5,
-        "macd": "bullish crossover",
-        "moving_avg_50": "above",
-        "moving_avg_200": "above",
-        "trend": "uptrend",
-        "support": 820.00,
-        "resistance": 920.00
+        "rsi_14": round(rsi.iloc[-1], 2),
+        "trend": trend,
+        "sma_20": round(sma_20, 2),
+        "sma_50": round(sma_50, 2),
+        "support_30d": round(hist.tail(30)["Low"].min(), 2),
+        "resistance_30d": round(hist.tail(30)["High"].max(), 2),
+        "data_source": "Calculated from Yahoo Finance historical data (REAL DATA)",
     }
 
 
 market_agent = Agent(
     name="MarketAnalyst",
     instruction="""You are a market analyst specializing in stock analysis.
-Use the available tools to gather price data and technical indicators.
-Provide clear, data-driven analysis without making specific buy/sell recommendations.""",
+Use get_stock_data to fetch REAL current stock data from Yahoo Finance.
+Use get_technical_analysis to get REAL calculated technical indicators.
+Provide clear, data-driven analysis with specific numbers.""",
     model_client=AnthropicClient(),
 )
 market_agent.add_action_group(market_tools)</code></pre>
@@ -691,30 +726,30 @@ news_tools = ActionGroup(name="NewsTools")
 
 @news_tools.action(
     name="search_news",
-    description="Search for recent news about a company or topic"
+    description="Search for REAL recent news about a company using DuckDuckGo"
 )
-async def search_news(query: str, days: int = 7) -> dict:
-    """Search recent news (simulated)."""
-    await asyncio.sleep(0.4)
+async def search_news(query: str) -> dict:
+    """Search REAL recent news using DuckDuckGo."""
+    from ddgs import DDGS
 
-    news_db = {
-        "nvidia": [
-            {"headline": "NVIDIA Reports Record Data Center Revenue", "sentiment": "positive", "date": "2024-02-21"},
-            {"headline": "AI Chip Demand Continues to Surge", "sentiment": "positive", "date": "2024-02-20"},
-            {"headline": "NVIDIA Announces New AI Supercomputer", "sentiment": "positive", "date": "2024-02-19"},
-        ],
-        "apple": [
-            {"headline": "Apple Vision Pro Launches to Mixed Reviews", "sentiment": "neutral", "date": "2024-02-21"},
-            {"headline": "iPhone Sales Slow in China", "sentiment": "negative", "date": "2024-02-20"},
-        ]
-    }
+    with DDGS() as ddgs:
+        results = list(ddgs.news(query, max_results=5))
 
-    query_lower = query.lower()
-    for company, articles in news_db.items():
-        if company in query_lower:
-            return {"query": query, "articles": articles, "count": len(articles)}
+        articles = []
+        for r in results:
+            articles.append({
+                "headline": r.get("title", ""),
+                "source": r.get("source", ""),
+                "date": r.get("date", ""),
+                "body": r.get("body", "")[:150] + "..." if r.get("body") else "",
+            })
 
-    return {"query": query, "articles": [], "count": 0, "message": "No recent news found"}
+        return {
+            "query": query,
+            "articles": articles,
+            "count": len(articles),
+            "data_source": "DuckDuckGo News (REAL DATA)",
+        }
 
 
 @news_tools.action(
@@ -748,8 +783,9 @@ async def analyze_sentiment(articles: list[dict]) -> dict:
 news_agent = Agent(
     name="NewsResearcher",
     instruction="""You are a news researcher focused on financial news.
-Search for recent news and analyze sentiment.
-Report key headlines and overall market sentiment.""",
+Use search_news to find REAL recent news articles via DuckDuckGo.
+Use analyze_sentiment to analyze the overall sentiment.
+Report key headlines with their sources.""",
     model_client=AnthropicClient(),
 )
 news_agent.add_action_group(news_tools)</code></pre>
