@@ -2,80 +2,101 @@
 
 ## Session Summary
 
-This session focused on **GCP deployment UX improvements**, **end-to-end testing validation**, and **comprehensive documentation update**.
+This session focused on **replacing all mock/simulated data** in the Investment Advisor demo with **real data** from Yahoo Finance and DuckDuckGo, and publishing the v0.4.7 "Hermes" GitHub Release.
 
 ## What Was Accomplished
 
-### Releases Published (v0.4.4 - v0.4.7)
+### Real Data Implementation (NO MORE MOCKS)
 
-| Version | Feature |
-|---------|---------|
-| v0.4.4 | Credential preflight check - warns if `GOOGLE_APPLICATION_CREDENTIALS` is set |
-| v0.4.5 | Project consistency check - detects mismatch between terraform.tfvars and gcloud config |
-| v0.4.6 | `make ui` command - one-command access to deployed Dev UI |
-| v0.4.7 | Improved `make ui` - checks if cloud-run-proxy component is installed first |
+All 3 demo locations now use real APIs with no API keys required for data:
 
-### Key Files Modified
+| Location | Purpose |
+|----------|---------|
+| `bedsheet/__main__.py` | `uvx bedsheet demo` runner |
+| `examples/investment-advisor/agents.py` | Example project |
+| `examples/investment-advisor/deploy/gcp/agent/agent.py` | GCP Cloud Run deployment |
 
-- `bedsheet/deploy/templates/gcp/Makefile.j2` - Added safeguards and `make ui` command
-- `bedsheet/deploy/templates/gcp/DEPLOYMENT_GUIDE.md.j2` - Warning documentation
-- `bedsheet/cli/main.py` - Version now from importlib.metadata (not hardcoded)
-- `pyproject.toml` - Version bumps to 0.4.7
-- `CHANGELOG.md` - Documented all releases
+### Real Data Sources
 
-### E2E Test Completed
+| Tool | Data Source | Key Metrics |
+|------|-------------|-------------|
+| `get_stock_data` | Yahoo Finance (yfinance) | Price, PE, market cap, 52-week range |
+| `get_technical_analysis` | Calculated from yfinance history | RSI-14, MACD, SMA-20/50, trend |
+| `search_news` | DuckDuckGo (ddgs) | Headlines, sources, dates |
+| `analyze_sentiment` | Keyword-based on real headlines | Bullish/bearish/neutral |
+| `analyze_volatility` | Calculated from 1-year history vs SPY | Beta, volatility, max drawdown, Sharpe |
+| `get_position_recommendation` | Based on real volatility data | Position sizing, risk rating |
 
-- Fresh agent initialized with `uvx bedsheet@latest init test-agent`
-- Generated GCP artifacts with `bedsheet generate --target gcp`
-- Deployed to Cloud Run: `https://test-agent-ygvmbgj26a-ew.a.run.app`
-- Dev UI accessible via `make ui` at `http://localhost:8080/dev-ui/`
+### GitHub Release Published
 
-### Documentation Mega Update
+- **Tag**: v0.4.7
+- **Codename**: "Hermes" (swift messenger god = deploy anywhere)
+- **URL**: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
+- Notes updated to reflect real data capabilities
 
-- `docs/gcp-deployment-deep-dive.md` - Added 450+ lines:
-  - Developer Experience (DX) Safeguards section
-  - Testing Deployed Agents section (`make ui`)
-  - Release History section (v0.4.2-v0.4.7)
-  - Executive Summary for stakeholders
-- `PROJECT_STATUS.md` - Updated with current session
-- All pushed to GitHub
+### Dependencies Added
 
-### Earlier in Session (from summary)
+- `yfinance>=0.2.40` - Yahoo Finance stock data
+- `ddgs>=6.0.0` - DuckDuckGo search (previously `duckduckgo-search`, renamed)
+- Available via: `pip install bedsheet[demo]`
 
-- Fixed hardcoded CLI version (now uses importlib.metadata)
-- Added Python environment rules to CLAUDE.md
+### Tests
 
-## Current State
+- **265 passing**, 2 expected failures (API credit tests)
+- Real data verified: NVDA $184.61, RSI 47.09, Beta 1.84, 5 real news articles
 
-- **Test agent running** at `https://test-agent-ygvmbgj26a-ew.a.run.app`
-- **Proxy may still be active** on port 8080 (check with `lsof -i :8080`)
-- **PyPI latest**: v0.4.7
+## Uncommitted Changes
+
+These files contain the real data implementation:
+
+| File | Change |
+|------|--------|
+| `bedsheet/__main__.py` | Real data tools for `uvx bedsheet demo` |
+| `examples/investment-advisor/agents.py` | Real yfinance/ddgs tools |
+| `examples/investment-advisor/deploy/gcp/agent/agent.py` | Real tools for GCP deployment |
+| `examples/investment-advisor/deploy/gcp/pyproject.toml` | Added yfinance, ddgs deps |
+| `examples/investment-advisor/pyproject.toml` | Added yfinance, ddgs deps |
+| `pyproject.toml` | Added `[demo]` optional dependency group |
+
+## Key Technical Notes
+
+- **Import pattern**: Libraries imported inside function bodies for code transformer compatibility
+- **ddgs vs duckduckgo-search**: Package was renamed. Use `from ddgs import DDGS`
+- **yfinance fast_info**: Use `ticker.fast_info` first, fallback to `ticker.info` for price
+- **Beta calculation**: Covariance of stock returns vs SPY / SPY variance
+- **RSI**: 14-day rolling mean of gains/losses from close price deltas
+- **Optional deps**: `pip install bedsheet[demo]` installs yfinance and ddgs
 
 ## Pending/Roadmap Items
 
-1. **Custom Investment Advisor UI** - Graphs, gauges, analysis visualization (not built, on roadmap)
-2. **Claude-in-Chrome MCP connection issue** - Browser automation tools returning "not connected" despite extension being set up. May need investigation.
+1. **v0.5 "Athena"** - Knowledge bases, RAG integration, custom UI examples
+2. **v0.6** - Guardrails and safety layers
+3. **v0.7** - GCP Agent Engine (managed), A2A protocol
+4. **Custom Investment Advisor UI** - Graphs, gauges, analysis visualization
 
 ## Quick Resume Commands
 
 ```bash
 cd /Users/sivan/VitakkaProjects/BedsheetAgents
 
-# Check current version
-uvx bedsheet --version
+# Run the demo with REAL DATA
+pip install bedsheet[demo]
+export ANTHROPIC_API_KEY=sk-ant-...
+uvx bedsheet demo
 
-# Kill any lingering proxy
-lsof -ti :8080 | xargs kill -9 2>/dev/null
+# Run tests
+pytest -v
 
-# Test the deployed agent
-curl -s https://test-agent-ygvmbgj26a-ew.a.run.app/dev-ui/ | head -5
+# Deploy to GCP
+cd examples/investment-advisor/deploy/gcp
+make deploy
 ```
 
 ## Git Status
 
 - Branch: `main`
-- Untracked: `SESSION_HANDOFF.md` (this file)
-- All releases pushed to PyPI and git
+- 6 modified files (real data implementation) - need commit+push
+- All releases pushed to PyPI and GitHub
 
 ---
 *Session ended: 2026-01-22*

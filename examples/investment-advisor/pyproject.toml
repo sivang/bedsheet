@@ -1,7 +1,7 @@
 [project]
 name = "investment-advisor"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Investment Advisor - Multi-Agent System with REAL DATA"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -9,4 +9,6 @@ dependencies = [
     "google-adk>=0.3.0",
     "pydantic>=2.0.0",
     "uvicorn>=0.24.0",
+    "yfinance>=0.2.40",
+    "ddgs>=6.0.0",
 ]

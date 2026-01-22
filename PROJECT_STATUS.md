@@ -22,7 +22,7 @@
 | Artifact | Status |
 |----------|--------|
 | Source Code | ✅ Complete |
-| Test Suite | ✅ 179 tests passing |
+| Test Suite | ✅ 265 tests passing |
 | README.md | ✅ Comprehensive with examples |
 | CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
@@ -30,7 +30,7 @@
 | CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
 | Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
 | Examples | ✅ Investment advisor demo |
-| Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
+| Demo | ✅ `uvx bedsheet demo` (requires API key, uses REAL DATA from Yahoo Finance + DuckDuckGo) |
 | pyproject.toml | ✅ PyPI ready |
 
 ---
@@ -55,6 +55,44 @@
 - AWS Bedrock target improvements
 - Azure OpenAI target
 - Local LLM support (Ollama)
+
+---
+
+## Session Summary (2026-01-22 Night) - REAL DATA Implementation + GitHub Release "Hermes"
+
+### What Was Done
+
+1. **Replaced ALL Mock Data with REAL APIs**
+   - All 3 demo locations now use real data (no mocks, no simulations)
+   - **Yahoo Finance** (yfinance): Stock prices, PE ratios, market caps, 52-week ranges
+   - **DuckDuckGo** (ddgs): Real news articles with sources and dates
+   - **Calculated metrics**: RSI-14, MACD, SMA-20/50, beta vs SPY, volatility, max drawdown, Sharpe ratio
+
+2. **GitHub Release v0.4.7 "Hermes" Published**
+   - Codename: Hermes (swift messenger god = deploy anywhere)
+   - URL: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
+   - Comprehensive release notes with real data capabilities
+
+3. **Dependencies Added**
+   - `yfinance>=0.2.40` - Yahoo Finance (no API key required)
+   - `ddgs>=6.0.0` - DuckDuckGo search (no API key required)
+   - Available via: `pip install bedsheet[demo]`
+
+4. **Verified with Real Data**
+   - NVDA: $184.61, RSI 47.09, Beta 1.84, 5 real news articles
+   - AAPL: $249.03, RSI 13.77 (oversold), Beta 1.26
+   - All 265 tests passing
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/__main__.py` | Real data tools for `uvx bedsheet demo` |
+| `examples/investment-advisor/agents.py` | Real yfinance/ddgs tools |
+| `examples/investment-advisor/deploy/gcp/agent/agent.py` | Real tools for GCP deployment |
+| `examples/investment-advisor/deploy/gcp/pyproject.toml` | Added yfinance, ddgs deps |
+| `examples/investment-advisor/pyproject.toml` | Added yfinance, ddgs deps |
+| `pyproject.toml` | Added `[demo]` optional dependency group |
 
 ---
 
@@ -750,8 +788,10 @@ bedsheet/
 | Project consistency check | ✅ Done | v0.4.5 - validates terraform.tfvars vs gcloud config |
 | `make ui` command | ✅ Done | v0.4.6 - one-command access to deployed Dev UI |
 | First-time UX improvements | ✅ Done | v0.4.7 - checks for cloud-run-proxy component |
+| Real data demo tools | ✅ Done | v0.4.7 - yfinance + ddgs, no mocks |
 
 **Tests:** 265 passing
+**GitHub Release:** [v0.4.7 "Hermes"](https://github.com/sivang/bedsheet/releases/tag/v0.4.7)
 
 ### v0.5: Knowledge Bases, RAG (Planned)
 

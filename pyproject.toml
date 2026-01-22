@@ -66,6 +66,10 @@ aws = [
     "pydantic>=2.0.0",
     # aws-cdk-lib will be added for AWS target
 ]
+demo = [
+    "yfinance>=0.2.40",
+    "ddgs>=6.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
@@ -74,6 +78,8 @@ dev = [
     "jinja2>=3.1.0",
     "pyyaml>=6.0.0",
     "pydantic>=2.0.0",
+    "yfinance>=0.2.40",
+    "ddgs>=6.0.0",
 ]
 
 [project.urls]

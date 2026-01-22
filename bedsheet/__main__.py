@@ -2,12 +2,15 @@
 Bedsheet Agents Demo - Run with: python -m bedsheet
 
 A multi-agent investment advisor demonstrating:
+- REAL stock data from Yahoo Finance
+- REAL news from DuckDuckGo search
 - Parallel delegation to multiple agents
 - Rich event streaming (see every step)
 - Supervisor synthesis of results
 
 Requires: ANTHROPIC_API_KEY environment variable
 Uses: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
+Dependencies: yfinance, ddgs (pip install bedsheet[demo])
 """
 
 import asyncio
@@ -25,7 +28,7 @@ from bedsheet.events import (
 
 
 # ============================================================
-# Market Analyst Tools
+# Market Analyst Tools - REAL DATA via yfinance
 # ============================================================
 
 market_tools = ActionGroup(name="MarketTools")
@@ -33,47 +36,138 @@ market_tools = ActionGroup(name="MarketTools")
 
 @market_tools.action(
     name="get_stock_data",
-    description="Get current stock price and key metrics"
+    description="Get REAL current stock price and key metrics from Yahoo Finance"
 )
 async def get_stock_data(symbol: str) -> dict:
-    """Fetch stock data (simulated for demo)."""
-    await asyncio.sleep(0.3)
+    """Fetch REAL stock data from Yahoo Finance."""
+    import yfinance as yf
 
-    stocks = {
-        "NVDA": {"price": 875.50, "change": "+3.2%", "pe_ratio": 65.4, "market_cap": "2.1T"},
-        "AAPL": {"price": 178.25, "change": "-0.5%", "pe_ratio": 28.1, "market_cap": "2.8T"},
-        "MSFT": {"price": 378.90, "change": "+1.1%", "pe_ratio": 35.2, "market_cap": "2.9T"},
-        "GOOGL": {"price": 141.80, "change": "+0.8%", "pe_ratio": 24.5, "market_cap": "1.8T"},
-        "AMZN": {"price": 178.50, "change": "+1.5%", "pe_ratio": 62.3, "market_cap": "1.9T"},
-    }
+    try:
+        ticker = yf.Ticker(symbol.upper())
+        info = ticker.info
 
-    symbol_upper = symbol.upper()
-    if symbol_upper in stocks:
-        return {"symbol": symbol_upper, **stocks[symbol_upper]}
-    return {"error": f"Unknown symbol: {symbol}", "suggestion": "Try NVDA, AAPL, MSFT, GOOGL, or AMZN"}
+        try:
+            fast = ticker.fast_info
+            current_price = fast.last_price
+            prev_close = fast.previous_close
+            market_cap = fast.market_cap
+        except Exception:
+            current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+            prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+            market_cap = info.get("marketCap")
+
+        if current_price and prev_close:
+            change = ((current_price - prev_close) / prev_close) * 100
+            change_str = f"{change:+.2f}%"
+        else:
+            change_str = "N/A"
+
+        if market_cap:
+            if market_cap >= 1e12:
+                market_cap_str = f"${market_cap/1e12:.2f}T"
+            elif market_cap >= 1e9:
+                market_cap_str = f"${market_cap/1e9:.2f}B"
+            else:
+                market_cap_str = f"${market_cap/1e6:.2f}M"
+        else:
+            market_cap_str = "N/A"
+
+        return {
+            "symbol": symbol.upper(),
+            "company_name": info.get("shortName", info.get("longName", symbol.upper())),
+            "price": round(current_price, 2) if current_price else "N/A",
+            "change": change_str,
+            "pe_ratio": round(info.get("trailingPE", 0), 2) if info.get("trailingPE") else "N/A",
+            "forward_pe": round(info.get("forwardPE", 0), 2) if info.get("forwardPE") else "N/A",
+            "market_cap": market_cap_str,
+            "52_week_high": info.get("fiftyTwoWeekHigh"),
+            "52_week_low": info.get("fiftyTwoWeekLow"),
+            "data_source": "Yahoo Finance (REAL DATA)",
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch data for {symbol}: {str(e)}", "symbol": symbol.upper()}
 
 
 @market_tools.action(
     name="get_technical_analysis",
-    description="Get technical analysis indicators for a stock"
+    description="Get REAL technical analysis indicators calculated from historical price data"
 )
 async def get_technical_analysis(symbol: str) -> dict:
-    """Get technical indicators (simulated)."""
-    await asyncio.sleep(0.2)
+    """Calculate REAL technical indicators from Yahoo Finance historical data."""
+    import yfinance as yf
 
-    technicals = {
-        "NVDA": {"rsi": 62.5, "macd": "bullish crossover", "trend": "uptrend", "support": 820, "resistance": 920},
-        "AAPL": {"rsi": 45.2, "macd": "neutral", "trend": "sideways", "support": 170, "resistance": 185},
-        "MSFT": {"rsi": 55.8, "macd": "bullish", "trend": "uptrend", "support": 360, "resistance": 400},
-    }
+    try:
+        ticker = yf.Ticker(symbol.upper())
+        hist = ticker.history(period="6mo")
 
-    symbol_upper = symbol.upper()
-    base = technicals.get(symbol_upper, {"rsi": 50, "macd": "neutral", "trend": "unknown"})
-    return {"symbol": symbol_upper, **base}
+        if hist.empty:
+            return {"error": f"No historical data for {symbol}", "symbol": symbol.upper()}
+
+        close = hist["Close"]
+
+        # RSI (14-day)
+        delta = close.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        current_rsi = round(rsi.iloc[-1], 2)
+
+        # MACD
+        exp1 = close.ewm(span=12, adjust=False).mean()
+        exp2 = close.ewm(span=26, adjust=False).mean()
+        macd_line = exp1 - exp2
+        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+        macd_histogram = macd_line - signal_line
+
+        if macd_histogram.iloc[-1] > 0 and macd_histogram.iloc[-2] <= 0:
+            macd_signal = "bullish crossover"
+        elif macd_histogram.iloc[-1] < 0 and macd_histogram.iloc[-2] >= 0:
+            macd_signal = "bearish crossover"
+        elif macd_histogram.iloc[-1] > 0:
+            macd_signal = "bullish"
+        elif macd_histogram.iloc[-1] < 0:
+            macd_signal = "bearish"
+        else:
+            macd_signal = "neutral"
+
+        # Moving averages and trend
+        sma_20 = close.rolling(window=20).mean().iloc[-1]
+        sma_50 = close.rolling(window=50).mean().iloc[-1]
+        current_price = close.iloc[-1]
+
+        if current_price > sma_20 > sma_50:
+            trend = "strong uptrend"
+        elif current_price > sma_20:
+            trend = "uptrend"
+        elif current_price < sma_20 < sma_50:
+            trend = "strong downtrend"
+        elif current_price < sma_20:
+            trend = "downtrend"
+        else:
+            trend = "sideways"
+
+        recent_30d = hist.tail(30)
+
+        return {
+            "symbol": symbol.upper(),
+            "rsi_14": current_rsi,
+            "rsi_signal": "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral",
+            "macd": macd_signal,
+            "trend": trend,
+            "sma_20": round(sma_20, 2),
+            "sma_50": round(sma_50, 2),
+            "current_price": round(current_price, 2),
+            "support_30d": round(recent_30d["Low"].min(), 2),
+            "resistance_30d": round(recent_30d["High"].max(), 2),
+            "data_source": "Calculated from Yahoo Finance historical data (REAL DATA)",
+        }
+    except Exception as e:
+        return {"error": f"Failed to calculate technicals for {symbol}: {str(e)}", "symbol": symbol.upper()}
 
 
 # ============================================================
-# News Researcher Tools
+# News Researcher Tools - REAL DATA via DuckDuckGo
 # ============================================================
 
 news_tools = ActionGroup(name="NewsTools")
@@ -81,48 +175,70 @@ news_tools = ActionGroup(name="NewsTools")
 
 @news_tools.action(
     name="search_news",
-    description="Search for recent news about a company"
+    description="Search for REAL recent news about a company using DuckDuckGo"
 )
 async def search_news(query: str) -> dict:
-    """Search recent news (simulated)."""
-    await asyncio.sleep(0.25)
+    """Search REAL recent news using DuckDuckGo."""
+    from ddgs import DDGS
 
-    news_db = {
-        "nvidia": [
-            {"headline": "NVIDIA Reports Record Data Center Revenue", "sentiment": "positive"},
-            {"headline": "AI Chip Demand Continues to Surge", "sentiment": "positive"},
-            {"headline": "NVIDIA Announces New AI Supercomputer", "sentiment": "positive"},
-        ],
-        "apple": [
-            {"headline": "Apple Vision Pro Launches to Mixed Reviews", "sentiment": "neutral"},
-            {"headline": "iPhone Sales Slow in China", "sentiment": "negative"},
-        ],
-        "microsoft": [
-            {"headline": "Microsoft Copilot Adoption Accelerates", "sentiment": "positive"},
-            {"headline": "Azure Revenue Beats Expectations", "sentiment": "positive"},
-        ],
-    }
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.news(query, max_results=5))
 
-    query_lower = query.lower()
-    for company, articles in news_db.items():
-        if company in query_lower:
-            return {"query": query, "articles": articles, "count": len(articles)}
+            articles = []
+            for r in results:
+                articles.append({
+                    "headline": r.get("title", ""),
+                    "source": r.get("source", ""),
+                    "date": r.get("date", ""),
+                    "body": r.get("body", "")[:150] + "..." if r.get("body") else "",
+                })
 
-    return {"query": query, "articles": [], "count": 0}
+            return {
+                "query": query,
+                "articles": articles,
+                "count": len(articles),
+                "data_source": "DuckDuckGo News (REAL DATA)",
+            }
+    except Exception as e:
+        return {"error": f"Failed to search news: {str(e)}", "query": query, "articles": [], "count": 0}
 
 
 @news_tools.action(
     name="analyze_sentiment",
-    description="Analyze overall sentiment from news articles"
+    description="Analyze overall sentiment from news headlines using keyword analysis"
 )
 async def analyze_sentiment(articles: list) -> dict:
-    """Analyze sentiment from news articles."""
+    """Analyze sentiment from news articles using keyword-based analysis."""
     if not articles:
-        return {"sentiment": "neutral", "confidence": 0.0}
+        return {"sentiment": "neutral", "confidence": 0.0, "articles_analyzed": 0}
 
-    sentiment_scores = {"positive": 1, "neutral": 0, "negative": -1}
-    total = sum(sentiment_scores.get(a.get("sentiment", "neutral"), 0) for a in articles)
-    avg = total / len(articles)
+    positive_words = {
+        "surge", "soar", "jump", "gain", "rise", "beat", "exceed", "strong",
+        "growth", "profit", "record", "high", "boost", "rally", "upgrade",
+        "outperform", "bullish", "positive", "success", "innovation", "breakthrough"
+    }
+    negative_words = {
+        "fall", "drop", "decline", "loss", "miss", "weak", "concern", "risk",
+        "down", "cut", "layoff", "lawsuit", "investigation", "fine", "penalty",
+        "downgrade", "bearish", "negative", "fail", "crash", "plunge", "warning"
+    }
+
+    total_score = 0
+    for article in articles:
+        headline = article.get("headline", "").lower()
+        body = article.get("body", "").lower() if isinstance(article.get("body"), str) else ""
+        text = headline + " " + body
+
+        pos_count = sum(1 for word in positive_words if word in text)
+        neg_count = sum(1 for word in negative_words if word in text)
+
+        if pos_count > neg_count:
+            total_score += 1
+        elif neg_count > pos_count:
+            total_score -= 1
+
+    avg = total_score / len(articles)
 
     if avg > 0.3:
         sentiment = "bullish"
@@ -149,8 +265,9 @@ def create_agents():
     market_agent = Agent(
         name="MarketAnalyst",
         instruction="""You are a market analyst specializing in stock analysis.
-Use get_stock_data and get_technical_analysis to gather comprehensive data.
-Provide clear, data-driven analysis.""",
+Use get_stock_data to fetch REAL current stock data from Yahoo Finance.
+Use get_technical_analysis to get REAL calculated technical indicators.
+Provide clear, data-driven analysis with specific numbers.""",
         model_client=client,
     )
     market_agent.add_action_group(market_tools)
@@ -158,8 +275,9 @@ Provide clear, data-driven analysis.""",
     news_agent = Agent(
         name="NewsResearcher",
         instruction="""You are a news researcher focused on financial news.
-Use search_news to find recent articles, then analyze_sentiment for overall mood.
-Report key headlines and sentiment analysis.""",
+Use search_news to find REAL recent news articles via DuckDuckGo.
+Use analyze_sentiment to analyze the overall sentiment.
+Report key headlines with their sources.""",
         model_client=client,
     )
     news_agent.add_action_group(news_tools)
@@ -167,6 +285,10 @@ Report key headlines and sentiment analysis.""",
     advisor = Supervisor(
         name="InvestmentAdvisor",
         instruction="""You are an investment research advisor coordinating specialized analysts.
+
+Your team uses REAL DATA - no mocks, no simulations:
+- MarketAnalyst: REAL stock data from Yahoo Finance + calculated technical indicators
+- NewsResearcher: REAL current news from DuckDuckGo + sentiment analysis
 
 For each stock analysis request:
 1. Delegate to BOTH MarketAnalyst AND NewsResearcher IN PARALLEL:
@@ -176,7 +298,9 @@ For each stock analysis request:
    ])
 2. Synthesize their findings into a comprehensive analysis
 
-Always use parallel delegation for faster response.""",
+Always use parallel delegation for faster response.
+Mention that all data is REAL and current.
+Include a disclaimer that this is educational content, not financial advice.""",
         model_client=client,
         memory=InMemory(),
         collaborators=[market_agent, news_agent],
@@ -217,15 +341,36 @@ async def run_demo():
         emit("")
         sys.exit(1)
 
+    # Check for demo dependencies
+    try:
+        import yfinance  # noqa: F401
+        from ddgs import DDGS  # noqa: F401
+    except ImportError:
+        emit("")
+        emit("=" * 60)
+        emit("  Missing demo dependencies")
+        emit("=" * 60)
+        emit("")
+        emit("  This demo uses REAL DATA from Yahoo Finance and DuckDuckGo.")
+        emit("  Install the demo dependencies:")
+        emit("")
+        emit("    pip install bedsheet[demo]")
+        emit("    # or: pip install yfinance ddgs")
+        emit("")
+        emit("=" * 60)
+        emit("")
+        sys.exit(1)
+
     emit("")
     emit("=" * 60)
     emit("  BEDSHEET AGENTS - Investment Advisor Demo")
+    emit("  *** REAL DATA EDITION ***")
     emit("=" * 60)
     emit("")
-    emit("  This demo shows:")
-    emit("  - Parallel delegation to multiple agents")
-    emit("  - Rich event streaming (see every step)")
-    emit("  - Supervisor synthesis of results")
+    emit("  This demo uses REAL DATA:")
+    emit("  - Stock data: Yahoo Finance (live prices)")
+    emit("  - News: DuckDuckGo (current articles)")
+    emit("  - Technical analysis: Calculated from real history")
     emit("")
     emit("  Model: Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)")
     emit("  Note: This uses your Anthropic API credits")
@@ -278,7 +423,6 @@ async def run_demo():
             agent = event.agent_name
 
             if isinstance(inner, TextTokenEvent):
-                # Show streaming tokens from collaborator agents
                 emit(inner.token, end="")
 
             elif isinstance(inner, ToolCallEvent):
@@ -294,7 +438,6 @@ async def run_demo():
                 emit(f"        [{agent}] <- {result}")
 
         elif isinstance(event, TextTokenEvent):
-            # Show streaming tokens from supervisor's final response
             emit(event.token, end="")
 
         elif isinstance(event, CompletionEvent):
@@ -311,7 +454,7 @@ async def run_demo():
 
     emit("")
     emit("=" * 60)
-    emit("  Demo complete!")
+    emit("  Demo complete! All data was REAL - no mocks!")
     emit("")
     emit("  Docs: https://github.com/sivang/bedsheet")
     emit("=" * 60)
