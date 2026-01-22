@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.2rc5 (in development)
 
-**Last Session:** 2026-01-21
+**Last Session:** 2026-01-22
 
 ### Release Status
 
@@ -26,6 +26,72 @@
 | Examples | ✅ Investment advisor demo |
 | Demo | ✅ `uvx bedsheet demo` (requires API key, uses Claude Sonnet 4.5) |
 | pyproject.toml | ✅ PyPI ready |
+
+---
+
+## Roadmap
+
+### v0.5.0 - Custom UIs & Enhanced Examples
+
+| Feature | Priority | Status |
+|---------|----------|--------|
+| **Investment Advisor Custom UI** | High | 📋 Planned |
+| - Stock price charts (candlestick/line) | | |
+| - Technical indicator gauges (RSI, MACD) | | |
+| - Risk assessment meters | | |
+| - Sentiment analysis display | | |
+| - Recommendation cards with confidence | | |
+| Example: Customer Support Agent | Medium | 📋 Planned |
+| Example: Code Review Agent | Medium | 📋 Planned |
+
+### Future Considerations
+
+- AWS Bedrock target improvements
+- Azure OpenAI target
+- Local LLM support (Ollama)
+
+---
+
+## Session Summary (2026-01-22) - GCP E2E SUCCESS + Documentation
+
+### What Was Done
+
+1. **Fixed GCP E2E Testing - ROOT CAUSE FOUND!**
+   - `GOOGLE_APPLICATION_CREDENTIALS` env var pointed to wrong project's service account
+   - Python SDK prioritizes this env var over ADC
+   - Fix: `unset GOOGLE_APPLICATION_CREDENTIALS`
+
+2. **Investment Advisor Deployed to Cloud Run**
+   - URL: `https://investment-advisor-ygvmbgj26a-ew.a.run.app`
+   - Model: `gemini-3-flash-preview` via global Vertex AI endpoint
+   - Multi-agent system working: MarketAnalyst, NewsResearcher, RiskAnalyst
+   - All tools functional
+
+3. **ADK Dev UI Enabled**
+   - Changed Dockerfile template from `api_server` to `web` mode
+   - Dev UI accessible at `/dev-ui/` on both local and Cloud Run
+
+4. **Comprehensive Documentation Created**
+   - `docs/gcp-deployment-deep-dive.md` and `.html`
+   - Architecture diagrams, troubleshooting guides, credential flow explanations
+   - Sanitized sensitive info from docs and git history
+
+### Key Technical Insight
+
+**SDK Credential Priority:**
+1. `GOOGLE_APPLICATION_CREDENTIALS` env var (highest priority)
+2. Application Default Credentials (ADC)
+3. Compute Engine / Cloud Run service account
+
+If `GOOGLE_APPLICATION_CREDENTIALS` points to project A's SA, but you're accessing project B, you get 403 even with correct IAM roles.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/deploy/templates/gcp/Dockerfile.j2` | Use `web` mode for Dev UI |
+| `docs/gcp-deployment-deep-dive.md` | New comprehensive docs |
+| `docs/gcp-deployment-deep-dive.html` | Styled HTML version |
 
 ---
 
