@@ -7,7 +7,7 @@
 #
 # Your agent will be live on Cloud Run in minutes!
 
-.PHONY: help setup deploy dev test logs status url clean destroy preflight
+.PHONY: help setup deploy dev ui test logs status url clean destroy preflight
 .SILENT: help _banner
 
 # Configuration (set in terraform.tfvars or override here)
@@ -41,6 +41,7 @@ help:
 	@printf "\n"
 	@printf "$(GREEN)DEVELOPMENT$(NC)\n"
 	@printf "  make dev        Run locally with ADK Dev UI (http://localhost:8000)\n"
+	@printf "  make ui         Open Dev UI for deployed agent (with auth)\n"
 	@printf "  make test       Test agent via CLI\n"
 	@printf "  make logs       Stream Cloud Run logs\n"
 	@printf "\n"
@@ -341,6 +342,22 @@ dev: _check_credentials
 	@printf "\n"
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null); \
 	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=global GOOGLE_GENAI_USE_VERTEXAI=True uv run python -m google.adk.cli web .
+
+ui:
+	@printf "$(BLUE)Opening Dev UI for deployed agent...$(NC)\n"
+	@printf "\n"
+	@SERVICE_URL=$$(gcloud run services describe $(SERVICE) --region $(REGION) --format 'value(status.url)' 2>/dev/null); \
+	if [ -z "$$SERVICE_URL" ]; then \
+		printf "$(RED)Agent not deployed yet. Run 'make deploy' first.$(NC)\n"; \
+		exit 1; \
+	fi; \
+	printf "  Service: $(CYAN)$$SERVICE_URL$(NC)\n"; \
+	printf "\n"; \
+	printf "  Starting authenticated proxy on $(GREEN)http://localhost:8080$(NC)...\n"; \
+	printf "  (Press Ctrl+C to stop)\n"; \
+	printf "\n"; \
+	sleep 1 && (which open > /dev/null 2>&1 && open http://localhost:8080 || which xdg-open > /dev/null 2>&1 && xdg-open http://localhost:8080 || true) & \
+	gcloud run services proxy $(SERVICE) --region $(REGION) --port 8080
 
 test:
 	@printf "$(BLUE)Testing agent via CLI...$(NC)\n"
