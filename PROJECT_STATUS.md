@@ -1,6 +1,6 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.4.2 (releasing)
+## Current Version: v0.4.7 (released)
 
 **Last Session:** 2026-01-22
 
@@ -10,7 +10,12 @@
 |---------|--------|--------|
 | v0.3.0 | ✅ Released on PyPI | main |
 | v0.4.0 | ✅ Released on PyPI | main |
-| v0.4.2 | 🚀 Releasing | main |
+| v0.4.2 | ✅ Released on PyPI | main |
+| v0.4.3 | ✅ Released on PyPI | main |
+| v0.4.4 | ✅ Released on PyPI | main |
+| v0.4.5 | ✅ Released on PyPI | main |
+| v0.4.6 | ✅ Released on PyPI | main |
+| v0.4.7 | ✅ Released on PyPI | main |
 
 ### Release Artifacts
 
@@ -53,7 +58,59 @@
 
 ---
 
-## Session Summary (2026-01-22) - GCP E2E SUCCESS + Documentation
+## Session Summary (2026-01-22 Evening) - DX Safeguards + make ui + E2E Complete
+
+### What Was Done
+
+1. **Released v0.4.3 through v0.4.7** - Six releases in one session!
+
+   | Version | Feature |
+   |---------|---------|
+   | v0.4.3 | Dynamic CLI version (importlib.metadata) |
+   | v0.4.4 | Credential preflight check (warns if GOOGLE_APPLICATION_CREDENTIALS set) |
+   | v0.4.5 | Project consistency check (terraform.tfvars vs gcloud config) |
+   | v0.4.6 | `make ui` command (one-command Dev UI access) |
+   | v0.4.7 | Improved first-time UX (check cloud-run-proxy component) |
+
+2. **Complete E2E Testing Validated**
+   - Fresh agent with `uvx bedsheet@latest init test-agent`
+   - Generated with `bedsheet generate --target gcp`
+   - Deployed to Cloud Run: `https://test-agent-ygvmbgj26a-ew.a.run.app`
+   - Dev UI accessible via `make ui` at `http://localhost:8080/dev-ui/`
+
+3. **Documentation Mega Update**
+   - Updated `docs/gcp-deployment-deep-dive.md` with:
+     - New DX Safeguards section
+     - Testing Deployed Agents section
+     - Release History section
+     - Executive Summary for stakeholders
+   - Updated PROJECT_STATUS.md with current session
+
+4. **Security Audit (earlier in session)**
+   - Sanitized sensitive project references from docs and git history
+   - Removed `zeteo-8227d` and local paths from documentation
+
+### Key Philosophy Quote
+
+> "Every time something happens and you are setting something manually instead of analyzing and providing a solution...you are leaving a bug to explore in the user's hands."
+
+This session embodied this principle by converting manual workarounds into automated safeguards.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/deploy/templates/gcp/Makefile.j2` | Credential check, project check, `make ui` |
+| `bedsheet/deploy/templates/gcp/DEPLOYMENT_GUIDE.md.j2` | Warning documentation |
+| `bedsheet/cli/main.py` | Dynamic version via importlib.metadata |
+| `docs/gcp-deployment-deep-dive.md` | Comprehensive update |
+| `PROJECT_STATUS.md` | Session summary |
+| `pyproject.toml` | Version 0.4.7 |
+| `CHANGELOG.md` | v0.4.3-v0.4.7 entries |
+
+---
+
+## Session Summary (2026-01-22 Morning) - GCP E2E SUCCESS + Documentation
 
 ### What Was Done
 
@@ -689,7 +746,7 @@ bedsheet/
 | 2a. Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
 | 2b. Debug UI: GCP Cloud Run | ✅ Done | ADK Dev UI via `make dev-ui-local` |
 | 2c. Debug UI: AWS Bedrock | ✅ Done | FastAPI proxy to Bedrock Agent Runtime with tracing |
-| **3. GCP Cloud Run E2E Test** | 🔲 TODO | Deploy real agent, verify API works (use Debug UI) |
+| **3. GCP Cloud Run E2E Test** | ✅ Done | test-agent deployed, Dev UI verified via `make ui` |
 | **4. AWS Bedrock E2E Test** | ✅ Done | Deployed Judge/Sage/Oracle, verified via Debug UI |
 
 **Branch:** `development/v0.4-deploy-anywhere`
