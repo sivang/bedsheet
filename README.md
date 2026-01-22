@@ -384,8 +384,9 @@ Total: ~1,000 lines. Coffee break reading.
 - [x] v0.1 — Single agents, tools, streaming
 - [x] v0.2 — Multi-agent, parallel delegation
 - [x] v0.3 — Structured outputs
-- [x] v0.4 — Deploy anywhere (Local/GCP/AWS), Debug UI ← *you are here*
-- [ ] v0.5 — Knowledge bases, RAG
+- [x] v0.4 — Deploy anywhere (Local/GCP/AWS), Debug UI, E2E tested ✅
+  - v0.4.7: Credential preflight checks, project consistency validation, `make ui` command
+- [ ] v0.5 — Knowledge bases, RAG, custom UI examples
 - [ ] v0.6 — Guardrails, safety (classification models for high-speed validation)
 - [ ] v0.7 — GCP Agent Engine, A2A protocol
 - [ ] v0.8 — WASM/Spin support (browser agents, edge deployment, Fermyon Cloud)
@@ -398,7 +399,7 @@ Total: ~1,000 lines. Coffee break reading.
 git clone https://github.com/sivang/bedsheet.git
 cd bedsheet
 uv pip install -e ".[dev]"
-pytest -v  # 180 tests, all green
+pytest -v  # 265 tests, all green
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -408,7 +409,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## FAQ
 
 **Production ready?**
-Yes. 180 tests, type hints, async-first, Redis support. We use it.
+Yes. 265 tests, type hints, async-first, Redis support. We use it.
 
 **Only Claude?**
 For now. `LLMClient` is a protocol—implement it for OpenAI/Gemini/local. PRs welcome.

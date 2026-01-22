@@ -725,7 +725,9 @@ bedsheet/
 
 ## Roadmap
 
-### v0.4: Build Once, Deploy Anywhere (In Development)
+### v0.4: Build Once, Deploy Anywhere (COMPLETE ✅)
+
+**Latest:** v0.4.7 on PyPI
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -737,20 +739,19 @@ bedsheet/
 | AWS target (CDK) | ✅ Done | Bedrock + Lambda + CDK |
 | GitHub Actions CI/CD | ✅ Done | Multi-environment workflows |
 | Multi-env (dev/staging/prod) | ✅ Done | Terraform workspaces / CDK contexts |
-| **1. Streaming SSE endpoint** | ✅ Done | `/invoke/stream` exposes Bedsheet's event stream |
-| **2. Debug UI (React SPA)** | ✅ Done | Chat + live event stream + expand/collapse |
-| 2a. Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
-| 2b. Debug UI: GCP Cloud Run | ✅ Done | ADK Dev UI via `make dev-ui-local` |
-| 2c. Debug UI: AWS Bedrock | ✅ Done | FastAPI proxy to Bedrock Agent Runtime with tracing |
-| **3. GCP Cloud Run E2E Test** | ✅ Done | test-agent deployed, Dev UI verified via `make ui` |
-| **4. AWS Bedrock E2E Test** | ✅ Done | Deployed Judge/Sage/Oracle, verified via Debug UI |
+| Streaming SSE endpoint | ✅ Done | `/invoke/stream` exposes Bedsheet's event stream |
+| Debug UI (React SPA) | ✅ Done | Chat + live event stream + expand/collapse |
+| Debug UI: Local target | ✅ Done | Included by default, env flag to disable |
+| Debug UI: GCP Cloud Run | ✅ Done | ADK Dev UI via `make ui` |
+| Debug UI: AWS Bedrock | ✅ Done | FastAPI proxy to Bedrock Agent Runtime with tracing |
+| GCP Cloud Run E2E Test | ✅ Done | test-agent deployed, Dev UI verified via `make ui` |
+| AWS Bedrock E2E Test | ✅ Done | Deployed Judge/Sage/Oracle, verified via Debug UI |
+| Credential preflight check | ✅ Done | v0.4.4 - warns if GOOGLE_APPLICATION_CREDENTIALS set |
+| Project consistency check | ✅ Done | v0.4.5 - validates terraform.tfvars vs gcloud config |
+| `make ui` command | ✅ Done | v0.4.6 - one-command access to deployed Dev UI |
+| First-time UX improvements | ✅ Done | v0.4.7 - checks for cloud-run-proxy component |
 
-**Branch:** `development/v0.4-deploy-anywhere`
-**Tests:** 179 passing (52 new for deployment)
-
-**Before v0.4.0 GA:**
-- Both GCP and AWS targets must be deployed and tested end-to-end with a real agent
-- Debug UI with streaming for local and GCP targets
+**Tests:** 265 passing
 
 ### v0.5: Knowledge Bases, RAG (Planned)
 
