@@ -113,7 +113,7 @@
 2. **Complete E2E Testing Validated**
    - Fresh agent with `uvx bedsheet@latest init test-agent`
    - Generated with `bedsheet generate --target gcp`
-   - Deployed to Cloud Run: `https://test-agent-ygvmbgj26a-ew.a.run.app`
+   - Deployed to Cloud Run (since deleted)
    - Dev UI accessible via `make ui` at `http://localhost:8080/dev-ui/`
 
 3. **Documentation Mega Update**
@@ -154,7 +154,7 @@ This session embodied this principle by converting manual workarounds into autom
    - Fix: `unset GOOGLE_APPLICATION_CREDENTIALS`
 
 2. **Investment Advisor Deployed to Cloud Run**
-   - URL: `https://investment-advisor-ygvmbgj26a-ew.a.run.app`
+   - Deployed to Cloud Run (since deleted)
    - Model: `gemini-3-flash-preview` via global Vertex AI endpoint
    - Multi-agent system working: MarketAnalyst, NewsResearcher, RiskAnalyst
    - All tools functional

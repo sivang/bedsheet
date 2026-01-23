@@ -58,7 +58,7 @@ resource "aws_iam_role" "agent_role" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
   }
@@ -114,7 +114,7 @@ resource "aws_iam_role" "lambda_role" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
   }
@@ -176,7 +176,7 @@ resource "aws_lambda_function" "action_lambda" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
   }
@@ -210,7 +210,7 @@ resource "aws_bedrockagent_agent" "{{ collaborator.name | lower }}" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
     AgentType       = "Collaborator"
@@ -249,7 +249,7 @@ resource "aws_bedrockagent_agent" "supervisor" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
     AgentType       = "Supervisor"
@@ -321,7 +321,7 @@ resource "aws_bedrockagent_agent" "main" {
 
   tags = {
     ManagedBy       = "Bedsheet"
-    BedsheetVersion = "0.4.0"
+    BedsheetVersion = "0.4.7"
     Project         = var.project_name
     Environment     = local.workspace
     AgentType       = "SingleAgent"

@@ -624,7 +624,7 @@ sequenceDiagram
 
     Note over Dev,Gemini: ❌ The Bug
 
-    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    Dev->>SDK: genai.Client(project='my-gcp-project')
     SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
     ENV-->>SDK: /path/to/other-project-service-account.json
     SDK->>SDK: Load other-project SA credentials
@@ -634,7 +634,7 @@ sequenceDiagram
     Note over Dev,Gemini: ✅ The Fix
 
     Dev->>ENV: unset GOOGLE_APPLICATION_CREDENTIALS
-    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    Dev->>SDK: genai.Client(project='my-gcp-project')
     SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
     ENV-->>SDK: Not set
     SDK->>SDK: Fall back to ADC
@@ -808,7 +808,7 @@ CMD ["python", "-m", "google.adk.cli", "web", "--host", "0.0.0.0", "--port", "80
                     <tr>
                         <td><code>gcp.project</code></td>
                         <td>bedsheet.yaml targets.gcp</td>
-                        <td><code>bedsheet-e2e-test</code></td>
+                        <td><code>my-gcp-project</code></td>
                     </tr>
                     <tr>
                         <td><code>gcp.region</code></td>
@@ -949,7 +949,7 @@ CMD ["python", "-m", "google.adk.cli", "web", ...]</code></pre>
                         <td><span class="badge badge-green">✅ Worked</span></td>
                     </tr>
                     <tr>
-                        <td>Python SDK with project <code>bedsheet-e2e-test</code></td>
+                        <td>Python SDK with project <code>my-gcp-project</code></td>
                         <td><span class="badge badge-red">❌ 403 Error</span></td>
                     </tr>
                     <tr>
@@ -967,7 +967,7 @@ CMD ["python", "-m", "google.adk.cli", "web", ...]</code></pre>
             <div class="story-timeline">
                 <div class="story-item error">
                     <strong>❌ Initial Symptom</strong><br>
-                    Investment Advisor returns 403 PERMISSION_DENIED when deployed to bedsheet-e2e-test
+                    Investment Advisor returns 403 PERMISSION_DENIED when deployed to my-gcp-project
                 </div>
 
                 <div class="story-item">

@@ -6,10 +6,11 @@
 
 ## Quick Facts
 
-- **Version:** 0.4.2 (Released on PyPI)
-- **Tests:** 179 passing (`pytest -v`)
-- **Demo:** `uvx bedsheet demo` (requires `ANTHROPIC_API_KEY`, uses Claude Sonnet 4.5)
+- **Version:** 0.4.7 (Released on PyPI), codename "Hermes"
+- **Tests:** 265 passing (`pytest -v`)
+- **Demo:** `uvx bedsheet demo` (requires `ANTHROPIC_API_KEY`, uses REAL DATA from Yahoo Finance + DuckDuckGo)
 - **Default Model:** `claude-sonnet-4-5-20250929`
+- **Demo deps:** `pip install bedsheet[demo]` (adds yfinance, ddgs)
 
 ## Key Features
 

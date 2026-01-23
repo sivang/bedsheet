@@ -182,31 +182,31 @@ sequenceDiagram
     participant ENV as Environment
     participant ADC as ADC File
     participant OtherProj as other-project-id
-    participant Bedsheet as bedsheet-e2e-test
+    participant Bedsheet as my-gcp-project
     participant Gemini as Vertex AI Gemini
 
     Note over Dev,Gemini: The Bug Scenario
 
-    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    Dev->>SDK: genai.Client(project='my-gcp-project')
     SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
     ENV-->>SDK: /path/to/other-project-service-account.json
     SDK->>SDK: Load other-project SA credentials
 
     Note over SDK: SDK now has other-project SA,<br/>but targeting bedsheet project!
 
-    SDK->>Gemini: Request to bedsheet-e2e-test/gemini-3-flash
+    SDK->>Gemini: Request to my-gcp-project/gemini-3-flash
     Gemini->>Gemini: Check: Does other-project SA have<br/>access to bedsheet project?
     Gemini-->>SDK: 403 PERMISSION_DENIED
 
     Note over Dev,Gemini: The Fix
 
     Dev->>ENV: unset GOOGLE_APPLICATION_CREDENTIALS
-    Dev->>SDK: genai.Client(project='bedsheet-e2e-test')
+    Dev->>SDK: genai.Client(project='my-gcp-project')
     SDK->>ENV: Check GOOGLE_APPLICATION_CREDENTIALS
     ENV-->>SDK: Not set
     SDK->>ADC: Load ADC credentials
     ADC-->>SDK: User credentials with bedsheet quota
-    SDK->>Gemini: Request to bedsheet-e2e-test/gemini-3-flash
+    SDK->>Gemini: Request to my-gcp-project/gemini-3-flash
     Gemini-->>SDK: 200 OK + Response
 ```
 
@@ -461,7 +461,7 @@ images:
 |----------|--------|---------|
 | `config.name` | bedsheet.yaml | `investment-advisor` |
 | `config.agents` | bedsheet.yaml + introspection | Agent metadata |
-| `gcp.project` | bedsheet.yaml targets.gcp | `bedsheet-e2e-test` |
+| `gcp.project` | bedsheet.yaml targets.gcp | `my-gcp-project` |
 | `gcp.region` | bedsheet.yaml targets.gcp | `europe-west1` |
 | `gcp.model` | bedsheet.yaml targets.gcp | `gemini-3-flash-preview` |
 | `gcp.cloud_run_memory` | bedsheet.yaml targets.gcp | `1Gi` |
@@ -609,7 +609,7 @@ _check_credentials:
 
   To fix:
     1. Unset it:  unset GOOGLE_APPLICATION_CREDENTIALS
-    2. Or ensure it points to a service account for project: bedsheet-e2e-test
+    2. Or ensure it points to a service account for project: my-gcp-project
 
   Continue anyway? (y/N):
 ```
@@ -647,16 +647,16 @@ _check_credentials:
 ║  ⚠️  WARNING: Project mismatch detected!                                 ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
-  terraform.tfvars: bedsheet-e2e-test
+  terraform.tfvars: my-gcp-project
   gcloud config:    other-project-id
 
   Deployment may use the WRONG project!
 
   To fix:
-    gcloud config set project bedsheet-e2e-test
+    gcloud config set project my-gcp-project
 
   Fix now? (Y/n): Y
-  ✓ Project set to bedsheet-e2e-test
+  ✓ Project set to my-gcp-project
 ```
 
 ### Why These Safeguards Matter
@@ -920,7 +920,7 @@ Investment Advisor agent deployed successfully to Cloud Run but returned 403 PER
 |------|--------|
 | `curl` with `gcloud auth print-access-token` | ✅ Worked |
 | Python SDK with project `other-project-id` | ✅ Worked |
-| Python SDK with project `bedsheet-e2e-test` | ❌ 403 Error |
+| Python SDK with project `my-gcp-project` | ❌ 403 Error |
 | Both projects had same APIs enabled | ✅ Verified |
 | Both projects had same billing | ✅ Verified |
 
@@ -965,7 +965,7 @@ graph TB
 export GOOGLE_APPLICATION_CREDENTIALS=/path/to/other-project-service-account.json
 ```
 
-This service account had permissions for `other-project-id` but NOT for `bedsheet-e2e-test`. The Python SDK **prioritizes** this environment variable over ADC.
+This service account had permissions for `other-project-id` but NOT for `my-gcp-project`. The Python SDK **prioritizes** this environment variable over ADC.
 
 ### The Fix
 
