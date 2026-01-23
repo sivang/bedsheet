@@ -1,22 +1,14 @@
-# Session Handoff - 2026-01-22 (Final)
+# Session Handoff - 2026-01-23 (Final)
 
 ## Session Summary
 
-This session focused on **replacing all mock/simulated data** in the Investment Advisor demo with **real data** from Yahoo Finance and DuckDuckGo, publishing the v0.4.7 "Hermes" GitHub Release, and updating all documentation to reflect real data.
+This session focused on **replacing all mock/simulated data** with **real data**, publishing the v0.4.7 "Hermes" GitHub Release, cleaning up GCP resources, and a comprehensive documentation update wave.
 
 ## What Was Accomplished
 
-### Real Data Implementation (NO MORE MOCKS)
+### 1. Real Data Implementation (NO MORE MOCKS)
 
-All 3 demo locations now use real APIs with no API keys required for data:
-
-| Location | Purpose |
-|----------|---------|
-| `bedsheet/__main__.py` | `uvx bedsheet demo` runner |
-| `examples/investment-advisor/agents.py` | Example project |
-| `examples/investment-advisor/deploy/gcp/agent/agent.py` | GCP Cloud Run deployment |
-
-### Real Data Sources
+All demo locations now use real APIs with no API keys required for data:
 
 | Tool | Data Source | Key Metrics |
 |------|-------------|-------------|
@@ -27,45 +19,56 @@ All 3 demo locations now use real APIs with no API keys required for data:
 | `analyze_volatility` | Calculated from 1-year history vs SPY | Beta, volatility, max drawdown, Sharpe |
 | `get_position_recommendation` | Based on real volatility data | Position sizing, risk rating |
 
-### GitHub Release Published
+### 2. GitHub Release Published
 
 - **Tag**: v0.4.7
 - **Codename**: "Hermes" (swift messenger god = deploy anywhere)
 - **URL**: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
-- Notes updated to reflect real data capabilities
 
-### Dependencies Added
+### 3. GCP Cleanup (Project Deleted)
 
-- `yfinance>=0.2.40` - Yahoo Finance stock data
-- `ddgs>=6.0.0` - DuckDuckGo search (previously `duckduckgo-search`, renamed)
+- Deleted all Cloud Run services (4)
+- Deleted all Artifact Registry repos (6)
+- Deleted all service accounts (4)
+- Deleted all storage buckets (5)
+- **Deleted entire `bedsheet-e2e-test` GCP project**
+- Killed lingering local proxy on port 8080
+- Recovery available for 30 days: `gcloud projects undelete bedsheet-e2e-test`
+
+### 4. Documentation Update Wave
+
+| Change | Scope |
+|--------|-------|
+| CLAUDE.md | Version 0.4.7, 265 tests, real data demo |
+| Template versions | All `0.4.0`/`0.4.1rc1` → `0.4.7` across all targets |
+| GCP docs | `bedsheet-e2e-test` → `my-gcp-project` (generic placeholder) |
+| PROJECT_STATUS.md | Deleted Cloud Run URLs marked "(since deleted)" |
+| Example deploy/ | Entire generated directory removed (-7,400 lines of cruft) |
+| README.md | Demo output shows REAL DATA EDITION |
+| Multi-agent guide | Real yfinance/ddgs code examples (md + html) |
+
+### 5. Dependencies
+
+- `yfinance>=0.2.40` - Yahoo Finance (no API key required)
+- `ddgs>=6.0.0` - DuckDuckGo search (no API key required)
 - Available via: `pip install bedsheet[demo]`
 
-### Tests
-
-- **265 passing**, 2 expected failures (API credit tests)
-- Real data verified: NVDA $184.61, RSI 47.09, Beta 1.84, 5 real news articles
-
-## Commits Pushed
+## Commits Pushed (This Session)
 
 | Commit | Description |
 |--------|-------------|
-| `2057b07` | `feat: replace all mock data with real APIs (yfinance + ddgs)` - 8 files, +997/-297 |
-| `bcebaa0` | `docs: update guides and README to reflect real data tools` - 3 files, +182/-102 |
+| `2057b07` | feat: replace all mock data with real APIs (yfinance + ddgs) |
+| `bcebaa0` | docs: update guides and README to reflect real data tools |
+| `efaae7b` | docs: update session handoff with final state |
+| `26eb876` | chore: docs update wave - remove stale refs and build cruft |
 
-### Files Changed (All Committed & Pushed)
+## Current State
 
-| File | Change |
-|------|--------|
-| `bedsheet/__main__.py` | Real data tools for `uvx bedsheet demo` |
-| `examples/investment-advisor/agents.py` | Real yfinance/ddgs tools |
-| `examples/investment-advisor/deploy/gcp/agent/agent.py` | Real tools for GCP deployment |
-| `examples/investment-advisor/deploy/gcp/pyproject.toml` | Added yfinance, ddgs deps |
-| `examples/investment-advisor/pyproject.toml` | Added yfinance, ddgs deps |
-| `pyproject.toml` | Added `[demo]` optional dependency group |
-| `README.md` | Demo output shows REAL DATA EDITION banner |
-| `docs/multi-agent-guide.md` | Replaced simulated tools with real implementations |
-| `docs/multi-agent-guide.html` | Same as .md, plus styled dependency callout |
-| `PROJECT_STATUS.md` | Updated session history, test counts |
+- **Branch**: `main`, clean working tree, up to date with origin
+- **Tests**: 265 passing (unit), 2 expected failures (integration/API credits)
+- **GCP**: No resources, project deleted
+- **PyPI**: v0.4.7 published
+- **GitHub Release**: v0.4.7 "Hermes" live
 
 ## Key Technical Notes
 
@@ -73,15 +76,15 @@ All 3 demo locations now use real APIs with no API keys required for data:
 - **ddgs vs duckduckgo-search**: Package was renamed. Use `from ddgs import DDGS`
 - **yfinance fast_info**: Use `ticker.fast_info` first, fallback to `ticker.info` for price
 - **Beta calculation**: Covariance of stock returns vs SPY / SPY variance
-- **RSI**: 14-day rolling mean of gains/losses from close price deltas
 - **Optional deps**: `pip install bedsheet[demo]` installs yfinance and ddgs
+- **Example project**: Only source files remain (agents.py, bedsheet.yaml, pyproject.toml). Users run `bedsheet generate --target gcp` to create deploy artifacts.
 
 ## Pending/Roadmap Items
 
 1. **v0.5 "Athena"** - Knowledge bases, RAG integration, custom UI examples
 2. **v0.6** - Guardrails and safety layers
 3. **v0.7** - GCP Agent Engine (managed), A2A protocol
-4. **Custom Investment Advisor UI** - Graphs, gauges, analysis visualization
+4. **Next E2E test** - Will need new GCP project when testing deployment again
 
 ## Quick Resume Commands
 
@@ -96,17 +99,10 @@ uvx bedsheet demo
 # Run tests
 pytest -v
 
-# Deploy to GCP
-cd examples/investment-advisor/deploy/gcp
-make deploy
+# Generate deployment (creates deploy/ directory)
+cd examples/investment-advisor
+bedsheet generate --target gcp
 ```
 
-## Git Status
-
-- Branch: `main`
-- Clean working tree (all changes committed and pushed)
-- All releases pushed to PyPI and GitHub
-- GitHub Release: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
-
 ---
-*Session ended: 2026-01-22*
+*Session ended: 2026-01-23*
