@@ -383,6 +383,7 @@ Total: ~1,000 lines. Coffee break reading.
 - **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
 - **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
 - **[Deployment Guide](https://sivang.github.io/bedsheet/deployment-guide.html)** — Local, GCP, and AWS deployment
+- **[GCP Deployment Deep Dive](https://sivang.github.io/bedsheet/gcp-deployment-deep-dive.html)** — GCP architecture, troubleshooting, and best practices
 - **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.html)** — Supervisor deep dive
 - **[Multi-Agent Patterns](https://sivang.github.io/bedsheet/multi-agent-patterns.html)** — Swarms, Graphs, Workflows, A2A
 

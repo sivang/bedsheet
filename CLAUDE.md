@@ -60,7 +60,9 @@ bedsheet/
 |------|---------|
 | `docs/user-guide.html` | Progressive 12-lesson tutorial |
 | `docs/technical-guide.html` | Python patterns deep dive |
-| `docs/multi-agent-guide.md` | Supervisor patterns |
+| `docs/deployment-guide.html` | Local, GCP, and AWS deployment |
+| `docs/gcp-deployment-deep-dive.html` | GCP architecture, troubleshooting, best practices |
+| `docs/multi-agent-guide.html` | Supervisor patterns |
 | `PROJECT_STATUS.md` | Detailed project status and session history |
 
 ## Common Commands
