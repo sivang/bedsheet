@@ -5,6 +5,21 @@ All notable changes to Bedsheet Agents will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-01-26
+
+### Changed
+
+- **GCP Model Default** - Updated `bedsheet init --target gcp` to use `gemini-3-flash-preview` (was `gemini-2.5-flash`)
+  - Reflects latest Gemini model availability
+
+### Added
+
+- **Demo Recording Plan** - Added comprehensive demo recording guide (`docs/DEMO_RECORDING_PLAN.md`)
+  - 3-4 minute multi-cloud deployment demo script
+  - Pre-recording checklist and dry-run tests
+  - Contingency plans for common issues
+- **GCP Deployment Deep Dive** - Added link to `gcp-deployment-deep-dive.html` in README and CLAUDE.md
+
 ## [0.4.7] - 2026-01-22
 
 ### Changed
