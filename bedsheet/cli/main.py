@@ -369,7 +369,7 @@ dependencies = [
             project=gcp_project,
             region=gcp_region,
             cloud_run_memory="512Mi",
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
         )
     elif target == "aws":
         aws_region = typer.prompt("AWS Region", default="eu-central-1")
