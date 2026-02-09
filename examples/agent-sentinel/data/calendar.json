@@ -1,0 +1,5 @@
+[
+  {"id": "apt-1", "title": "Team standup", "date": "2026-02-10", "time": "09:00"},
+  {"id": "apt-2", "title": "Deploy review", "date": "2026-02-10", "time": "14:00"},
+  {"id": "apt-3", "title": "Security audit", "date": "2026-02-11", "time": "10:00"}
+]

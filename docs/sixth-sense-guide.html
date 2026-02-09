@@ -412,6 +412,26 @@ python run.py</code></pre>
 
     <p>When CPU exceeds 80%, the cpu-watcher broadcasts an alert. The incident-commander claims it, queries the other agents for context, and synthesizes an incident report.</p>
 
+    <h3>Agent Sentinel Demo</h3>
+
+    <p>The <code>examples/agent-sentinel/</code> directory demonstrates AI agent security monitoring, inspired by the OpenClaw crisis of 2026. Three worker agents perform real tasks (DuckDuckGo searches, JSON calendar management, skill installation with SHA-256 verification), while sentinel agents monitor them for rogue behavior:</p>
+
+    <table>
+        <tr><th>Agent</th><th>Role</th><th>Data Source</th></tr>
+        <tr><td><code>web-researcher</code></td><td>Worker: web search</td><td>DuckDuckGo</td></tr>
+        <tr><td><code>scheduler</code></td><td>Worker: calendar management</td><td>JSON file</td></tr>
+        <tr><td><code>skill-acquirer</code></td><td>Worker: skill installation</td><td>Local ClawHub files</td></tr>
+        <tr><td><code>behavior-sentinel</code></td><td>Sentinel: output rate monitoring</td><td>Activity log</td></tr>
+        <tr><td><code>supply-chain-sentinel</code></td><td>Sentinel: skill integrity</td><td>SHA-256 hashing</td></tr>
+        <tr><td><code>sentinel-commander</code></td><td>Commander: alert correlation</td><td>Sense network</td></tr>
+    </table>
+
+    <p>Each worker has a ~15% chance per cycle of going rogue. Sentinels detect anomalies through real file I/O and alert the commander over PubNub, who investigates and issues quarantine orders.</p>
+
+    <pre><code class="language-bash">pip install bedsheet[sense] duckduckgo-search
+cd examples/agent-sentinel
+python run.py</code></pre>
+
     <!-- Step 9: Testing -->
     <h2 id="testing"><span class="step-number">9</span> Testing</h2>
 
