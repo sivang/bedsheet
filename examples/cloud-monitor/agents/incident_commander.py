@@ -1,7 +1,6 @@
 """Incident Commander agent - coordinates responses to alerts via the sense network."""
 import asyncio
 import os
-import sys
 
 from bedsheet import Agent, ActionGroup, SenseMixin
 from bedsheet.llm.anthropic import AnthropicClient

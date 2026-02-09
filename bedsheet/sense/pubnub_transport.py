@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Any, AsyncIterator
 
-from bedsheet.sense.protocol import AgentPresence, SenseTransport
+from bedsheet.sense.protocol import AgentPresence
 from bedsheet.sense.serialization import deserialize, serialize
 from bedsheet.sense.signals import Signal
 

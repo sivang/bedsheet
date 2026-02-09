@@ -4,12 +4,7 @@ import logging
 from typing import Any, Callable, Awaitable
 from uuid import uuid4
 
-from bedsheet.events import (
-    CompletionEvent,
-    RemoteDelegationEvent,
-    RemoteResultEvent,
-    SignalReceivedEvent,
-)
+from bedsheet.events import CompletionEvent
 from bedsheet.sense.protocol import SenseTransport
 from bedsheet.sense.signals import Signal, SignalKind
 

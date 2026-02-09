@@ -3,7 +3,6 @@ import asyncio
 import io
 import os
 import re
-import sys
 from collections import Counter
 
 from bedsheet import Agent, ActionGroup, SenseMixin

@@ -1,7 +1,6 @@
 """CPU Watcher agent - monitors CPU usage and alerts on spikes."""
 import asyncio
 import os
-import sys
 
 import psutil
 

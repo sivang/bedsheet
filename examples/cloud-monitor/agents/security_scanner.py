@@ -2,7 +2,6 @@
 import asyncio
 import os
 import socket
-import sys
 
 from bedsheet import Agent, ActionGroup, SenseMixin
 from bedsheet.llm.anthropic import AnthropicClient

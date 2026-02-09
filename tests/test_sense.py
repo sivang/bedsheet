@@ -1,11 +1,9 @@
 """Tests for the Sense distributed communication module."""
 import asyncio
 import pytest
-from time import time
 
-from bedsheet import Agent, ActionGroup, SenseMixin, SenseNetwork
+from bedsheet import Agent, SenseMixin, SenseNetwork
 from bedsheet.events import (
-    CompletionEvent,
     SignalReceivedEvent,
     AgentConnectedEvent,
     AgentDisconnectedEvent,
@@ -14,7 +12,7 @@ from bedsheet.events import (
 )
 from bedsheet.sense.signals import Signal
 from bedsheet.sense.serialization import serialize, deserialize, MAX_MESSAGE_BYTES
-from bedsheet.sense.protocol import AgentPresence, SenseTransport
+from bedsheet.sense.protocol import AgentPresence
 from bedsheet.testing import MockLLMClient, MockResponse, MockSenseTransport, _MockSenseHub
 
 
