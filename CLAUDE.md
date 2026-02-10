@@ -63,6 +63,8 @@ bedsheet/
 | `docs/deployment-guide.html` | Local, GCP, and AWS deployment |
 | `docs/gcp-deployment-deep-dive.html` | GCP architecture, troubleshooting, best practices |
 | `docs/multi-agent-guide.html` | Supervisor patterns |
+| `docs/agent-sentinel-setup.html` | Agent Sentinel setup guide |
+| `docs/agent-sentinel-dashboard.html` | Live PubNub signal dashboard |
 | `PROJECT_STATUS.md` | Detailed project status and session history |
 
 ## Common Commands

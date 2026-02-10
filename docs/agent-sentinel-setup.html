@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Agent Sentinel Setup Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-link .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .nav-link:hover .step {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            max-width: 1000px;
+            padding: 48px 64px;
+        }
+
+        .hero {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .hero .description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        section {
+            margin-bottom: 48px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-top: 16px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            margin-top: 24px;
+        }
+
+        p {
+            margin-bottom: 16px;
+        }
+
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        ul, ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .callout {
+            border-left: 4px solid var(--accent-blue);
+            background: #f0f7ff;
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 16px;
+        }
+
+        .callout.warning {
+            border-left-color: var(--accent-orange);
+            background: #fff8e6;
+        }
+
+        .callout.success {
+            border-left-color: var(--accent-green);
+            background: #f0fff4;
+        }
+
+        .callout.danger {
+            border-left-color: var(--accent-red);
+            background: #fff5f5;
+        }
+
+        .callout strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-blue { background: #ddf4ff; color: #0969da; }
+        .badge-green { background: #dafbe1; color: #1a7f37; }
+        .badge-purple { background: #eddeff; color: #8250df; }
+        .badge-red { background: #ffebe9; color: #cf222e; }
+        .badge-orange { background: #fff1cc; color: #bf8700; }
+
+        .terminal {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border-radius: 8px;
+            padding: 16px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .terminal .prompt { color: #a6e3a1; }
+        .terminal .comment { color: #6c7086; }
+        .terminal .output { color: #89b4fa; }
+        .terminal .error { color: #f38ba8; }
+        .terminal .warn { color: #f9e2af; }
+
+        .architecture-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Agent Sentinel</h1>
+            <div class="subtitle">Setup Guide</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Getting Started</div>
+            <a href="#overview" class="nav-link"><span class="step">1</span> Overview</a>
+            <a href="#prerequisites" class="nav-link"><span class="step">2</span> Prerequisites</a>
+            <a href="#pubnub-keys" class="nav-link"><span class="step">3</span> Get PubNub Keys</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Installation</div>
+            <a href="#install" class="nav-link"><span class="step">4</span> Install Dependencies</a>
+            <a href="#env-vars" class="nav-link"><span class="step">5</span> Environment Variables</a>
+            <a href="#validate" class="nav-link"><span class="step">6</span> Validate Config</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Running</div>
+            <a href="#run" class="nav-link"><span class="step">7</span> Run the Demo</a>
+            <a href="#watch-for" class="nav-link"><span class="step">8</span> What to Watch For</a>
+            <a href="#understanding" class="nav-link"><span class="step">9</span> Understanding Output</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Dashboard</div>
+            <a href="#dashboard" class="nav-link"><span class="step">10</span> Live Dashboard</a>
+            <a href="#next-steps" class="nav-link"><span class="step">11</span> Next Steps</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Other Docs</div>
+            <a href="user-guide.html" class="nav-link">User Guide</a>
+            <a href="multi-agent-guide.html" class="nav-link">Multi-Agent Guide</a>
+            <a href="agent-sentinel-dashboard.html" class="nav-link">Live Dashboard</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="hero">
+            <h1>Agent Sentinel Setup Guide</h1>
+            <p class="description">
+                Set up and run the Agent Sentinel demo &mdash; a distributed security monitoring system where
+                AI agents watch each other for rogue behavior, compromised supply chains, and coordinated threats.
+            </p>
+        </div>
+
+        <!-- Section 1: Overview -->
+        <section id="overview">
+            <h2>1. Overview</h2>
+            <p>
+                Agent Sentinel is a multi-agent demo that showcases Bedsheet's
+                <strong>Sixth Sense</strong> distributed communication module. Six agents run as
+                separate processes, communicating over PubNub in real time:
+            </p>
+
+            <table>
+                <thead>
+                    <tr><th>Agent</th><th>Role</th><th>What It Does</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>web-researcher</code></td>
+                        <td><span class="badge badge-blue">Worker</span></td>
+                        <td>Performs DuckDuckGo searches every 15s. Occasionally goes rogue with burst searches.</td>
+                    </tr>
+                    <tr>
+                        <td><code>scheduler</code></td>
+                        <td><span class="badge badge-blue">Worker</span></td>
+                        <td>Manages a JSON calendar every 20s. May go rogue and sabotage appointments.</td>
+                    </tr>
+                    <tr>
+                        <td><code>skill-acquirer</code></td>
+                        <td><span class="badge badge-blue">Worker</span></td>
+                        <td>Installs Python skills with SHA-256 verification every 25s. May install malicious skills.</td>
+                    </tr>
+                    <tr>
+                        <td><code>behavior-sentinel</code></td>
+                        <td><span class="badge badge-purple">Sentinel</span></td>
+                        <td>Monitors activity logs for output rate anomalies (&gt;10 actions/min).</td>
+                    </tr>
+                    <tr>
+                        <td><code>supply-chain-sentinel</code></td>
+                        <td><span class="badge badge-purple">Sentinel</span></td>
+                        <td>Scans installed skills against a known-good registry for integrity violations.</td>
+                    </tr>
+                    <tr>
+                        <td><code>sentinel-commander</code></td>
+                        <td><span class="badge badge-red">Commander</span></td>
+                        <td>Correlates alerts from sentinels and issues quarantine orders.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Each worker has a ~15% chance per cycle to exhibit <strong>rogue behavior</strong>.
+                Sentinels detect anomalies and broadcast alerts. The commander investigates and quarantines compromised agents.
+            </p>
+
+            <div class="callout">
+                <strong>Related Resources</strong>
+                <a href="agent-sentinel-dashboard.html">Live Dashboard</a> &mdash; Real-time PubNub signal visualization<br>
+                <code>examples/agent-sentinel/docs/design.html</code> &mdash; Architecture and design documentation
+            </div>
+        </section>
+
+        <!-- Section 2: Prerequisites -->
+        <section id="prerequisites">
+            <h2>2. Prerequisites</h2>
+            <ul>
+                <li><strong>Python 3.11+</strong></li>
+                <li><strong>uv</strong> &mdash; fast Python package manager (<code>curl -LsSf https://astral.sh/uv/install.sh | sh</code>)</li>
+                <li><strong>PubNub account</strong> &mdash; free tier works (see next section)</li>
+                <li><strong>Anthropic API key</strong> &mdash; for Claude model access</li>
+            </ul>
+        </section>
+
+        <!-- Section 3: Get PubNub Keys -->
+        <section id="pubnub-keys">
+            <h2>3. Get PubNub Keys</h2>
+            <p>
+                Agent Sentinel uses PubNub for real-time inter-agent communication. You need a
+                subscribe key and a publish key.
+            </p>
+
+            <ol>
+                <li>Go to <strong>pubnub.com</strong> and create a free account</li>
+                <li>In the PubNub Admin Dashboard, click <strong>"Create New App"</strong></li>
+                <li>Name it something like <code>bedsheet-sentinel</code></li>
+                <li>Click into the app, then click into the default <strong>keyset</strong></li>
+                <li>Copy the <strong>Subscribe Key</strong> (starts with <code>sub-c-</code>)</li>
+                <li>Copy the <strong>Publish Key</strong> (starts with <code>pub-c-</code>)</li>
+            </ol>
+
+            <div class="callout warning">
+                <strong>Enable Presence</strong>
+                In your PubNub keyset settings, make sure <strong>Presence</strong> is enabled.
+                The dashboard uses presence to track which agents are online.
+            </div>
+        </section>
+
+        <!-- Section 4: Install Dependencies -->
+        <section id="install">
+            <h2>4. Install Dependencies</h2>
+            <p>From the project root:</p>
+
+            <pre><code class="language-bash"># Create and activate a virtual environment
+uv venv && source .venv/bin/activate
+
+# Install bedsheet with Sixth Sense support + demo dependencies
+uv pip install bedsheet[sense] duckduckgo-search</code></pre>
+
+            <p>
+                The <code>[sense]</code> extra installs the PubNub SDK and Sixth Sense module.
+                <code>duckduckgo-search</code> is needed by the web-researcher agent.
+            </p>
+        </section>
+
+        <!-- Section 5: Environment Variables -->
+        <section id="env-vars">
+            <h2>5. Set Environment Variables</h2>
+            <p>Export all three required keys in your terminal:</p>
+
+            <pre><code class="language-bash">export PUBNUB_SUBSCRIBE_KEY="sub-c-your-subscribe-key"
+export PUBNUB_PUBLISH_KEY="pub-c-your-publish-key"
+export ANTHROPIC_API_KEY="sk-ant-your-anthropic-key"</code></pre>
+
+            <div class="callout">
+                <strong>Tip</strong>
+                Add these to a <code>.env</code> file in the <code>examples/agent-sentinel/</code>
+                directory for convenience. The demo reads from the environment directly, so use
+                <code>source .env</code> or a tool like <code>direnv</code>.
+            </div>
+        </section>
+
+        <!-- Section 6: Validate Configuration -->
+        <section id="validate">
+            <h2>6. Validate Configuration</h2>
+            <p>Navigate to the demo directory and validate the agent configuration:</p>
+
+            <pre><code class="language-bash">cd examples/agent-sentinel
+bedsheet validate</code></pre>
+
+            <p>Expected output:</p>
+
+            <div class="terminal">
+<span class="prompt">$</span> bedsheet validate
+<span class="output">Validating bedsheet.yaml...</span>
+<span class="output">Found 6 agents:</span>
+<span class="output">  - web-researcher (agents.web_researcher.WebResearcher)</span>
+<span class="output">  - scheduler (agents.scheduler.Scheduler)</span>
+<span class="output">  - skill-acquirer (agents.skill_acquirer.SkillAcquirer)</span>
+<span class="output">  - behavior-sentinel (agents.behavior_sentinel.BehaviorSentinel)</span>
+<span class="output">  - supply-chain-sentinel (agents.supply_chain_sentinel.SupplyChainSentinel)</span>
+<span class="output">  - sentinel-commander (agents.sentinel_commander.SentinelCommander)</span>
+<span class="output">Configuration valid.</span>
+            </div>
+        </section>
+
+        <!-- Section 7: Run the Demo -->
+        <section id="run">
+            <h2>7. Run the Demo</h2>
+            <p>From the <code>examples/agent-sentinel/</code> directory:</p>
+
+            <pre><code class="language-bash">python run.py</code></pre>
+
+            <p>
+                The launcher starts all 6 agents as separate subprocesses with staggered 2-second delays.
+                Workers start first, followed by sentinels, then the commander.
+            </p>
+
+            <div class="terminal">
+<span class="prompt">$</span> python run.py
+<span class="output">Agent Sentinel - Multi-Agent Security Demo</span>
+<span class="output">==========================================</span>
+<span class="output">Starting web-researcher...</span>
+<span class="output">Starting scheduler...</span>
+<span class="output">Starting skill-acquirer...</span>
+<span class="output">Starting behavior-sentinel...</span>
+<span class="output">Starting supply-chain-sentinel...</span>
+<span class="output">Starting sentinel-commander...</span>
+<span class="output">All 6 agents running. Press Ctrl+C to stop.</span>
+            </div>
+
+            <div class="callout warning">
+                <strong>API Costs</strong>
+                Each agent cycle makes Claude API calls. The demo is designed for short demonstration runs
+                (5&ndash;10 minutes). Stop with <strong>Ctrl+C</strong> when you've seen the sentinel
+                detection and quarantine flow.
+            </div>
+        </section>
+
+        <!-- Section 8: What to Watch For -->
+        <section id="watch-for">
+            <h2>8. What to Watch For</h2>
+            <p>
+                As the demo runs, watch for these key events in the terminal output:
+            </p>
+
+            <h3>Normal Operations</h3>
+            <p>
+                Workers perform their tasks on regular cycles. You'll see search queries, calendar
+                operations, and skill installations with hash verifications.
+            </p>
+
+            <h3>Rogue Triggers (~15% per cycle)</h3>
+            <p>
+                When a worker goes rogue, its output changes dramatically:
+            </p>
+            <ul>
+                <li><strong>web-researcher</strong>: Fires 50 rapid searches in quick succession</li>
+                <li><strong>scheduler</strong>: Wipes the calendar and adds 20 junk entries</li>
+                <li><strong>skill-acquirer</strong>: Installs <code>data_exfiltrator.py</code> bypassing the safety check</li>
+            </ul>
+
+            <h3>Sentinel Alerts</h3>
+            <p>
+                Sentinels detect anomalies and broadcast alert signals:
+            </p>
+            <ul>
+                <li><strong>behavior-sentinel</strong>: Flags agents exceeding 10 actions/minute</li>
+                <li><strong>supply-chain-sentinel</strong>: Detects known-malicious or tampered skills</li>
+            </ul>
+
+            <h3>Commander Response</h3>
+            <p>
+                The sentinel-commander receives alerts, queries sentinels for evidence, and issues
+                quarantine orders broadcast on the <code>quarantine</code> channel.
+            </p>
+        </section>
+
+        <!-- Section 9: Understanding the Output -->
+        <section id="understanding">
+            <h2>9. Understanding the Output</h2>
+            <p>Here's an annotated example of what a rogue detection cycle looks like:</p>
+
+            <div class="terminal">
+<span class="comment"># Worker performs normal search</span>
+<span class="output">[web-researcher] Searching: "latest Python 3.12 features"</span>
+
+<span class="comment"># Rogue trigger fires! (15% chance)</span>
+<span class="error">[web-researcher] [ROGUE] Initiating burst search...</span>
+<span class="error">[web-researcher] [ROGUE] Search 1/50: "random query 7f3a"</span>
+<span class="error">[web-researcher] [ROGUE] Search 2/50: "random query 2b1c"</span>
+<span class="comment">... (48 more rapid searches)</span>
+
+<span class="comment"># Behavior sentinel detects the spike</span>
+<span class="warn">[behavior-sentinel] ANOMALY: web-researcher rate 25.0/min (threshold: 10)</span>
+<span class="warn">[behavior-sentinel] Broadcasting alert on 'alerts' channel</span>
+
+<span class="comment"># Commander receives the alert and investigates</span>
+<span class="output">[sentinel-commander] Alert received from behavior-sentinel</span>
+<span class="output">[sentinel-commander] Requesting evidence from behavior-sentinel...</span>
+<span class="output">[sentinel-commander] Evidence confirmed. Issuing quarantine.</span>
+
+<span class="comment"># Quarantine broadcast</span>
+<span class="error">[sentinel-commander] QUARANTINE: web-researcher</span>
+<span class="error">[sentinel-commander] Reason: Output rate anomaly (25/min > 10/min)</span>
+            </div>
+
+            <h3>Supply Chain Detection</h3>
+
+            <div class="terminal">
+<span class="comment"># Skill acquirer goes rogue</span>
+<span class="error">[skill-acquirer] [ROGUE] Installing data_exfiltrator.py (bypassing safety)</span>
+
+<span class="comment"># Supply chain sentinel scans and detects</span>
+<span class="warn">[supply-chain-sentinel] ALERT: known_malicious skill detected</span>
+<span class="warn">[supply-chain-sentinel]   File: data_exfiltrator.py</span>
+<span class="warn">[supply-chain-sentinel]   Hash: d18b5ae5...df797a1bc</span>
+<span class="warn">[supply-chain-sentinel] Broadcasting critical alert</span>
+            </div>
+        </section>
+
+        <!-- Section 10: Live Dashboard -->
+        <section id="dashboard">
+            <h2>10. Open the Live Dashboard</h2>
+            <p>
+                While the demo is running, open the live dashboard to visualize signals in real time:
+            </p>
+
+            <ol>
+                <li>Open <code>docs/agent-sentinel-dashboard.html</code> in your browser</li>
+                <li>Enter your <strong>PubNub Subscribe Key</strong> in the connection panel</li>
+                <li>Click <strong>Connect</strong></li>
+            </ol>
+
+            <p>The dashboard connects to the same PubNub channels as the agents and shows:</p>
+            <ul>
+                <li><strong>World map</strong> with agent nodes at simulated cloud regions</li>
+                <li><strong>Alert feed</strong> with real-time alerts as they arrive</li>
+                <li><strong>Agent status</strong> cards showing online/offline presence</li>
+                <li><strong>Signal log</strong> showing all raw signals at the bottom</li>
+                <li><strong>Animated signal lines</strong> between agents when they communicate</li>
+            </ul>
+
+            <div class="callout success">
+                <strong>No Simulation</strong>
+                Every signal on the dashboard comes from the actual running agents.
+                The dashboard is a pure PubNub subscriber &mdash; it doesn't generate any fake data.
+            </div>
+        </section>
+
+        <!-- Section 11: Next Steps -->
+        <section id="next-steps">
+            <h2>11. Next Steps</h2>
+            <ul>
+                <li><a href="agent-sentinel-dashboard.html">Live Dashboard</a> &mdash; Open the real-time signal visualization</li>
+                <li><code>examples/agent-sentinel/docs/design.html</code> &mdash; Deep dive into the architecture and agent design</li>
+                <li><a href="multi-agent-guide.html">Multi-Agent Guide</a> &mdash; Learn about Bedsheet's supervisor patterns</li>
+                <li><a href="user-guide.html">User Guide</a> &mdash; Start building your own agents from scratch</li>
+            </ul>
+
+            <h3>Customization Ideas</h3>
+            <ul>
+                <li>Adjust rogue probability in worker agents (currently 15%)</li>
+                <li>Add new sentinel types (e.g., network anomaly detection)</li>
+                <li>Change the behavior-sentinel threshold from 10 actions/min</li>
+                <li>Add more skills to the <code>clawhub/registry.json</code></li>
+                <li>Create new worker agents with different capabilities</li>
+            </ul>
+        </section>
+    </main>
+
+    <script>hljs.highlightAll();</script>
+</body>
+</html>
