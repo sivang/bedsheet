@@ -1,0 +1,39 @@
+version: "1.0"
+name: agent-sentinel
+target: local
+
+agents:
+  - name: web-researcher
+    module: agents.web_researcher
+    class_name: WebResearcher
+    description: "Worker agent that performs real DuckDuckGo searches"
+
+  - name: scheduler
+    module: agents.scheduler
+    class_name: Scheduler
+    description: "Worker agent that manages a JSON calendar"
+
+  - name: skill-acquirer
+    module: agents.skill_acquirer
+    class_name: SkillAcquirer
+    description: "Worker agent that installs skills from ClawHub with SHA-256 verification"
+
+  - name: behavior-sentinel
+    module: agents.behavior_sentinel
+    class_name: BehaviorSentinel
+    description: "Sentinel that monitors worker output rates for anomalies"
+
+  - name: supply-chain-sentinel
+    module: agents.supply_chain_sentinel
+    class_name: SupplyChainSentinel
+    description: "Sentinel that verifies skill integrity via SHA-256 hashing"
+
+  - name: sentinel-commander
+    module: agents.sentinel_commander
+    class_name: SentinelCommander
+    description: "Commander that correlates alerts and issues quarantine orders"
+
+targets:
+  local:
+    port: 8000
+    hot_reload: true

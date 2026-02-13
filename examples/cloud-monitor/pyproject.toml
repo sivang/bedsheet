@@ -1,0 +1,12 @@
+[project]
+name = "cloud-monitor"
+version = "0.1.0"
+description = "Cloud monitoring demo using Bedsheet Sense for distributed agent communication"
+requires-python = ">=3.11"
+dependencies = [
+    "bedsheet[sense]",
+    "psutil>=5.9.0",
+]
+
+[project.scripts]
+cloud-monitor = "run:main"

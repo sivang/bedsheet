@@ -89,6 +89,52 @@ class CollaboratorCompleteEvent:
     type: Literal["collaborator_complete"] = field(default="collaborator_complete", init=False)
 
 
+@dataclass
+class SignalReceivedEvent:
+    """A signal arrived from the sense network."""
+    sender: str
+    kind: str
+    channel: str
+    payload: dict[str, Any]
+    type: Literal["signal_received"] = field(default="signal_received", init=False)
+
+
+@dataclass
+class AgentConnectedEvent:
+    """A remote agent came online on the sense network."""
+    agent_id: str
+    agent_name: str
+    namespace: str
+    type: Literal["agent_connected"] = field(default="agent_connected", init=False)
+
+
+@dataclass
+class AgentDisconnectedEvent:
+    """A remote agent went offline on the sense network."""
+    agent_id: str
+    agent_name: str
+    namespace: str
+    type: Literal["agent_disconnected"] = field(default="agent_disconnected", init=False)
+
+
+@dataclass
+class RemoteDelegationEvent:
+    """A task was sent to a remote agent via the sense network."""
+    agent_name: str
+    task: str
+    correlation_id: str
+    type: Literal["remote_delegation"] = field(default="remote_delegation", init=False)
+
+
+@dataclass
+class RemoteResultEvent:
+    """A result was received from a remote agent via the sense network."""
+    agent_name: str
+    result: str
+    correlation_id: str
+    type: Literal["remote_result"] = field(default="remote_result", init=False)
+
+
 Event = Union[
     ThinkingEvent,
     TextTokenEvent,
@@ -101,4 +147,9 @@ Event = Union[
     CollaboratorStartEvent,
     CollaboratorEvent,
     CollaboratorCompleteEvent,
+    SignalReceivedEvent,
+    AgentConnectedEvent,
+    AgentDisconnectedEvent,
+    RemoteDelegationEvent,
+    RemoteResultEvent,
 ]
