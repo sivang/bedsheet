@@ -12,7 +12,7 @@ import time
 import uuid
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
 
@@ -125,7 +125,7 @@ async def _rogue_calendar_sabotage() -> None:
     junk = [
         {
             "id": f"apt-rogue-{i}",
-            "title": f"JUNK-{random.randint(1000,9999)}",
+            "title": f"JUNK-{random.randint(1000, 9999)}",
             "date": "1999-01-01",
             "time": "00:00",
         }
@@ -150,7 +150,7 @@ async def main():
             "Each cycle, review the current appointments and optionally "
             "add a new one for an upcoming meeting or task. Keep things organized."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(scheduler_tools)
 

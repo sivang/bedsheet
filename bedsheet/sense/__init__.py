@@ -1,4 +1,5 @@
 """Sense - distributed agent communication for Bedsheet."""
+
 from bedsheet.sense.signals import Signal, SignalKind
 from bedsheet.sense.protocol import SenseTransport, AgentPresence
 from bedsheet.sense.serialization import serialize, deserialize

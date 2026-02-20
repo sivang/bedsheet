@@ -13,7 +13,7 @@ import time
 from duckduckgo_search import DDGS
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
 
@@ -110,7 +110,7 @@ async def main():
             "technology topic and search for recent news about it. "
             "Report what you find briefly."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(research_tools)
 

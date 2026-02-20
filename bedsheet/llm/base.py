@@ -1,4 +1,5 @@
 """LLM client protocol and response types."""
+
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
@@ -8,6 +9,7 @@ from bedsheet.memory.base import Message
 @dataclass
 class ToolCall:
     """A tool call requested by the LLM."""
+
     id: str
     name: str
     input: dict[str, Any]
@@ -16,6 +18,7 @@ class ToolCall:
 @dataclass
 class LLMResponse:
     """Response from an LLM call."""
+
     text: str | None
     tool_calls: list[ToolCall]
     stop_reason: str = "end_turn"
@@ -26,6 +29,7 @@ class LLMResponse:
 @dataclass
 class ToolDefinition:
     """Definition of a tool for the LLM."""
+
     name: str
     description: str
     input_schema: dict[str, Any]
@@ -37,6 +41,7 @@ class OutputSchema:
 
     Can be initialized with a Pydantic model or a JSON schema dict.
     """
+
     schema: dict[str, Any]
     _pydantic_model: Any = field(default=None, repr=False)
 

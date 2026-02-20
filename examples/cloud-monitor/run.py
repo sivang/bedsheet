@@ -11,6 +11,7 @@ Required environment variables:
 Usage:
     python run.py
 """
+
 import os
 import signal
 import subprocess
@@ -52,7 +53,9 @@ def main():
     try:
         for agent_script in AGENTS:
             full_path = os.path.join(script_dir, agent_script)
-            agent_name = os.path.basename(agent_script).replace(".py", "").replace("_", "-")
+            agent_name = (
+                os.path.basename(agent_script).replace(".py", "").replace("_", "-")
+            )
             print(f"  Starting {agent_name}...")
 
             proc = subprocess.Popen(

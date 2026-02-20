@@ -1,4 +1,5 @@
 """SenseMixin - gives any Agent distributed sensing capabilities."""
+
 import asyncio
 import logging
 from typing import Any, Callable, Awaitable
@@ -122,9 +123,7 @@ class SenseMixin:
             response_signal = await asyncio.wait_for(future, timeout=timeout)
             return response_signal.payload.get("result", "")
         except asyncio.TimeoutError:
-            raise TimeoutError(
-                f"No response from '{agent_name}' within {timeout}s"
-            )
+            raise TimeoutError(f"No response from '{agent_name}' within {timeout}s")
         finally:
             self._pending_requests.pop(correlation_id, None)
 
@@ -164,11 +163,13 @@ class SenseMixin:
 
     def on_signal(self, kind: SignalKind) -> Callable[[SignalHandler], SignalHandler]:
         """Decorator to register a handler for a specific signal kind."""
+
         def decorator(fn: SignalHandler) -> SignalHandler:
             if kind not in self._signal_handlers:
                 self._signal_handlers[kind] = []
             self._signal_handlers[kind].append(fn)
             return fn
+
         return decorator
 
     async def _signal_loop(self) -> None:
@@ -193,7 +194,10 @@ class SenseMixin:
                 )
 
                 # Handle responses to our pending requests
-                if signal.kind == "response" and signal.correlation_id in self._pending_requests:
+                if (
+                    signal.kind == "response"
+                    and signal.correlation_id in self._pending_requests
+                ):
                     future = self._pending_requests[signal.correlation_id]
                     if not future.done():
                         future.set_result(signal)
@@ -277,7 +281,7 @@ class SenseMixin:
                 if self._transport:
                     # Gather capabilities from action groups
                     capabilities = []
-                    if hasattr(self, '_action_groups'):
+                    if hasattr(self, "_action_groups"):
                         for group in self._action_groups:  # type: ignore[attr-defined]
                             for action in group.get_actions():
                                 capabilities.append(action.name)

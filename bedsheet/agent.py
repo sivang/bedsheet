@@ -1,10 +1,18 @@
 """Agent class - the main orchestrator."""
+
 import asyncio
 import json
 from typing import AsyncIterator
 
 from bedsheet.action_group import ActionGroup, Action
-from bedsheet.events import Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent, TextTokenEvent
+from bedsheet.events import (
+    Event,
+    CompletionEvent,
+    ErrorEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+    TextTokenEvent,
+)
 from bedsheet.llm.base import LLMClient, ToolDefinition
 from bedsheet.memory.base import Memory, Message
 from bedsheet.memory.in_memory import InMemory
@@ -39,7 +47,9 @@ Current date: $current_datetime$
     ) -> None:
         self.name = name
         self.instruction = instruction
-        self.orchestration_template = orchestration_template or self.DEFAULT_ORCHESTRATION_TEMPLATE
+        self.orchestration_template = (
+            orchestration_template or self.DEFAULT_ORCHESTRATION_TEMPLATE
+        )
         self.model_client = model_client
         self.memory = memory if memory is not None else InMemory()
         self.max_iterations = max_iterations
@@ -49,13 +59,17 @@ Current date: $current_datetime$
         """Render the orchestration template with variable substitution."""
         from datetime import datetime, timezone
 
-        tools_summary = ", ".join(
-            action.name for group in self._action_groups for action in group.get_actions()
-        ) or "none"
+        tools_summary = (
+            ", ".join(
+                action.name
+                for group in self._action_groups
+                for action in group.get_actions()
+            )
+            or "none"
+        )
 
         return (
-            self.orchestration_template
-            .replace("$instruction$", self.instruction)
+            self.orchestration_template.replace("$instruction$", self.instruction)
             .replace("$agent_name$", self.name)
             .replace("$current_datetime$", datetime.now(timezone.utc).isoformat())
             .replace("$tools_summary$", tools_summary)
@@ -114,7 +128,7 @@ Current date: $current_datetime$
         # 4. Main loop
         for iteration in range(self.max_iterations):
             # Call LLM (with streaming if requested and supported)
-            if stream and hasattr(self.model_client, 'chat_stream'):
+            if stream and hasattr(self.model_client, "chat_stream"):
                 response = None
                 async for chunk in self.model_client.chat_stream(
                     messages=messages,
@@ -158,7 +172,7 @@ Current date: $current_datetime$
                     tool_calls=[
                         {"id": tc.id, "name": tc.name, "input": tc.input}
                         for tc in response.tool_calls
-                    ]
+                    ],
                 )
                 messages.append(assistant_message)
                 new_messages.append(assistant_message)
@@ -182,9 +196,9 @@ Current date: $current_datetime$
                     except Exception as e:
                         return tool_call.id, None, str(e)
 
-                results = await asyncio.gather(*[
-                    execute_tool(tc) for tc in response.tool_calls
-                ])
+                results = await asyncio.gather(
+                    *[execute_tool(tc) for tc in response.tool_calls]
+                )
 
                 # Yield results and build messages
                 for call_id, result, error in results:
@@ -197,7 +211,11 @@ Current date: $current_datetime$
                     if error:
                         content = f"Error: {error}"
                     else:
-                        content = json.dumps(result) if not isinstance(result, str) else result
+                        content = (
+                            json.dumps(result)
+                            if not isinstance(result, str)
+                            else result
+                        )
 
                     tool_result_message = Message(
                         role="tool_result",

@@ -170,7 +170,9 @@ def test_bedsheet_config_target_type_validation():
     with pytest.raises(ValidationError):
         BedsheetConfig(
             name="test",
-            agents=[AgentConfig(name="test", module="test.agent", class_name="TestAgent")],
+            agents=[
+                AgentConfig(name="test", module="test.agent", class_name="TestAgent")
+            ],
             target="local",
             targets={
                 "local": AWSTargetConfig(region="us-east-1"),  # Wrong type!
@@ -342,7 +344,9 @@ targets:
         config_path = Path(tmpdir) / "bedsheet.yaml"
         config_path.write_text(yaml_content)
 
-        with pytest.raises(ValueError, match="Environment variable 'NONEXISTENT_VAR' is not set"):
+        with pytest.raises(
+            ValueError, match="Environment variable 'NONEXISTENT_VAR' is not set"
+        ):
             load_config(config_path)
 
 

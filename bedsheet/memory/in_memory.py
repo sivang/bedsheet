@@ -1,4 +1,5 @@
 """In-memory storage for development and testing."""
+
 from bedsheet.memory.base import Message
 
 

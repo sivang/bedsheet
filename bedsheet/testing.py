@@ -1,4 +1,5 @@
 """Testing utilities for Bedsheet Agents."""
+
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -13,6 +14,7 @@ from bedsheet.sense.signals import Signal
 @dataclass
 class MockResponse:
     """A mock response for testing."""
+
     text: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
     thinking: str | None = None
@@ -61,10 +63,10 @@ class MockLLMClient:
 
         # Stream text tokens (word by word for readability)
         if response.text:
-            words = response.text.split(' ')
+            words = response.text.split(" ")
             for i, word in enumerate(words):
                 if i > 0:
-                    yield ' '
+                    yield " "
                 yield word
 
         # Yield final response for tool calls

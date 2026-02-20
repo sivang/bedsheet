@@ -3,6 +3,7 @@
 Bridges PubNub's threaded callbacks into asyncio via an asyncio.Queue.
 Requires: pip install pubnub>=7.0.0  (or: pip install bedsheet[sense])
 """
+
 import asyncio
 import logging
 from typing import Any, AsyncIterator
@@ -30,7 +31,9 @@ logger = logging.getLogger(__name__)
 class _SignalListener(SubscribeCallback):
     """PubNub callback that routes messages into an asyncio.Queue."""
 
-    def __init__(self, queue: asyncio.Queue[Signal], loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, queue: asyncio.Queue[Signal], loop: asyncio.AbstractEventLoop
+    ) -> None:
         super().__init__()
         self._queue = queue
         self._loop = loop
@@ -146,7 +149,12 @@ class PubNubTransport:
         if not self._pubnub:
             raise RuntimeError("Not connected. Call connect() first.")
         full_ch = self._full_channel(channel)
-        result = await self._pubnub.here_now().channels([full_ch]).include_uuids(True).future()
+        result = (
+            await self._pubnub.here_now()
+            .channels([full_ch])
+            .include_uuids(True)
+            .future()
+        )
 
         agents: list[AgentPresence] = []
         for ch_data in result.result.channels:

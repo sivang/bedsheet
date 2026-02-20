@@ -1,4 +1,5 @@
 """SenseTransport protocol for distributed agent communication."""
+
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Protocol, runtime_checkable
 

@@ -1,0 +1,576 @@
+# sentinel-gcp - GCP Deployment Guide
+
+This guide walks you through deploying your Bedsheet agent to Google Cloud Platform using Cloud Run and Terraform.
+
+## Overview
+
+This deployment will create the following GCP resources:
+
+- **Cloud Run Service**: Serverless container hosting for your agent
+- **Vertex AI Access**: For Gemini model inference
+- **Service Account**: Dedicated identity with Vertex AI permissions
+- **Artifact Registry**: Container image storage
+- **IAM Bindings**: Access controls for the service
+
+**Estimated deployment time**: 5-10 minutes
+**Estimated monthly cost**: $0-10 (with Cloud Run's generous free tier)
+
+---
+
+## ⚠️ Critical: Credential Priority Warning
+
+> **IMPORTANT**: If you have `GOOGLE_APPLICATION_CREDENTIALS` set in your shell, it will **override** Application Default Credentials (ADC). This can cause silent failures!
+
+**The Problem:**
+If `GOOGLE_APPLICATION_CREDENTIALS` points to a service account for a **different** GCP project:
+- Deployment appears to succeed
+- But your agent gets `403 PERMISSION_DENIED` errors at runtime
+- The error message won't tell you it's a credentials issue
+
+**Check if you're affected:**
+```bash
+echo $GOOGLE_APPLICATION_CREDENTIALS
+# If this prints a path, you may have an issue
+```
+
+**Fix:**
+```bash
+# Option 1: Unset it (recommended)
+unset GOOGLE_APPLICATION_CREDENTIALS
+
+# Option 2: Point it to correct project's service account
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/correct-project-sa.json
+```
+
+**SDK Credential Priority (highest to lowest):**
+1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+2. Application Default Credentials (`gcloud auth application-default login`)
+3. Compute Engine / Cloud Run metadata server
+
+Run `make preflight` to automatically check for this issue.
+
+---
+
+## ⚠️ Project Consistency Warning
+
+The deployment involves multiple places where the GCP project is configured:
+
+| Source | Purpose |
+|--------|---------|
+| `terraform/terraform.tfvars` | Infrastructure deployment |
+| `gcloud config` | CLI commands and ADC |
+| `.env` file | Local development |
+
+**If these don't match, deployment may silently use the wrong project!**
+
+**Check for mismatches:**
+```bash
+# Check terraform.tfvars
+grep project_id terraform/terraform.tfvars
+
+# Check gcloud config
+gcloud config get-value project
+
+# They should match!
+```
+
+**Fix mismatches:**
+```bash
+# Set gcloud to match terraform.tfvars
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+```
+
+The `make preflight` command automatically detects and offers to fix this.
+
+---
+
+## Prerequisites Checklist
+
+Before you begin, ensure you have:
+
+- [ ] **Google Cloud SDK (gcloud)** - [Install Guide](https://cloud.google.com/sdk/docs/install)
+- [ ] **Terraform** >= 1.0.0 - [Install Guide](https://developer.hashicorp.com/terraform/install)
+- [ ] **Docker** - [Install Guide](https://docs.docker.com/get-docker/)
+- [ ] **GCP Project** with billing enabled - [Create Project](https://console.cloud.google.com/projectcreate)
+
+Verify your installations:
+
+```bash
+gcloud --version
+terraform --version
+docker --version
+```
+
+## Quick Start
+
+If you're comfortable with the defaults, deploy in three commands:
+
+```bash
+# 1. Authenticate (uses your existing GCP account)
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project symptracker-prod
+
+# 2. Set up environment and infrastructure
+cp .env.example .env
+make setup
+
+# 3. Deploy!
+make deploy
+```
+
+Your agent will be live at the URL shown in the output.
+
+---
+
+## Step-by-Step Deployment
+
+### Step 1: Authenticate with GCP
+
+Set up your GCP credentials:
+
+```bash
+# Login to your GCP account
+gcloud auth login
+
+# Set up Application Default Credentials (used by ADK)
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project symptracker-prod
+```
+
+### Step 2: Configure Environment
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your project settings:
+
+```bash
+GOOGLE_CLOUD_PROJECT=symptracker-prod
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+**No API key needed!** The deployment uses your GCP account's Vertex AI access via Application Default Credentials.
+
+### Step 3: Run Preflight Checks
+
+Verify your environment is properly configured:
+
+```bash
+make preflight
+```
+
+This command checks:
+- **GOOGLE_APPLICATION_CREDENTIALS** - warns if set (potential cross-project issue)
+- Application Default Credentials (ADC) - ensures configured
+- gcloud authentication status
+- Terraform initialization
+- Project configuration
+
+**Fix any issues before proceeding.** The credential check is especially important - see warning above.
+
+### Step 4: Set Up GCP Resources
+
+Initialize the GCP project and enable required APIs:
+
+```bash
+make setup
+```
+
+This will:
+- Enable Cloud Run, Vertex AI, Artifact Registry, Cloud Build APIs
+- Initialize Terraform
+- Create infrastructure (service account, container registry)
+
+### Step 5: Deploy Your Agent
+
+You have two deployment options:
+
+#### Option A: Quick Deploy (Cloud Build)
+
+For rapid iteration and development:
+
+```bash
+make deploy
+```
+
+This uses `gcloud builds submit` for a streamlined deployment without state management.
+
+#### Option B: Terraform Deploy (Recommended for Production)
+
+For full Infrastructure as Code with state management:
+
+```bash
+make deploy-terraform
+```
+
+Or step-by-step:
+
+```bash
+make tf-init    # Initialize Terraform
+make tf-plan    # Review what will be created
+make tf-apply   # Apply changes
+```
+
+### Step 6: Verify Deployment
+
+After deployment, you'll see output like:
+
+```
+service_url = "https://sentinel_gcp-xxxxx-ew.a.run.app"
+```
+
+Test your agent:
+
+```bash
+curl -X POST https://YOUR_SERVICE_URL/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, agent!"}'
+```
+
+---
+
+## Accessing Your Deployed Agent
+
+### Service URL
+
+Your agent is deployed to:
+
+```
+https://sentinel_gcp-[hash]-us.a.run.app
+```
+
+Find the exact URL:
+
+```bash
+gcloud run services describe sentinel_gcp \
+  --region us-central1 \
+  --format 'value(status.url)'
+```
+
+### Development UI
+
+For interactive testing with ADK's built-in development UI:
+
+```bash
+# Local development (no cloud resources needed)
+make dev-ui-local
+# Open http://localhost:8000
+
+# Cloud-hosted dev UI (separate service)
+make dev-ui
+# Opens a -dev suffixed service with full UI
+```
+
+The Dev UI provides:
+- Chat interface for testing conversations
+- Execution trace visualization
+- State inspector for debugging
+- Evaluation tools
+
+---
+
+## Custom Domain Setup (Optional)
+
+To use a custom domain instead of the Cloud Run URL:
+
+### Step 1: Verify Domain Ownership
+
+```bash
+gcloud domains verify YOUR_DOMAIN.com
+```
+
+### Step 2: Create Domain Mapping
+
+```bash
+gcloud run domain-mappings create \
+  --service sentinel_gcp \
+  --domain api.YOUR_DOMAIN.com \
+  --region us-central1
+```
+
+### Step 3: Configure DNS
+
+Add the DNS records shown in the output to your domain registrar:
+- CNAME record pointing to `ghs.googlehosted.com`
+- Or A/AAAA records for apex domains
+
+### Step 4: Wait for SSL Certificate
+
+Google automatically provisions an SSL certificate. This can take 15-30 minutes.
+
+Check status:
+
+```bash
+gcloud run domain-mappings describe \
+  --domain api.YOUR_DOMAIN.com \
+  --region us-central1
+```
+
+---
+
+## Monitoring and Logs
+
+### View Logs
+
+```bash
+# Stream live logs
+make logs
+
+# Or use gcloud directly
+gcloud run logs read sentinel_gcp \
+  --region us-central1 \
+  --limit 100
+
+# Tail logs in real-time
+gcloud run logs tail sentinel_gcp \
+  --region us-central1
+```
+
+### GCP Console
+
+Access the full monitoring suite at:
+
+- **Cloud Run Dashboard**: [console.cloud.google.com/run](https://console.cloud.google.com/run?project=symptracker-prod)
+- **Logs Explorer**: [console.cloud.google.com/logs](https://console.cloud.google.com/logs?project=symptracker-prod)
+- **Error Reporting**: [console.cloud.google.com/errors](https://console.cloud.google.com/errors?project=symptracker-prod)
+
+### Key Metrics to Monitor
+
+In the Cloud Run console, watch for:
+
+- **Request latency**: p50 and p99 response times
+- **Instance count**: Auto-scaling behavior
+- **Memory utilization**: Ensure you're not hitting limits
+- **Error rate**: 4xx and 5xx responses
+- **Cold start frequency**: First request after scaling from zero
+
+### Setting Up Alerts
+
+Create alerts for production monitoring:
+
+```bash
+# Example: Alert when error rate exceeds 1%
+gcloud monitoring policies create \
+  --notification-channels=YOUR_CHANNEL_ID \
+  --display-name="sentinel-gcp Error Rate" \
+  --condition-display-name="High Error Rate" \
+  --condition-filter='resource.type="cloud_run_revision" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class!="2xx"'
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 🔴 "403 PERMISSION_DENIED" but IAM looks correct
+
+**This is the #1 gotcha!** If you get permission errors but your IAM roles look correct, check for `GOOGLE_APPLICATION_CREDENTIALS`:
+
+```bash
+# Check if it's set
+echo $GOOGLE_APPLICATION_CREDENTIALS
+
+# If it shows a path, that's likely the problem!
+# The SDK is using credentials for a DIFFERENT project.
+```
+
+**Fix:**
+```bash
+# Unset it to use ADC instead
+unset GOOGLE_APPLICATION_CREDENTIALS
+
+# Then retry your operation
+make deploy
+```
+
+**Why this happens:**
+The Google Cloud SDK checks credentials in this order:
+1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable (if set, ALWAYS used)
+2. Application Default Credentials (ADC)
+3. Compute Engine metadata
+
+If `GOOGLE_APPLICATION_CREDENTIALS` points to a service account for project A, but you're deploying to project B, you get permission denied even though your ADC has access to project B.
+
+**Prevention:**
+- Run `make preflight` before deploying
+- Don't set `GOOGLE_APPLICATION_CREDENTIALS` globally in your shell profile
+- Use `gcloud auth application-default login` instead
+
+---
+
+#### "Permission denied" errors (IAM issues)
+
+Ensure your account has the required roles:
+
+```bash
+# Check current permissions
+gcloud projects get-iam-policy symptracker-prod \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:YOUR_EMAIL"
+
+# Grant required roles (run as project owner)
+gcloud projects add-iam-policy-binding symptracker-prod \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding symptracker-prod \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/aiplatform.user"
+```
+
+#### "API not enabled" errors
+
+Enable the required APIs:
+
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  aiplatform.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudbuild.googleapis.com \
+  --project=symptracker-prod
+```
+
+#### Container build failures
+
+Check Cloud Build logs:
+
+```bash
+gcloud builds list --limit=5
+gcloud builds log BUILD_ID
+```
+
+Common fixes:
+- Ensure Dockerfile syntax is correct
+- Check that all dependencies are specified in `pyproject.toml`
+- Verify base image is accessible
+
+#### "Vertex AI permission denied" errors
+
+Ensure the service account has Vertex AI access:
+
+```bash
+# Grant Vertex AI user role to the service account
+gcloud projects add-iam-policy-binding symptracker-prod \
+  --member="serviceAccount:sentinel_gcp-sa@symptracker-prod.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.user"
+```
+
+For local development, ensure ADC is configured:
+
+```bash
+gcloud auth application-default login
+```
+
+#### Cold start latency issues
+
+If cold starts are too slow:
+
+1. **Increase minimum instances** (adds cost):
+   ```bash
+   gcloud run services update sentinel_gcp \
+     --min-instances=1 \
+     --region us-central1
+   ```
+
+2. **Optimize container startup**:
+   - Use smaller base images
+   - Lazy-load heavy dependencies
+   - Reduce initialization logic
+
+#### Memory limit exceeded
+
+Increase memory allocation in `terraform.tfvars`:
+
+```hcl
+# terraform.tfvars
+cloud_run_memory = "1Gi"  # Or "2Gi" for larger workloads
+```
+
+Then redeploy:
+
+```bash
+make tf-apply
+```
+
+### Getting Help
+
+- **Bedsheet Issues**: [github.com/sivang/bedsheet/issues](https://github.com/sivang/bedsheet/issues)
+- **Cloud Run Docs**: [cloud.google.com/run/docs](https://cloud.google.com/run/docs)
+- **Google ADK Docs**: [google.github.io/adk-docs](https://google.github.io/adk-docs)
+
+---
+
+## Cleanup
+
+To remove all deployed resources and stop incurring costs:
+
+### Quick Cleanup
+
+```bash
+make tf-destroy
+```
+
+This will prompt for confirmation before destroying:
+- Cloud Run service
+- Service account
+- Artifact Registry repository
+- IAM bindings
+
+### Manual Cleanup
+
+If Terraform state is corrupted or you deployed via Cloud Build:
+
+```bash
+# Delete Cloud Run service
+gcloud run services delete sentinel_gcp \
+  --region us-central1 \
+  --quiet
+
+# Delete container images from Artifact Registry
+gcloud artifacts docker images delete \
+  us-central1-docker.pkg.dev/symptracker-prod/sentinel_gcp-repo/sentinel_gcp \
+  --delete-tags \
+  --quiet
+
+# Delete Artifact Registry repository
+gcloud artifacts repositories delete sentinel_gcp-repo \
+  --location=us-central1 \
+  --quiet
+
+# Delete service account
+gcloud iam service-accounts delete sentinel_gcp-sa@symptracker-prod.iam.gserviceaccount.com \
+  --quiet
+```
+
+### Verify Cleanup
+
+Confirm no resources remain:
+
+```bash
+gcloud run services list --region us-central1
+gcloud artifacts repositories list --location=us-central1
+gcloud iam service-accounts list
+```
+
+---
+
+## Next Steps
+
+Now that your agent is deployed:
+
+1. **Add Authentication**: Set `allow_unauthenticated = false` in `terraform.tfvars` and configure IAM
+2. **Set Up CI/CD**: Use the included `.github/workflows/` templates
+3. **Add Monitoring**: Configure Cloud Monitoring dashboards and alerts
+4. **Scale Up**: Adjust min/max instances and memory as needed
+5. **Add Custom Domain**: Follow the custom domain setup above
+
+For more information, see the [Bedsheet Documentation](https://sivang.github.io/bedsheet/).

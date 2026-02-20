@@ -1,4 +1,5 @@
 """Tests for source code extraction module."""
+
 from typing import Any, Optional
 
 from bedsheet import ActionGroup
@@ -14,6 +15,7 @@ class TestSourceExtractorBasics:
 
     def test_extract_simple_sync_function(self):
         """Test extracting a simple synchronous function."""
+
         def greet(name: str) -> str:
             return f"Hello, {name}!"
 
@@ -24,10 +26,14 @@ class TestSourceExtractorBasics:
         assert "def greet" in info.source_code
         assert info.is_async is False
         assert "return" in info.function_body
-        assert "Hello, {name}!" in info.function_body or "f'Hello, {name}!'" in info.function_body
+        assert (
+            "Hello, {name}!" in info.function_body
+            or "f'Hello, {name}!'" in info.function_body
+        )
 
     def test_extract_async_function(self):
         """Test extracting an asynchronous function."""
+
         async def fetch_data(url: str) -> str:
             return f"Fetched: {url}"
 
@@ -40,6 +46,7 @@ class TestSourceExtractorBasics:
 
     def test_extract_function_with_no_parameters(self):
         """Test extracting a function with no parameters."""
+
         def get_timestamp() -> str:
             return "2024-01-01"
 
@@ -56,6 +63,7 @@ class TestParameterExtraction:
 
     def test_extract_function_with_parameters(self):
         """Test extracting parameters from a function."""
+
         def add_numbers(a: int, b: int) -> int:
             return a + b
 
@@ -79,6 +87,7 @@ class TestParameterExtraction:
 
     def test_extract_function_with_defaults(self):
         """Test extracting function with default parameter values."""
+
         def configure(
             name: str,
             timeout: int = 30,
@@ -114,6 +123,7 @@ class TestParameterExtraction:
 
     def test_extract_function_with_type_hints(self):
         """Test extracting type hints from function parameters."""
+
         def process_data(
             text: str,
             count: int,
@@ -151,6 +161,7 @@ class TestReturnTypeExtraction:
 
     def test_extract_return_type(self):
         """Test extracting return type annotation."""
+
         def get_name() -> str:
             return "test"
 
@@ -161,6 +172,7 @@ class TestReturnTypeExtraction:
 
     def test_extract_return_type_int(self):
         """Test extracting integer return type."""
+
         def calculate() -> int:
             return 42
 
@@ -171,6 +183,7 @@ class TestReturnTypeExtraction:
 
     def test_extract_return_type_dict(self):
         """Test extracting dict return type."""
+
         def get_config() -> dict:
             return {}
 
@@ -181,6 +194,7 @@ class TestReturnTypeExtraction:
 
     def test_extract_return_type_none(self):
         """Test extracting None return type."""
+
         def do_nothing() -> None:
             pass
 
@@ -191,6 +205,7 @@ class TestReturnTypeExtraction:
 
     def test_extract_missing_return_type(self):
         """Test function with no return type annotation."""
+
         def no_annotation():
             return "test"
 
@@ -205,8 +220,10 @@ class TestImportExtraction:
 
     def test_extract_imports_datetime(self):
         """Test extracting datetime import from function body."""
+
         def get_current_time() -> str:
             import datetime
+
             return datetime.datetime.now().isoformat()
 
         extractor = SourceExtractor(get_current_time)
@@ -217,8 +234,10 @@ class TestImportExtraction:
 
     def test_extract_imports_json(self):
         """Test extracting json import from function body."""
+
         def serialize(data: dict) -> str:
             import json
+
             return json.dumps(data)
 
         extractor = SourceExtractor(serialize)
@@ -228,6 +247,7 @@ class TestImportExtraction:
 
     def test_extract_no_imports(self):
         """Test function with no module imports in body."""
+
         def simple_math(a: int, b: int) -> int:
             return a + b
 
@@ -242,6 +262,7 @@ class TestAsyncDetection:
 
     def test_is_async_detection_sync(self):
         """Test that sync functions are correctly identified."""
+
         def sync_function() -> str:
             return "sync"
 
@@ -252,6 +273,7 @@ class TestAsyncDetection:
 
     def test_is_async_detection_async(self):
         """Test that async functions are correctly identified."""
+
         async def async_function() -> str:
             return "async"
 
@@ -284,6 +306,7 @@ class TestComplexTypeHints:
         rather than the full generic 'list[str]' due to the order of
         type checking in _type_to_string. This tests the actual behavior.
         """
+
         def process_names(names: list[str]) -> int:
             return len(names)
 
@@ -297,6 +320,7 @@ class TestComplexTypeHints:
 
     def test_complex_type_hints_dict_str_any(self):
         """Test extracting dict[str, Any] type hint."""
+
         def process_config(config: dict[str, Any]) -> bool:
             return True
 
@@ -310,6 +334,7 @@ class TestComplexTypeHints:
 
     def test_complex_type_hints_optional_int(self):
         """Test extracting Optional[int] type hint."""
+
         def maybe_count(value: Optional[int]) -> str:
             return str(value) if value else "none"
 
@@ -323,6 +348,7 @@ class TestComplexTypeHints:
 
     def test_complex_type_hints_list_dict(self):
         """Test extracting list[dict[str, int]] type hint."""
+
         def process_records(records: list[dict[str, int]]) -> int:
             return len(records)
 
@@ -426,6 +452,7 @@ class TestSourceInfoDataclass:
 
     def test_source_info_has_expected_fields(self):
         """Test that SourceInfo has all expected fields."""
+
         def sample_func(x: int) -> int:
             return x
 
@@ -454,6 +481,7 @@ class TestParameterInfoDataclass:
 
     def test_parameter_info_has_expected_fields(self):
         """Test that ParameterInfo has all expected fields."""
+
         def sample_func(param: str = "default") -> str:
             return param
 
@@ -485,6 +513,7 @@ class TestEdgeCases:
 
     def test_function_with_docstring(self):
         """Test extracting function with docstring."""
+
         def documented_func(value: int) -> str:
             """Convert an integer to a string.
 
@@ -506,6 +535,7 @@ class TestEdgeCases:
 
     def test_function_with_multiline_body(self):
         """Test extracting function with multiple statements."""
+
         def complex_logic(a: int, b: int) -> int:
             result = a + b
             result = result * 2
@@ -517,14 +547,19 @@ class TestEdgeCases:
         info = extractor.extract()
 
         # Body should contain all statements
-        assert "result = a + b" in info.function_body or "result = (a + b)" in info.function_body
+        assert (
+            "result = a + b" in info.function_body
+            or "result = (a + b)" in info.function_body
+        )
         assert "return result" in info.function_body
 
     def test_function_with_nested_function(self):
         """Test extracting function with nested function definition."""
+
         def outer_func(x: int) -> int:
             def inner_func(y: int) -> int:
                 return y * 2
+
             return inner_func(x)
 
         extractor = SourceExtractor(outer_func)
@@ -537,6 +572,7 @@ class TestEdgeCases:
 
     def test_function_with_lambda(self):
         """Test extracting function that uses lambda."""
+
         def sort_items(items: list) -> list:
             return sorted(items, key=lambda x: x)
 
@@ -548,6 +584,7 @@ class TestEdgeCases:
 
     def test_function_with_comprehension(self):
         """Test extracting function with list comprehension."""
+
         def double_items(items: list) -> list:
             return [x * 2 for x in items]
 

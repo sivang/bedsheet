@@ -31,7 +31,7 @@ market_tools = ActionGroup(name="MarketTools")
 
 @market_tools.action(
     name="get_stock_data",
-    description="Get REAL current stock price and key metrics from Yahoo Finance"
+    description="Get REAL current stock price and key metrics from Yahoo Finance",
 )
 def get_stock_data(symbol: str) -> dict:
     """Fetch REAL stock data from Yahoo Finance."""
@@ -49,7 +49,9 @@ def get_stock_data(symbol: str) -> dict:
             market_cap = fast.market_cap
         except Exception:
             current_price = info.get("currentPrice") or info.get("regularMarketPrice")
-            prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+            prev_close = info.get("previousClose") or info.get(
+                "regularMarketPreviousClose"
+            )
             market_cap = info.get("marketCap")
 
         # Calculate change
@@ -62,11 +64,11 @@ def get_stock_data(symbol: str) -> dict:
         # Format market cap
         if market_cap:
             if market_cap >= 1e12:
-                market_cap_str = f"${market_cap/1e12:.2f}T"
+                market_cap_str = f"${market_cap / 1e12:.2f}T"
             elif market_cap >= 1e9:
-                market_cap_str = f"${market_cap/1e9:.2f}B"
+                market_cap_str = f"${market_cap / 1e9:.2f}B"
             else:
-                market_cap_str = f"${market_cap/1e6:.2f}M"
+                market_cap_str = f"${market_cap / 1e6:.2f}M"
         else:
             market_cap_str = "N/A"
 
@@ -75,23 +77,32 @@ def get_stock_data(symbol: str) -> dict:
             "company_name": info.get("shortName", info.get("longName", symbol.upper())),
             "price": round(current_price, 2) if current_price else "N/A",
             "change": change_str,
-            "pe_ratio": round(info.get("trailingPE", 0), 2) if info.get("trailingPE") else "N/A",
-            "forward_pe": round(info.get("forwardPE", 0), 2) if info.get("forwardPE") else "N/A",
+            "pe_ratio": round(info.get("trailingPE", 0), 2)
+            if info.get("trailingPE")
+            else "N/A",
+            "forward_pe": round(info.get("forwardPE", 0), 2)
+            if info.get("forwardPE")
+            else "N/A",
             "market_cap": market_cap_str,
             "52_week_high": info.get("fiftyTwoWeekHigh"),
             "52_week_low": info.get("fiftyTwoWeekLow"),
             "volume": info.get("volume"),
             "avg_volume": info.get("averageVolume"),
-            "dividend_yield": f"{info.get('dividendYield', 0) * 100:.2f}%" if info.get("dividendYield") else "N/A",
+            "dividend_yield": f"{info.get('dividendYield', 0) * 100:.2f}%"
+            if info.get("dividendYield")
+            else "N/A",
             "data_source": "Yahoo Finance (REAL DATA)",
         }
     except Exception as e:
-        return {"error": f"Failed to fetch data for {symbol}: {str(e)}", "symbol": symbol.upper()}
+        return {
+            "error": f"Failed to fetch data for {symbol}: {str(e)}",
+            "symbol": symbol.upper(),
+        }
 
 
 @market_tools.action(
     name="get_technical_analysis",
-    description="Get REAL technical analysis indicators calculated from historical price data"
+    description="Get REAL technical analysis indicators calculated from historical price data",
 )
 def get_technical_analysis(symbol: str) -> dict:
     """Calculate REAL technical indicators from Yahoo Finance historical data."""
@@ -103,7 +114,10 @@ def get_technical_analysis(symbol: str) -> dict:
         hist = ticker.history(period="6mo")
 
         if hist.empty:
-            return {"error": f"No historical data for {symbol}", "symbol": symbol.upper()}
+            return {
+                "error": f"No historical data for {symbol}",
+                "symbol": symbol.upper(),
+            }
 
         close = hist["Close"]
 
@@ -159,7 +173,11 @@ def get_technical_analysis(symbol: str) -> dict:
         return {
             "symbol": symbol.upper(),
             "rsi_14": current_rsi,
-            "rsi_signal": "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral",
+            "rsi_signal": "overbought"
+            if current_rsi > 70
+            else "oversold"
+            if current_rsi < 30
+            else "neutral",
             "macd": macd_signal,
             "macd_histogram": round(macd_histogram.iloc[-1], 4),
             "trend": trend,
@@ -171,7 +189,10 @@ def get_technical_analysis(symbol: str) -> dict:
             "data_source": "Calculated from Yahoo Finance historical data (REAL DATA)",
         }
     except Exception as e:
-        return {"error": f"Failed to calculate technicals for {symbol}: {str(e)}", "symbol": symbol.upper()}
+        return {
+            "error": f"Failed to calculate technicals for {symbol}: {str(e)}",
+            "symbol": symbol.upper(),
+        }
 
 
 # =============================================================================
@@ -183,7 +204,7 @@ news_tools = ActionGroup(name="NewsTools")
 
 @news_tools.action(
     name="search_news",
-    description="Search for REAL recent news about a company using DuckDuckGo"
+    description="Search for REAL recent news about a company using DuckDuckGo",
 )
 def search_news(query: str) -> dict:
     """Search REAL recent news using DuckDuckGo."""
@@ -196,13 +217,17 @@ def search_news(query: str) -> dict:
 
             articles = []
             for r in results:
-                articles.append({
-                    "headline": r.get("title", ""),
-                    "source": r.get("source", ""),
-                    "date": r.get("date", ""),
-                    "url": r.get("url", ""),
-                    "body": r.get("body", "")[:200] + "..." if r.get("body") else "",
-                })
+                articles.append(
+                    {
+                        "headline": r.get("title", ""),
+                        "source": r.get("source", ""),
+                        "date": r.get("date", ""),
+                        "url": r.get("url", ""),
+                        "body": r.get("body", "")[:200] + "..."
+                        if r.get("body")
+                        else "",
+                    }
+                )
 
             return {
                 "query": query,
@@ -211,12 +236,17 @@ def search_news(query: str) -> dict:
                 "data_source": "DuckDuckGo News (REAL DATA)",
             }
     except Exception as e:
-        return {"error": f"Failed to search news: {str(e)}", "query": query, "articles": [], "count": 0}
+        return {
+            "error": f"Failed to search news: {str(e)}",
+            "query": query,
+            "articles": [],
+            "count": 0,
+        }
 
 
 @news_tools.action(
     name="analyze_sentiment",
-    description="Analyze overall sentiment from news headlines using keyword analysis"
+    description="Analyze overall sentiment from news headlines using keyword analysis",
 )
 def analyze_sentiment(articles: list) -> dict:
     """Analyze sentiment from news articles using keyword-based analysis."""
@@ -225,14 +255,51 @@ def analyze_sentiment(articles: list) -> dict:
 
     # Positive and negative keyword lists for financial news
     positive_words = {
-        "surge", "soar", "jump", "gain", "rise", "beat", "exceed", "strong",
-        "growth", "profit", "record", "high", "boost", "rally", "upgrade",
-        "outperform", "bullish", "positive", "success", "innovation", "breakthrough"
+        "surge",
+        "soar",
+        "jump",
+        "gain",
+        "rise",
+        "beat",
+        "exceed",
+        "strong",
+        "growth",
+        "profit",
+        "record",
+        "high",
+        "boost",
+        "rally",
+        "upgrade",
+        "outperform",
+        "bullish",
+        "positive",
+        "success",
+        "innovation",
+        "breakthrough",
     }
     negative_words = {
-        "fall", "drop", "decline", "loss", "miss", "weak", "concern", "risk",
-        "down", "cut", "layoff", "lawsuit", "investigation", "fine", "penalty",
-        "downgrade", "bearish", "negative", "fail", "crash", "plunge", "warning"
+        "fall",
+        "drop",
+        "decline",
+        "loss",
+        "miss",
+        "weak",
+        "concern",
+        "risk",
+        "down",
+        "cut",
+        "layoff",
+        "lawsuit",
+        "investigation",
+        "fine",
+        "penalty",
+        "downgrade",
+        "bearish",
+        "negative",
+        "fail",
+        "crash",
+        "plunge",
+        "warning",
     }
 
     total_score = 0
@@ -240,7 +307,11 @@ def analyze_sentiment(articles: list) -> dict:
 
     for article in articles:
         headline = article.get("headline", "").lower()
-        body = article.get("body", "").lower() if isinstance(article.get("body"), str) else ""
+        body = (
+            article.get("body", "").lower()
+            if isinstance(article.get("body"), str)
+            else ""
+        )
         text = headline + " " + body
 
         pos_count = sum(1 for word in positive_words if word in text)
@@ -257,7 +328,9 @@ def analyze_sentiment(articles: list) -> dict:
             score = 0
 
         total_score += score
-        analyzed_headlines.append({"headline": article.get("headline", ""), "sentiment": sentiment})
+        analyzed_headlines.append(
+            {"headline": article.get("headline", ""), "sentiment": sentiment}
+        )
 
     avg = total_score / len(articles) if articles else 0
 
@@ -286,7 +359,7 @@ risk_tools = ActionGroup(name="RiskTools")
 
 @risk_tools.action(
     name="analyze_volatility",
-    description="Analyze REAL volatility metrics calculated from historical price data"
+    description="Analyze REAL volatility metrics calculated from historical price data",
 )
 def analyze_volatility(symbol: str) -> dict:
     """Calculate REAL volatility metrics from Yahoo Finance data."""
@@ -301,13 +374,16 @@ def analyze_volatility(symbol: str) -> dict:
         spy_hist = spy.history(period="1y")
 
         if hist.empty:
-            return {"error": f"No historical data for {symbol}", "symbol": symbol.upper()}
+            return {
+                "error": f"No historical data for {symbol}",
+                "symbol": symbol.upper(),
+            }
 
         close = hist["Close"]
         returns = close.pct_change().dropna()
 
         # Calculate 30-day volatility (annualized)
-        volatility_30d = returns.tail(30).std() * (252 ** 0.5) * 100
+        volatility_30d = returns.tail(30).std() * (252**0.5) * 100
 
         # Calculate beta against S&P 500
         if not spy_hist.empty:
@@ -343,13 +419,17 @@ def analyze_volatility(symbol: str) -> dict:
 
         # Calculate Sharpe ratio (assuming 5% risk-free rate)
         avg_return = returns.mean() * 252
-        sharpe = (avg_return - 0.05) / (returns.std() * (252 ** 0.5)) if returns.std() > 0 else 0
+        sharpe = (
+            (avg_return - 0.05) / (returns.std() * (252**0.5))
+            if returns.std() > 0
+            else 0
+        )
 
         return {
             "symbol": symbol.upper(),
             "beta": round(beta, 2),
             "volatility_30d": f"{volatility_30d:.1f}%",
-            "volatility_annualized": f"{returns.std() * (252 ** 0.5) * 100:.1f}%",
+            "volatility_annualized": f"{returns.std() * (252**0.5) * 100:.1f}%",
             "max_drawdown_1y": f"{max_drawdown:.1f}%",
             "sharpe_ratio": round(sharpe, 2),
             "risk_rating": risk_rating,
@@ -357,12 +437,15 @@ def analyze_volatility(symbol: str) -> dict:
             "data_source": "Calculated from Yahoo Finance 1-year data (REAL DATA)",
         }
     except Exception as e:
-        return {"error": f"Failed to analyze volatility for {symbol}: {str(e)}", "symbol": symbol.upper()}
+        return {
+            "error": f"Failed to analyze volatility for {symbol}: {str(e)}",
+            "symbol": symbol.upper(),
+        }
 
 
 @risk_tools.action(
     name="get_position_recommendation",
-    description="Get position sizing recommendation based on risk tolerance and real volatility data"
+    description="Get position sizing recommendation based on risk tolerance and real volatility data",
 )
 def get_position_recommendation(symbol: str, risk_tolerance: str) -> dict:
     """Get position recommendation based on volatility and risk tolerance."""
@@ -373,9 +456,18 @@ def get_position_recommendation(symbol: str, risk_tolerance: str) -> dict:
 
     # Adjust position size based on both risk tolerance and stock volatility
     base_positions = {
-        "conservative": {"max_position": "2-3%", "entry_strategy": "Dollar-cost average over 3-6 months"},
-        "moderate": {"max_position": "4-6%", "entry_strategy": "Split into 2-3 tranches"},
-        "aggressive": {"max_position": "8-10%", "entry_strategy": "Can enter full position on dips"},
+        "conservative": {
+            "max_position": "2-3%",
+            "entry_strategy": "Dollar-cost average over 3-6 months",
+        },
+        "moderate": {
+            "max_position": "4-6%",
+            "entry_strategy": "Split into 2-3 tranches",
+        },
+        "aggressive": {
+            "max_position": "8-10%",
+            "entry_strategy": "Can enter full position on dips",
+        },
     }
 
     base = base_positions.get(risk_tolerance.lower(), base_positions["moderate"])

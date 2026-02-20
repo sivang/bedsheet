@@ -1,4 +1,5 @@
 """Tests for the Sense distributed communication module."""
+
 import asyncio
 import pytest
 
@@ -13,10 +14,16 @@ from bedsheet.events import (
 from bedsheet.sense.signals import Signal
 from bedsheet.sense.serialization import serialize, deserialize, MAX_MESSAGE_BYTES
 from bedsheet.sense.protocol import AgentPresence
-from bedsheet.testing import MockLLMClient, MockResponse, MockSenseTransport, _MockSenseHub
+from bedsheet.testing import (
+    MockLLMClient,
+    MockResponse,
+    MockSenseTransport,
+    _MockSenseHub,
+)
 
 
 # ---------- Signal dataclass tests ----------
+
 
 class TestSignal:
     def test_signal_creation(self):
@@ -39,12 +46,21 @@ class TestSignal:
         assert signal.target == "cpu-watcher"
 
     def test_signal_kinds(self):
-        for kind in ("request", "response", "alert", "heartbeat", "claim", "release", "event"):
+        for kind in (
+            "request",
+            "response",
+            "alert",
+            "heartbeat",
+            "claim",
+            "release",
+            "event",
+        ):
             signal = Signal(kind=kind, sender="test")
             assert signal.kind == kind
 
 
 # ---------- Serialization tests ----------
+
 
 class TestSerialization:
     def test_serialize_minimal(self):
@@ -107,6 +123,7 @@ class TestSerialization:
 
 # ---------- Protocol tests ----------
 
+
 class TestProtocol:
     def test_mock_transport_satisfies_protocol(self):
         """MockSenseTransport should satisfy the SenseTransport protocol."""
@@ -133,6 +150,7 @@ class TestProtocol:
 
 
 # ---------- MockSenseTransport tests ----------
+
 
 class TestMockSenseTransport:
     async def test_connect_disconnect(self):
@@ -182,8 +200,10 @@ class TestMockSenseTransport:
 
 # ---------- SenseMixin tests ----------
 
+
 class SenseAgent(SenseMixin, Agent):
     """Agent with sensing capabilities for testing."""
+
     pass
 
 
@@ -254,7 +274,9 @@ class TestSenseMixin:
         await commander.join_network(t2, "test-ns", ["tasks"])
 
         # Commander requests work from worker
-        result = await commander.request("cpu-watcher", "What is the CPU usage?", timeout=5.0)
+        result = await commander.request(
+            "cpu-watcher", "What is the CPU usage?", timeout=5.0
+        )
         assert result == "CPU at 45%"
 
         await worker.leave_network()
@@ -358,6 +380,7 @@ class TestSenseMixin:
 
 # ---------- Claim protocol tests ----------
 
+
 class TestClaimProtocol:
     async def test_claim_incident(self):
         """Test basic incident claiming."""
@@ -396,6 +419,7 @@ class TestClaimProtocol:
 
 
 # ---------- SenseNetwork tests ----------
+
 
 class TestSenseNetwork:
     async def test_add_agent(self):
@@ -450,6 +474,7 @@ class TestSenseNetwork:
 
 
 # ---------- Event dataclass tests ----------
+
 
 class TestSenseEvents:
     def test_signal_received_event(self):

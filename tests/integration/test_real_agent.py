@@ -3,6 +3,7 @@
 Run with: pytest tests/integration/ -v
 Requires: ANTHROPIC_API_KEY environment variable
 """
+
 import os
 import pytest
 
@@ -13,8 +14,7 @@ from bedsheet.events import CompletionEvent, ToolCallEvent, ToolResultEvent
 
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("ANTHROPIC_API_KEY") is None,
-    reason="ANTHROPIC_API_KEY not set"
+    os.getenv("ANTHROPIC_API_KEY") is None, reason="ANTHROPIC_API_KEY not set"
 )
 
 
@@ -31,8 +31,7 @@ async def test_real_simple_chat():
 
     events = []
     async for event in agent.invoke(
-        session_id="integration-test",
-        input_text="Say 'hello' and nothing else."
+        session_id="integration-test", input_text="Say 'hello' and nothing else."
     ):
         events.append(event)
 
@@ -62,8 +61,7 @@ async def test_real_tool_call():
 
     events = []
     async for event in agent.invoke(
-        session_id="integration-test",
-        input_text="What's the weather in San Francisco?"
+        session_id="integration-test", input_text="What's the weather in San Francisco?"
     ):
         events.append(event)
 

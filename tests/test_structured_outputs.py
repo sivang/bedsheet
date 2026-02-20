@@ -1,4 +1,5 @@
 """Tests for structured outputs (OutputSchema)."""
+
 import pytest
 from bedsheet.llm.base import OutputSchema, LLMResponse
 
@@ -105,25 +106,32 @@ class TestMockClientStructuredOutputs:
         """Test that MockLLMClient accepts output_schema parameter."""
         from bedsheet.testing import MockLLMClient, MockResponse
 
-        mock_client = MockLLMClient([
-            MockResponse(
-                text='{"result": "test"}',
-                parsed_output={"result": "test"},
-            )
-        ])
+        mock_client = MockLLMClient(
+            [
+                MockResponse(
+                    text='{"result": "test"}',
+                    parsed_output={"result": "test"},
+                )
+            ]
+        )
 
-        schema = OutputSchema.from_dict({
-            "type": "object",
-            "properties": {"result": {"type": "string"}},
-        })
+        schema = OutputSchema.from_dict(
+            {
+                "type": "object",
+                "properties": {"result": {"type": "string"}},
+            }
+        )
 
         # Should not raise
         import asyncio
-        response = asyncio.run(mock_client.chat(
-            messages=[],
-            system="test",
-            output_schema=schema,
-        ))
+
+        response = asyncio.run(
+            mock_client.chat(
+                messages=[],
+                system="test",
+                output_schema=schema,
+            )
+        )
 
         assert response.parsed_output == {"result": "test"}
 
@@ -132,17 +140,21 @@ class TestMockClientStructuredOutputs:
         """Test that MockLLMClient stream accepts output_schema."""
         from bedsheet.testing import MockLLMClient, MockResponse
 
-        mock_client = MockLLMClient([
-            MockResponse(
-                text='{"data": "streamed"}',
-                parsed_output={"data": "streamed"},
-            )
-        ])
+        mock_client = MockLLMClient(
+            [
+                MockResponse(
+                    text='{"data": "streamed"}',
+                    parsed_output={"data": "streamed"},
+                )
+            ]
+        )
 
-        schema = OutputSchema.from_dict({
-            "type": "object",
-            "properties": {"data": {"type": "string"}},
-        })
+        schema = OutputSchema.from_dict(
+            {
+                "type": "object",
+                "properties": {"data": {"type": "string"}},
+            }
+        )
 
         chunks = []
         async for chunk in mock_client.chat_stream(

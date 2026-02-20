@@ -1,4 +1,5 @@
 """Log Analyzer agent - analyzes system logs for errors and patterns."""
+
 import asyncio
 import io
 import os
@@ -42,9 +43,7 @@ async def tail_log(lines: int = 10) -> str:
 async def search_log(pattern: str) -> str:
     _LOG_BUFFER.seek(0)
     matches = [
-        line.strip()
-        for line in _LOG_BUFFER
-        if re.search(pattern, line, re.IGNORECASE)
+        line.strip() for line in _LOG_BUFFER if re.search(pattern, line, re.IGNORECASE)
     ]
     if not matches:
         return f"No matches for '{pattern}'"

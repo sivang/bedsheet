@@ -43,7 +43,9 @@ class AWSTargetConfig(BaseModel):
     """Configuration for AWS deployment target."""
 
     region: str = Field(..., description="AWS region (e.g., us-east-1)")
-    lambda_memory: int = Field(default=512, ge=128, le=10240, description="Lambda memory in MB")
+    lambda_memory: int = Field(
+        default=512, ge=128, le=10240, description="Lambda memory in MB"
+    )
     bedrock_model: str = Field(
         default="anthropic.claude-sonnet-4-5-v2:0",
         description="Bedrock model ID",
@@ -96,7 +98,9 @@ class GCPTargetConfig(BaseModel):
     def validate_memory(cls, v: str) -> str:
         """Validate Cloud Run memory format."""
         if not re.match(r"^\d+(Mi|Gi)$", v):
-            raise ValueError(f"Invalid memory format: {v}. Use format like '512Mi' or '1Gi'")
+            raise ValueError(
+                f"Invalid memory format: {v}. Use format like '512Mi' or '1Gi'"
+            )
         return v
 
     @field_validator("builtin_tools")
@@ -163,9 +167,13 @@ class AgentConfig(BaseModel):
     """Configuration for a single agent."""
 
     name: str = Field(..., description="Agent name")
-    module: str = Field(..., description="Python module path (e.g., myapp.agents.calculator)")
+    module: str = Field(
+        ..., description="Python module path (e.g., myapp.agents.calculator)"
+    )
     class_name: str = Field(..., description="Agent class name")
-    description: Optional[str] = Field(None, description="Agent description for supervisor")
+    description: Optional[str] = Field(
+        None, description="Agent description for supervisor"
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -187,9 +195,10 @@ class BedsheetConfig(BaseModel):
     name: str = Field(..., description="Project name")
     agents: list[AgentConfig] = Field(..., description="List of agents to deploy")
     target: str = Field(..., description="Active target: local, aws, or gcp")
-    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = Field(
-        ..., description="Target configurations"
-    )
+    targets: dict[
+        str,
+        LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig,
+    ] = Field(..., description="Target configurations")
     enhancements: EnhancementsConfig = Field(
         default_factory=EnhancementsConfig,
         description="Optional enhancements",
@@ -301,7 +310,13 @@ def load_config(path: str | Path) -> BedsheetConfig:
 
     # Parse targets with proper type discrimination
     if "targets" in interpolated_data:
-        targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = {}
+        targets: dict[
+            str,
+            LocalTargetConfig
+            | AWSTargetConfig
+            | GCPTargetConfig
+            | AgentCoreTargetConfig,
+        ] = {}
         for key, config in interpolated_data["targets"].items():
             if key == "local":
                 targets[key] = LocalTargetConfig(**config)
@@ -312,7 +327,9 @@ def load_config(path: str | Path) -> BedsheetConfig:
             elif key == "agentcore":
                 targets[key] = AgentCoreTargetConfig(**config)
             else:
-                raise ValueError(f"Unknown target type: {key}. Must be 'local', 'aws', 'aws-terraform', 'gcp', or 'agentcore'")
+                raise ValueError(
+                    f"Unknown target type: {key}. Must be 'local', 'aws', 'aws-terraform', 'gcp', or 'agentcore'"
+                )
         interpolated_data["targets"] = targets
 
     return BedsheetConfig(**interpolated_data)

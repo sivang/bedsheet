@@ -10,7 +10,7 @@ import json
 import os
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
@@ -175,7 +175,7 @@ async def main():
             "of installed skills by checking their SHA-256 hashes against the "
             "ClawHub registry. Report any mismatches or malicious installs."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(supply_chain_tools)
 

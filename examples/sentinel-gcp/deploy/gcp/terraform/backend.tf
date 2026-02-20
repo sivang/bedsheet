@@ -1,0 +1,12 @@
+# Terraform Backend Configuration
+# Stores Terraform state in Google Cloud Storage for CI/CD and team collaboration.
+# The bucket is created automatically by Cloud Build.
+# Bucket name is configured via -backend-config during terraform init.
+
+terraform {
+  backend "gcs" {
+    # Bucket name is passed via -backend-config="bucket=NAME" during init
+    # Default: sentinel-gcp-tfstate-$PROJECT_ID
+    prefix = "terraform/state"
+  }
+}

@@ -1,4 +1,5 @@
 """CPU Watcher agent - monitors CPU usage and alerts on spikes."""
+
 import asyncio
 import os
 
@@ -35,7 +36,9 @@ async def get_process_top() -> str:
             pass
     procs.sort(key=lambda x: x.get("cpu_percent", 0) or 0, reverse=True)
     top = procs[:5]
-    lines = [f"  PID {p['pid']}: {p['name']} ({p.get('cpu_percent', 0):.1f}%)" for p in top]
+    lines = [
+        f"  PID {p['pid']}: {p['name']} ({p.get('cpu_percent', 0):.1f}%)" for p in top
+    ]
     return "Top processes by CPU:\n" + "\n".join(lines)
 
 

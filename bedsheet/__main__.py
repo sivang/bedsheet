@@ -21,9 +21,15 @@ from bedsheet import Agent, ActionGroup, Supervisor
 from bedsheet.llm import AnthropicClient
 from bedsheet.memory import InMemory
 from bedsheet.events import (
-    ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent,
-    DelegationEvent, CollaboratorStartEvent, CollaboratorEvent,
-    CollaboratorCompleteEvent, TextTokenEvent
+    ToolCallEvent,
+    ToolResultEvent,
+    CompletionEvent,
+    ErrorEvent,
+    DelegationEvent,
+    CollaboratorStartEvent,
+    CollaboratorEvent,
+    CollaboratorCompleteEvent,
+    TextTokenEvent,
 )
 
 
@@ -36,7 +42,7 @@ market_tools = ActionGroup(name="MarketTools")
 
 @market_tools.action(
     name="get_stock_data",
-    description="Get REAL current stock price and key metrics from Yahoo Finance"
+    description="Get REAL current stock price and key metrics from Yahoo Finance",
 )
 async def get_stock_data(symbol: str) -> dict:
     """Fetch REAL stock data from Yahoo Finance."""
@@ -53,7 +59,9 @@ async def get_stock_data(symbol: str) -> dict:
             market_cap = fast.market_cap
         except Exception:
             current_price = info.get("currentPrice") or info.get("regularMarketPrice")
-            prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+            prev_close = info.get("previousClose") or info.get(
+                "regularMarketPreviousClose"
+            )
             market_cap = info.get("marketCap")
 
         if current_price and prev_close:
@@ -64,11 +72,11 @@ async def get_stock_data(symbol: str) -> dict:
 
         if market_cap:
             if market_cap >= 1e12:
-                market_cap_str = f"${market_cap/1e12:.2f}T"
+                market_cap_str = f"${market_cap / 1e12:.2f}T"
             elif market_cap >= 1e9:
-                market_cap_str = f"${market_cap/1e9:.2f}B"
+                market_cap_str = f"${market_cap / 1e9:.2f}B"
             else:
-                market_cap_str = f"${market_cap/1e6:.2f}M"
+                market_cap_str = f"${market_cap / 1e6:.2f}M"
         else:
             market_cap_str = "N/A"
 
@@ -77,20 +85,27 @@ async def get_stock_data(symbol: str) -> dict:
             "company_name": info.get("shortName", info.get("longName", symbol.upper())),
             "price": round(current_price, 2) if current_price else "N/A",
             "change": change_str,
-            "pe_ratio": round(info.get("trailingPE", 0), 2) if info.get("trailingPE") else "N/A",
-            "forward_pe": round(info.get("forwardPE", 0), 2) if info.get("forwardPE") else "N/A",
+            "pe_ratio": round(info.get("trailingPE", 0), 2)
+            if info.get("trailingPE")
+            else "N/A",
+            "forward_pe": round(info.get("forwardPE", 0), 2)
+            if info.get("forwardPE")
+            else "N/A",
             "market_cap": market_cap_str,
             "52_week_high": info.get("fiftyTwoWeekHigh"),
             "52_week_low": info.get("fiftyTwoWeekLow"),
             "data_source": "Yahoo Finance (REAL DATA)",
         }
     except Exception as e:
-        return {"error": f"Failed to fetch data for {symbol}: {str(e)}", "symbol": symbol.upper()}
+        return {
+            "error": f"Failed to fetch data for {symbol}: {str(e)}",
+            "symbol": symbol.upper(),
+        }
 
 
 @market_tools.action(
     name="get_technical_analysis",
-    description="Get REAL technical analysis indicators calculated from historical price data"
+    description="Get REAL technical analysis indicators calculated from historical price data",
 )
 async def get_technical_analysis(symbol: str) -> dict:
     """Calculate REAL technical indicators from Yahoo Finance historical data."""
@@ -101,7 +116,10 @@ async def get_technical_analysis(symbol: str) -> dict:
         hist = ticker.history(period="6mo")
 
         if hist.empty:
-            return {"error": f"No historical data for {symbol}", "symbol": symbol.upper()}
+            return {
+                "error": f"No historical data for {symbol}",
+                "symbol": symbol.upper(),
+            }
 
         close = hist["Close"]
 
@@ -152,7 +170,11 @@ async def get_technical_analysis(symbol: str) -> dict:
         return {
             "symbol": symbol.upper(),
             "rsi_14": current_rsi,
-            "rsi_signal": "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral",
+            "rsi_signal": "overbought"
+            if current_rsi > 70
+            else "oversold"
+            if current_rsi < 30
+            else "neutral",
             "macd": macd_signal,
             "trend": trend,
             "sma_20": round(sma_20, 2),
@@ -163,7 +185,10 @@ async def get_technical_analysis(symbol: str) -> dict:
             "data_source": "Calculated from Yahoo Finance historical data (REAL DATA)",
         }
     except Exception as e:
-        return {"error": f"Failed to calculate technicals for {symbol}: {str(e)}", "symbol": symbol.upper()}
+        return {
+            "error": f"Failed to calculate technicals for {symbol}: {str(e)}",
+            "symbol": symbol.upper(),
+        }
 
 
 # ============================================================
@@ -175,7 +200,7 @@ news_tools = ActionGroup(name="NewsTools")
 
 @news_tools.action(
     name="search_news",
-    description="Search for REAL recent news about a company using DuckDuckGo"
+    description="Search for REAL recent news about a company using DuckDuckGo",
 )
 async def search_news(query: str) -> dict:
     """Search REAL recent news using DuckDuckGo."""
@@ -187,12 +212,16 @@ async def search_news(query: str) -> dict:
 
             articles = []
             for r in results:
-                articles.append({
-                    "headline": r.get("title", ""),
-                    "source": r.get("source", ""),
-                    "date": r.get("date", ""),
-                    "body": r.get("body", "")[:150] + "..." if r.get("body") else "",
-                })
+                articles.append(
+                    {
+                        "headline": r.get("title", ""),
+                        "source": r.get("source", ""),
+                        "date": r.get("date", ""),
+                        "body": r.get("body", "")[:150] + "..."
+                        if r.get("body")
+                        else "",
+                    }
+                )
 
             return {
                 "query": query,
@@ -201,12 +230,17 @@ async def search_news(query: str) -> dict:
                 "data_source": "DuckDuckGo News (REAL DATA)",
             }
     except Exception as e:
-        return {"error": f"Failed to search news: {str(e)}", "query": query, "articles": [], "count": 0}
+        return {
+            "error": f"Failed to search news: {str(e)}",
+            "query": query,
+            "articles": [],
+            "count": 0,
+        }
 
 
 @news_tools.action(
     name="analyze_sentiment",
-    description="Analyze overall sentiment from news headlines using keyword analysis"
+    description="Analyze overall sentiment from news headlines using keyword analysis",
 )
 async def analyze_sentiment(articles: list) -> dict:
     """Analyze sentiment from news articles using keyword-based analysis."""
@@ -214,20 +248,61 @@ async def analyze_sentiment(articles: list) -> dict:
         return {"sentiment": "neutral", "confidence": 0.0, "articles_analyzed": 0}
 
     positive_words = {
-        "surge", "soar", "jump", "gain", "rise", "beat", "exceed", "strong",
-        "growth", "profit", "record", "high", "boost", "rally", "upgrade",
-        "outperform", "bullish", "positive", "success", "innovation", "breakthrough"
+        "surge",
+        "soar",
+        "jump",
+        "gain",
+        "rise",
+        "beat",
+        "exceed",
+        "strong",
+        "growth",
+        "profit",
+        "record",
+        "high",
+        "boost",
+        "rally",
+        "upgrade",
+        "outperform",
+        "bullish",
+        "positive",
+        "success",
+        "innovation",
+        "breakthrough",
     }
     negative_words = {
-        "fall", "drop", "decline", "loss", "miss", "weak", "concern", "risk",
-        "down", "cut", "layoff", "lawsuit", "investigation", "fine", "penalty",
-        "downgrade", "bearish", "negative", "fail", "crash", "plunge", "warning"
+        "fall",
+        "drop",
+        "decline",
+        "loss",
+        "miss",
+        "weak",
+        "concern",
+        "risk",
+        "down",
+        "cut",
+        "layoff",
+        "lawsuit",
+        "investigation",
+        "fine",
+        "penalty",
+        "downgrade",
+        "bearish",
+        "negative",
+        "fail",
+        "crash",
+        "plunge",
+        "warning",
     }
 
     total_score = 0
     for article in articles:
         headline = article.get("headline", "").lower()
-        body = article.get("body", "").lower() if isinstance(article.get("body"), str) else ""
+        body = (
+            article.get("body", "").lower()
+            if isinstance(article.get("body"), str)
+            else ""
+        )
         text = headline + " " + body
 
         pos_count = sum(1 for word in positive_words if word in text)
@@ -250,13 +325,14 @@ async def analyze_sentiment(articles: list) -> dict:
     return {
         "sentiment": sentiment,
         "confidence": round(min(abs(avg) + 0.5, 1.0), 2),
-        "articles_analyzed": len(articles)
+        "articles_analyzed": len(articles),
     }
 
 
 # ============================================================
 # Create Agents
 # ============================================================
+
 
 def create_agents():
     """Create all agents with shared LLM client."""
@@ -314,6 +390,7 @@ Include a disclaimer that this is educational content, not financial advice.""",
 # ============================================================
 # Event Display
 # ============================================================
+
 
 def emit(text: str, end: str = "\n"):
     """Print and immediately flush to show real-time progress."""
@@ -390,8 +467,9 @@ async def run_demo():
     parallel_agents = []
     first_event = True
 
-    async for event in advisor.invoke(session_id="demo", input_text=user_input, stream=True):
-
+    async for event in advisor.invoke(
+        session_id="demo", input_text=user_input, stream=True
+    ):
         # Clear "Waiting for Claude..." on first event
         if first_event:
             emit("\r" + " " * 30 + "\r", end="")
@@ -401,9 +479,11 @@ async def run_demo():
             agents = [d["agent_name"] for d in event.delegations]
             elapsed = time.time() - start_time
             if len(agents) > 1:
-                emit(f"[{elapsed:.1f}s] PARALLEL DELEGATION - dispatching {len(agents)} agents:")
+                emit(
+                    f"[{elapsed:.1f}s] PARALLEL DELEGATION - dispatching {len(agents)} agents:"
+                )
                 for d in event.delegations:
-                    task = d['task'][:50] + "..." if len(d['task']) > 50 else d['task']
+                    task = d["task"][:50] + "..." if len(d["task"]) > 50 else d["task"]
                     emit(f"        -> {d['agent_name']}: {task}")
                 parallel_agents = agents
             else:

@@ -1,4 +1,5 @@
 """Signal types for inter-agent communication."""
+
 from dataclasses import dataclass, field
 from typing import Any, Literal
 from time import time

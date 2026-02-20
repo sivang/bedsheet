@@ -1,4 +1,5 @@
 """Tests for CodeTransformer - async to sync code transformation."""
+
 import pytest
 
 from bedsheet.deploy.code_transformer import CodeTransformer, AsyncToSyncTransformer
@@ -62,6 +63,7 @@ class TestCodeTransformerSyncFunctions:
 
     def test_transform_keeps_sync_function_unchanged(self):
         """Sync functions should stay sync for all targets."""
+
         def greet(name: str) -> str:
             return f"Hello, {name}!"
 
@@ -84,6 +86,7 @@ class TestCodeTransformerAsyncToSync:
 
     def test_transform_async_to_sync_for_gcp(self):
         """Async functions should be converted to sync for GCP target."""
+
         async def fetch(url: str) -> str:
             return await get_data(url)
 
@@ -100,6 +103,7 @@ class TestCodeTransformerAsyncToSync:
 
     def test_transform_async_to_sync_for_aws(self):
         """Async functions should be converted to sync for AWS target."""
+
         async def process(data: dict) -> dict:
             result = await transform(data)
             return result
@@ -117,6 +121,7 @@ class TestCodeTransformerAsyncToSync:
 
     def test_transform_keeps_async_for_local(self):
         """Async functions should remain async for local target."""
+
         async def fetch(url: str) -> str:
             return await get_data(url)
 
@@ -137,6 +142,7 @@ class TestAwaitExpressionUnwrap:
 
     def test_await_expression_unwrap(self):
         """Await expressions should be unwrapped: await foo() -> foo()."""
+
         async def call_api(endpoint: str) -> str:
             response = await make_request(endpoint)
             return response
@@ -152,6 +158,7 @@ class TestAwaitExpressionUnwrap:
 
     def test_nested_await(self):
         """Nested await expressions should be properly unwrapped."""
+
         async def nested_calls(value: int) -> int:
             result = await process(await fetch(value))
             return result
@@ -172,6 +179,7 @@ class TestAsyncForConversion:
 
     def test_async_for_to_for(self):
         """Async for loops should be converted to regular for loops."""
+
         async def iterate_items(items: list) -> list:
             results = []
             async for item in items:
@@ -194,6 +202,7 @@ class TestAsyncWithConversion:
 
     def test_async_with_to_with(self):
         """Async with statements should be converted to regular with statements."""
+
         async def use_resource(path: str) -> str:
             async with open_file(path) as f:
                 content = f.read()
@@ -215,8 +224,10 @@ class TestPreservesMetadata:
 
     def test_preserves_imports(self):
         """Imports should be preserved after transformation."""
+
         async def process_json(data: str) -> dict:
             import json
+
             return json.loads(data)
 
         extractor = SourceExtractor(process_json)
@@ -230,6 +241,7 @@ class TestPreservesMetadata:
 
     def test_preserves_parameters(self):
         """Parameters should remain unchanged after transformation."""
+
         async def complex_func(
             name: str,
             age: int,
@@ -257,6 +269,7 @@ class TestPreservesMetadata:
 
     def test_preserves_return_type(self):
         """Return type should be preserved after transformation."""
+
         async def get_items() -> list[str]:
             return await fetch_list()
 
@@ -326,6 +339,7 @@ class TestFunctionBody:
 
     def test_function_body_is_extracted(self):
         """Function body should be extracted separately."""
+
         async def simple(x: int) -> int:
             result = x * 2
             return result
@@ -348,6 +362,7 @@ class TestComplexScenarios:
 
     def test_multiple_awaits_in_sequence(self):
         """Multiple await calls in sequence should all be unwrapped."""
+
         async def gather_data(a: str, b: str) -> list:
             result_a = await fetch(a)
             result_b = await fetch(b)
@@ -364,6 +379,7 @@ class TestComplexScenarios:
 
     def test_await_in_expression(self):
         """Await within larger expressions should be unwrapped correctly."""
+
         async def compute(x: int) -> int:
             return (await get_value(x)) + 10
 
@@ -378,6 +394,7 @@ class TestComplexScenarios:
 
     def test_combined_async_constructs(self):
         """Test function with multiple async constructs."""
+
         async def process_all(items: list) -> list:
             results = []
             async with get_connection() as conn:
@@ -408,6 +425,7 @@ class TestSourceInfoCopying:
 
     def test_original_source_info_not_mutated(self):
         """Transformation should not mutate the original SourceInfo."""
+
         async def original_func(x: int) -> int:
             return await process(x)
 

@@ -11,7 +11,7 @@ import time
 
 from bedsheet import Agent, ActionGroup, SenseMixin
 from bedsheet.events import CompletionEvent, ToolCallEvent
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
@@ -110,10 +110,10 @@ async def issue_quarantine(agent_name: str, reason: str) -> str:
         },
     )
     await _commander.broadcast("quarantine", signal)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  QUARANTINE ISSUED: {agent_name}")
     print(f"  Reason: {reason}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     return f"Quarantine issued for '{agent_name}': {reason}"
 
 
@@ -163,7 +163,7 @@ async def main():
             "3. Generate a clear threat assessment report\n\n"
             "Be decisive — if evidence confirms compromise, quarantine immediately."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(commander_tools)
     _commander = agent

@@ -3,6 +3,7 @@
 PubNub has a 32KB message limit. We use short keys to minimize payload size
 and truncate if necessary.
 """
+
 import json
 from typing import Any
 

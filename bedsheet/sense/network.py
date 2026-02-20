@@ -1,4 +1,5 @@
 """SenseNetwork - high-level API for managing a network of sense-aware agents."""
+
 import logging
 from typing import Any, Callable
 

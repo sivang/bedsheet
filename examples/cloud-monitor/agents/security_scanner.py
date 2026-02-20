@@ -1,4 +1,5 @@
 """Security Scanner agent - checks open ports and login attempts."""
+
 import asyncio
 import os
 import socket
@@ -18,9 +19,15 @@ security_tools = ActionGroup("security_tools", "Security scanning tools")
 @security_tools.action("check_open_ports", "Scan common ports on localhost")
 async def check_open_ports() -> str:
     common_ports = {
-        22: "SSH", 80: "HTTP", 443: "HTTPS", 3306: "MySQL",
-        5432: "PostgreSQL", 6379: "Redis", 8080: "HTTP-Alt",
-        8443: "HTTPS-Alt", 27017: "MongoDB",
+        22: "SSH",
+        80: "HTTP",
+        443: "HTTPS",
+        3306: "MySQL",
+        5432: "PostgreSQL",
+        6379: "Redis",
+        8080: "HTTP-Alt",
+        8443: "HTTPS-Alt",
+        27017: "MongoDB",
     }
     results = []
     for port, service in common_ports.items():
@@ -41,7 +48,9 @@ async def check_open_ports() -> str:
     return "Open ports:\n" + "\n".join(results)
 
 
-@security_tools.action("check_failed_logins", "Check for recent failed login attempts (simulated)")
+@security_tools.action(
+    "check_failed_logins", "Check for recent failed login attempts (simulated)"
+)
 async def check_failed_logins() -> str:
     # Simulated data for demo purposes
     return (

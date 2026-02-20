@@ -13,7 +13,7 @@ import shutil
 import time
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
 
@@ -169,7 +169,7 @@ async def main():
             "review what's already installed, and install any safe skills that "
             "are missing. Never install skills flagged as malicious."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(skill_tools)
 

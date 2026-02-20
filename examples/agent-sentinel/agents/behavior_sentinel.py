@@ -10,7 +10,7 @@ import os
 import time
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
@@ -153,7 +153,7 @@ async def main():
             "agent activity patterns. When you detect high output rates or "
             "suspicious behavior markers, report your findings clearly."
         ),
-        model_client=AnthropicClient(),
+        model_client=make_llm_client(),
     )
     agent.add_action_group(behavior_tools)
     _sentinel = agent

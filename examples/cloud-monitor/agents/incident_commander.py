@@ -1,4 +1,5 @@
 """Incident Commander agent - coordinates responses to alerts via the sense network."""
+
 import asyncio
 import os
 
@@ -49,7 +50,10 @@ async def request_remote_agent(agent_name: str, task: str) -> str:
     parameters={
         "type": "object",
         "properties": {
-            "severity": {"type": "string", "description": "Alert severity: low, medium, high, critical"},
+            "severity": {
+                "type": "string",
+                "description": "Alert severity: low, medium, high, critical",
+            },
             "message": {"type": "string", "description": "Alert message"},
         },
         "required": ["severity", "message"],
@@ -127,7 +131,9 @@ async def main():
         won = await agent.claim_incident(incident_id, "tasks")
 
         if won:
-            print(f"[incident-commander] Claimed incident {incident_id}, investigating...")
+            print(
+                f"[incident-commander] Claimed incident {incident_id}, investigating..."
+            )
             # Trigger investigation through the LLM
             session_id = f"incident-{incident_id}"
             prompt = (
@@ -137,6 +143,7 @@ async def main():
             )
             async for event in agent.invoke(session_id, prompt):
                 from bedsheet.events import CompletionEvent, ToolCallEvent
+
                 if isinstance(event, ToolCallEvent):
                     print(f"  -> Calling {event.tool_name}...")
                 elif isinstance(event, CompletionEvent):
