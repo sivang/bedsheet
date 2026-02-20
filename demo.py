@@ -1,4 +1,5 @@
 """Quick demo of Bedsheet Agents."""
+
 import asyncio
 from bedsheet import Agent, ActionGroup
 from bedsheet.llm import AnthropicClient
@@ -40,6 +41,7 @@ async def calculate(expression: str) -> dict:
 async def get_time(timezone: str = "UTC") -> dict:
     """Get current time."""
     from datetime import datetime, timezone as tz
+
     now = datetime.now(tz.utc)
     return {"timezone": timezone, "time": now.strftime("%Y-%m-%d %H:%M:%S UTC")}
 
@@ -78,7 +80,9 @@ Be concise and friendly. Use tools when needed to answer questions accurately.""
 
             print("\nAssistant: ", end="", flush=True)
 
-            async for event in agent.invoke(session_id=session_id, input_text=user_input):
+            async for event in agent.invoke(
+                session_id=session_id, input_text=user_input
+            ):
                 if isinstance(event, ToolCallEvent):
                     print(f"\n  [🔧 Calling {event.tool_name}...]", end="", flush=True)
                 elif isinstance(event, ToolResultEvent):

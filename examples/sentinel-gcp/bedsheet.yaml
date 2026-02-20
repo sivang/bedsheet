@@ -1,0 +1,24 @@
+version: "1.0"
+name: sentinel-gcp
+
+agents:
+  - name: sentinel-commander
+    module: agents.commander
+    class_name: SentinelCommander
+    description: "AI agent security monitoring system — detects rogue agents and supply chain attacks"
+
+target: gcp
+
+targets:
+  local:
+    port: 8000
+    hot_reload: true
+  gcp:
+    project: symptracker-prod
+    region: us-central1
+    model: gemini-3-flash-preview
+
+enhancements:
+  trace: false
+  metrics: false
+  auth: false

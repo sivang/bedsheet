@@ -1,4 +1,5 @@
 """ActionGroup and Action system for defining agent tools."""
+
 import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Awaitable
@@ -58,6 +59,7 @@ def generate_schema(fn: Callable) -> dict[str, Any]:
 @dataclass
 class Action:
     """An action that can be invoked by the agent."""
+
     name: str
     description: str
     fn: Callable[..., Awaitable[Any]]
@@ -87,7 +89,10 @@ class ActionGroup:
         parameters: dict[str, Any] | None = None,
     ) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
         """Decorator to register an action."""
-        def decorator(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+
+        def decorator(
+            fn: Callable[..., Awaitable[Any]],
+        ) -> Callable[..., Awaitable[Any]]:
             # Use explicit parameters or infer from function
             schema = parameters if parameters is not None else generate_schema(fn)
 
@@ -99,6 +104,7 @@ class ActionGroup:
             )
             self._actions[name] = action
             return fn
+
         return decorator
 
     def get_action(self, name: str) -> Action | None:

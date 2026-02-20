@@ -1,0 +1,9 @@
+[project]
+name = "agent-sentinel"
+version = "0.1.0"
+description = "AI agent security monitoring demo using Bedsheet Sense"
+requires-python = ">=3.11"
+dependencies = [
+    "bedsheet[sense]",
+    "duckduckgo-search>=7.0.0",
+]

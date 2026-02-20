@@ -1,4 +1,5 @@
 """Memory protocol and message types."""
+
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, runtime_checkable
 
@@ -6,6 +7,7 @@ from typing import Any, Literal, Protocol, runtime_checkable
 @dataclass
 class Message:
     """A message in the conversation history."""
+
     role: Literal["user", "assistant", "tool_result"]
     content: str | None
     tool_calls: list[dict[str, Any]] | None = None

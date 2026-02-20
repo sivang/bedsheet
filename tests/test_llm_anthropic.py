@@ -1,4 +1,5 @@
 """Tests for Anthropic LLM client implementation."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from bedsheet.llm.anthropic import AnthropicClient
@@ -69,7 +70,10 @@ async def test_anthropic_client_chat_tool_call():
             ToolDefinition(
                 name="get_weather",
                 description="Get weather",
-                input_schema={"type": "object", "properties": {"city": {"type": "string"}}}
+                input_schema={
+                    "type": "object",
+                    "properties": {"city": {"type": "string"}},
+                },
             )
         ]
 
@@ -103,10 +107,14 @@ async def test_anthropic_client_message_conversion():
         # Test with user, assistant, and tool_result messages
         messages = [
             Message(role="user", content="Hi"),
-            Message(role="assistant", content=None, tool_calls=[
-                {"id": "call_1", "name": "test", "input": {"x": 1}}
-            ]),
-            Message(role="tool_result", content='{"result": "ok"}', tool_call_id="call_1"),
+            Message(
+                role="assistant",
+                content=None,
+                tool_calls=[{"id": "call_1", "name": "test", "input": {"x": 1}}],
+            ),
+            Message(
+                role="tool_result", content='{"result": "ok"}', tool_call_id="call_1"
+            ),
         ]
 
         await client.chat(messages=messages, system="Test")

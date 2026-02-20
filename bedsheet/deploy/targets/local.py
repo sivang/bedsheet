@@ -1,4 +1,5 @@
 """Local deployment target generator."""
+
 import shutil
 from pathlib import Path
 

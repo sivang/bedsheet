@@ -1,4 +1,5 @@
 """Tests for bedsheet.deploy.targets.aws module."""
+
 import tempfile
 from pathlib import Path
 
@@ -204,7 +205,9 @@ def test_aws_target_validate_no_aws_config():
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_single_agent_metadata):
+async def test_aws_target_generate_creates_all_files(
+    mock_aws_config, mock_single_agent_metadata
+):
     """Test AWSTarget.generate creates all expected files."""
     target = AWSTarget()
 
@@ -222,12 +225,24 @@ async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_singl
         assert ".env.example" in file_names
         assert "app.py" in file_names
         assert "cdk.json" in file_names
-        assert "agent_stack.py" in [f.path.name for f in files if f.path.parent.name == "stacks"]
-        assert "__init__.py" in [f.path.name for f in files if f.path.parent.name == "stacks"]
-        assert "handler.py" in [f.path.name for f in files if f.path.parent.name == "lambda"]
-        assert "__init__.py" in [f.path.name for f in files if f.path.parent.name == "lambda"]
-        assert "requirements.txt" in [f.path.name for f in files if f.path.parent.name == "lambda"]
-        assert "openapi.yaml" in [f.path.name for f in files if f.path.parent.name == "schemas"]
+        assert "agent_stack.py" in [
+            f.path.name for f in files if f.path.parent.name == "stacks"
+        ]
+        assert "__init__.py" in [
+            f.path.name for f in files if f.path.parent.name == "stacks"
+        ]
+        assert "handler.py" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
+        assert "__init__.py" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
+        assert "requirements.txt" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
+        assert "openapi.yaml" in [
+            f.path.name for f in files if f.path.parent.name == "schemas"
+        ]
 
         # Check all are GeneratedFile instances
         for file in files:
@@ -239,7 +254,9 @@ async def test_aws_target_generate_creates_all_files(mock_aws_config, mock_singl
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_cdk_stack_content(mock_aws_config, mock_single_agent_metadata):
+async def test_aws_target_generate_cdk_stack_content(
+    mock_aws_config, mock_single_agent_metadata
+):
     """Test AWSTarget.generate creates CDK stack with Bedrock constructs."""
     target = AWSTarget()
 
@@ -271,11 +288,19 @@ async def test_aws_target_generate_lambda_handler_uses_powertools(
         output_dir = Path(tmpdir)
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
-        handler_file = next(f for f in files if f.path.name == "handler.py" and f.path.parent.name == "lambda")
+        handler_file = next(
+            f
+            for f in files
+            if f.path.name == "handler.py" and f.path.parent.name == "lambda"
+        )
         content = handler_file.content
 
         # Check for AWS Powertools imports or patterns
-        assert "aws_lambda_powertools" in content or "powertools" in content or "logger" in content.lower()
+        assert (
+            "aws_lambda_powertools" in content
+            or "powertools" in content
+            or "logger" in content.lower()
+        )
 
         # Check for Lambda handler function
         assert "def handler" in content or "def lambda_handler" in content
@@ -308,7 +333,9 @@ async def test_aws_target_generate_openapi_schema_has_correct_paths(
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_cdk_app_content(mock_aws_config, mock_single_agent_metadata):
+async def test_aws_target_generate_cdk_app_content(
+    mock_aws_config, mock_single_agent_metadata
+):
     """Test AWSTarget.generate creates CDK app.py with correct content."""
     target = AWSTarget()
 
@@ -316,7 +343,9 @@ async def test_aws_target_generate_cdk_app_content(mock_aws_config, mock_single_
         output_dir = Path(tmpdir)
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
-        app_file = next(f for f in files if f.path.name == "app.py" and f.path.parent == output_dir)
+        app_file = next(
+            f for f in files if f.path.name == "app.py" and f.path.parent == output_dir
+        )
         content = app_file.content
 
         # Check for CDK app initialization
@@ -338,7 +367,11 @@ async def test_aws_target_generate_pyproject_toml_content(
         output_dir = Path(tmpdir)
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
-        pyproject_file = next(f for f in files if f.path.name == "pyproject.toml" and f.path.parent == output_dir)
+        pyproject_file = next(
+            f
+            for f in files
+            if f.path.name == "pyproject.toml" and f.path.parent == output_dir
+        )
         content = pyproject_file.content
 
         # Check for expected dependencies
@@ -358,7 +391,9 @@ async def test_aws_target_generate_lambda_requirements_txt_content(
         files = target.generate(mock_aws_config, mock_single_agent_metadata, output_dir)
 
         lambda_req_file = next(
-            f for f in files if f.path.name == "requirements.txt" and f.path.parent.name == "lambda"
+            f
+            for f in files
+            if f.path.name == "requirements.txt" and f.path.parent.name == "lambda"
         )
         content = lambda_req_file.content
 
@@ -368,7 +403,9 @@ async def test_aws_target_generate_lambda_requirements_txt_content(
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_env_example_content(mock_aws_config, mock_single_agent_metadata):
+async def test_aws_target_generate_env_example_content(
+    mock_aws_config, mock_single_agent_metadata
+):
     """Test AWSTarget.generate creates .env.example with correct content."""
     target = AWSTarget()
 
@@ -385,7 +422,9 @@ async def test_aws_target_generate_env_example_content(mock_aws_config, mock_sin
 
 
 @pytest.mark.asyncio
-async def test_aws_target_generate_makefile_content(mock_aws_config, mock_single_agent_metadata):
+async def test_aws_target_generate_makefile_content(
+    mock_aws_config, mock_single_agent_metadata
+):
     """Test AWSTarget.generate creates Makefile with correct content."""
     target = AWSTarget()
 
@@ -432,7 +471,10 @@ async def test_aws_target_generate_with_default_config(mock_single_agent_metadat
         # Check that default Bedrock model is used
         stack_file = next(f for f in files if f.path.name == "agent_stack.py")
         # Default model should be claude from Bedrock
-        assert "claude" in stack_file.content.lower() or "model" in stack_file.content.lower()
+        assert (
+            "claude" in stack_file.content.lower()
+            or "model" in stack_file.content.lower()
+        )
 
 
 @pytest.mark.asyncio

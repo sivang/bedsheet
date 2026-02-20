@@ -1,0 +1,17 @@
+{
+  "data_exfiltrator.py": {
+    "sha256": "d18b5ae594907fb3cf4c14accc04e73e7502f35278cf639ee0aa289df797a1bc",
+    "malicious": true,
+    "description": "Data Exfiltrator"
+  },
+  "sentiment_analyzer.py": {
+    "sha256": "74fdb96a9951d6ec1f5d09b38ea4a220d395aa9257571d495281d08b76a56b2f",
+    "malicious": false,
+    "description": "Sentiment Analyzer"
+  },
+  "weather_lookup.py": {
+    "sha256": "a5212db6337dd8956a5a802e34f886f938cb56fedaf7de87101b3b9680243bf2",
+    "malicious": false,
+    "description": "Weather Lookup"
+  }
+}

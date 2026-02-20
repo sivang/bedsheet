@@ -1,4 +1,5 @@
 """Supervisor agent for multi-agent collaboration."""
+
 import asyncio
 import json
 from typing import AsyncIterator, Literal
@@ -6,9 +7,16 @@ from typing import AsyncIterator, Literal
 from bedsheet.agent import Agent
 from bedsheet.action_group import ActionGroup
 from bedsheet.events import (
-    Event, CompletionEvent, ErrorEvent, ToolCallEvent, ToolResultEvent,
-    CollaboratorStartEvent, CollaboratorEvent, CollaboratorCompleteEvent,
-    DelegationEvent, RoutingEvent,
+    Event,
+    CompletionEvent,
+    ErrorEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+    CollaboratorStartEvent,
+    CollaboratorEvent,
+    CollaboratorCompleteEvent,
+    DelegationEvent,
+    RoutingEvent,
 )
 from bedsheet.llm.base import LLMClient
 from bedsheet.memory.base import Memory, Message
@@ -84,11 +92,11 @@ If no agent is appropriate, respond directly.
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Name of the agent to delegate to (for single delegation)"
+                    "description": "Name of the agent to delegate to (for single delegation)",
                 },
                 "task": {
                     "type": "string",
-                    "description": "Task to delegate (for single delegation)"
+                    "description": "Task to delegate (for single delegation)",
                 },
                 "delegations": {
                     "type": "array",
@@ -97,13 +105,13 @@ If no agent is appropriate, respond directly.
                         "type": "object",
                         "properties": {
                             "agent_name": {"type": "string"},
-                            "task": {"type": "string"}
+                            "task": {"type": "string"},
                         },
-                        "required": ["agent_name", "task"]
-                    }
-                }
+                        "required": ["agent_name", "task"],
+                    },
+                },
             },
-            "required": []  # All parameters are optional, one of the patterns must be used
+            "required": [],  # All parameters are optional, one of the patterns must be used
         }
 
         @delegate_group.action(
@@ -142,7 +150,9 @@ If no agent is appropriate, respond directly.
         yield CollaboratorStartEvent(agent_name=agent_name, task=task)
 
         result = ""
-        async for event in collaborator.invoke(session_id=f"{session_id}:{agent_name}", input_text=task, stream=stream):
+        async for event in collaborator.invoke(
+            session_id=f"{session_id}:{agent_name}", input_text=task, stream=stream
+        ):
             yield CollaboratorEvent(agent_name=agent_name, inner_event=event)
             if isinstance(event, CompletionEvent):
                 result = event.response
@@ -203,7 +213,7 @@ If no agent is appropriate, respond directly.
                     tool_calls=[
                         {"id": tc.id, "name": tc.name, "input": tc.input}
                         for tc in response.tool_calls
-                    ]
+                    ],
                 )
                 messages.append(assistant_message)
                 new_messages.append(assistant_message)
@@ -222,7 +232,10 @@ If no agent is appropriate, respond directly.
                         delegations_input = tool_call.input.get("delegations")
 
                         # Router mode: direct handoff to one agent
-                        if self.collaboration_mode == "router" and not delegations_input:
+                        if (
+                            self.collaboration_mode == "router"
+                            and not delegations_input
+                        ):
                             agent_name = tool_call.input.get("agent_name", "")
                             task = tool_call.input.get("task", "")
 
@@ -247,7 +260,9 @@ If no agent is appropriate, respond directly.
 
                             # Execute delegation and collect final response
                             final_response = ""
-                            async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
+                            async for event in self._execute_single_delegation(
+                                agent_name, task, session_id, stream=stream
+                            ):
                                 yield event
                                 if isinstance(event, CollaboratorCompleteEvent):
                                     final_response = event.response
@@ -267,7 +282,9 @@ If no agent is appropriate, respond directly.
                                 agent_name = d["agent_name"]
                                 task = d["task"]
                                 events = []
-                                async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
+                                async for event in self._execute_single_delegation(
+                                    agent_name, task, session_id, stream=stream
+                                ):
                                     events.append(event)
                                 return agent_name, events
 
@@ -296,7 +313,9 @@ If no agent is appropriate, respond directly.
                                 error = content
                             else:
                                 result = ""
-                                async for event in self._execute_single_delegation(agent_name, task, session_id, stream=stream):
+                                async for event in self._execute_single_delegation(
+                                    agent_name, task, session_id, stream=stream
+                                ):
                                     yield event
                                     if isinstance(event, CollaboratorCompleteEvent):
                                         result = event.response
@@ -340,7 +359,11 @@ If no agent is appropriate, respond directly.
                         if error:
                             content = f"Error: {error}"
                         else:
-                            content = json.dumps(result) if not isinstance(result, str) else result
+                            content = (
+                                json.dumps(result)
+                                if not isinstance(result, str)
+                                else result
+                            )
 
                         tool_result_message = Message(
                             role="tool_result",
@@ -370,5 +393,7 @@ If no agent is appropriate, respond directly.
         # Get base rendering from parent
         prompt = super()._render_system_prompt()
         # Add collaborators summary
-        prompt = prompt.replace("$collaborators_summary$", self._render_collaborators_summary())
+        prompt = prompt.replace(
+            "$collaborators_summary$", self._render_collaborators_summary()
+        )
         return prompt

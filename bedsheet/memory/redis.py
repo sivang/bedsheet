@@ -1,4 +1,5 @@
 """Redis-backed memory storage for production use."""
+
 import json
 from dataclasses import asdict
 

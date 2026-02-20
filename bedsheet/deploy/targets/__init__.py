@@ -1,4 +1,5 @@
 """Deployment target generators."""
+
 from .base import DeploymentTarget, GeneratedFile
 from .local import LocalTarget
 from .gcp import GCPTarget

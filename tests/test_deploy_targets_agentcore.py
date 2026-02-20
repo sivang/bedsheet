@@ -1,4 +1,5 @@
 """Tests for bedsheet.deploy.targets.agentcore module."""
+
 import tempfile
 from pathlib import Path
 
@@ -138,7 +139,9 @@ def test_agentcore_target_validate_invalid_lambda_memory_too_low():
             ],
             target="agentcore",
             targets={
-                "agentcore": AgentCoreTargetConfig(region="us-east-1", lambda_memory=64),
+                "agentcore": AgentCoreTargetConfig(
+                    region="us-east-1", lambda_memory=64
+                ),
             },
         )
 
@@ -158,7 +161,9 @@ def test_agentcore_target_validate_invalid_lambda_memory_too_high():
             ],
             target="agentcore",
             targets={
-                "agentcore": AgentCoreTargetConfig(region="us-east-1", lambda_memory=20000),
+                "agentcore": AgentCoreTargetConfig(
+                    region="us-east-1", lambda_memory=20000
+                ),
             },
         )
 
@@ -177,7 +182,9 @@ def test_agentcore_target_validate_invalid_runtime_memory_too_low():
             ],
             target="agentcore",
             targets={
-                "agentcore": AgentCoreTargetConfig(region="us-east-1", runtime_memory=256),
+                "agentcore": AgentCoreTargetConfig(
+                    region="us-east-1", runtime_memory=256
+                ),
             },
         )
 
@@ -196,7 +203,9 @@ def test_agentcore_target_validate_invalid_runtime_memory_too_high():
             ],
             target="agentcore",
             targets={
-                "agentcore": AgentCoreTargetConfig(region="us-east-1", runtime_memory=16384),
+                "agentcore": AgentCoreTargetConfig(
+                    region="us-east-1", runtime_memory=16384
+                ),
             },
         )
 
@@ -215,7 +224,9 @@ def test_agentcore_target_validate_invalid_runtime_vcpu():
             ],
             target="agentcore",
             targets={
-                "agentcore": AgentCoreTargetConfig(region="us-east-1", runtime_vcpu=0.1),
+                "agentcore": AgentCoreTargetConfig(
+                    region="us-east-1", runtime_vcpu=0.1
+                ),
             },
         )
 
@@ -263,13 +274,17 @@ def test_agentcore_target_validate_no_agentcore_config():
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_creates_all_files(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_creates_all_files(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates all expected files."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         # Check we got all expected files
         # Terraform: 4, Common: 3, Runtime: 3, Lambda: 3, Schemas: 1, GitHub: 2 = 16 total
@@ -286,18 +301,36 @@ async def test_agentcore_target_generate_creates_all_files(mock_agentcore_config
         assert "Makefile" in file_names
         assert ".env.example" in file_names
         # Runtime files
-        assert "Dockerfile" in [f.path.name for f in files if f.path.parent.name == "runtime"]
-        assert "app.py" in [f.path.name for f in files if f.path.parent.name == "runtime"]
-        assert "requirements.txt" in [f.path.name for f in files if f.path.parent.name == "runtime"]
+        assert "Dockerfile" in [
+            f.path.name for f in files if f.path.parent.name == "runtime"
+        ]
+        assert "app.py" in [
+            f.path.name for f in files if f.path.parent.name == "runtime"
+        ]
+        assert "requirements.txt" in [
+            f.path.name for f in files if f.path.parent.name == "runtime"
+        ]
         # Lambda files
-        assert "handler.py" in [f.path.name for f in files if f.path.parent.name == "lambda"]
-        assert "__init__.py" in [f.path.name for f in files if f.path.parent.name == "lambda"]
-        assert "requirements.txt" in [f.path.name for f in files if f.path.parent.name == "lambda"]
+        assert "handler.py" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
+        assert "__init__.py" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
+        assert "requirements.txt" in [
+            f.path.name for f in files if f.path.parent.name == "lambda"
+        ]
         # Schema files
-        assert "openapi.yaml" in [f.path.name for f in files if f.path.parent.name == "schemas"]
+        assert "openapi.yaml" in [
+            f.path.name for f in files if f.path.parent.name == "schemas"
+        ]
         # GitHub workflow files
-        assert "ci.yaml" in [f.path.name for f in files if f.path.parent.name == "workflows"]
-        assert "deploy.yaml" in [f.path.name for f in files if f.path.parent.name == "workflows"]
+        assert "ci.yaml" in [
+            f.path.name for f in files if f.path.parent.name == "workflows"
+        ]
+        assert "deploy.yaml" in [
+            f.path.name for f in files if f.path.parent.name == "workflows"
+        ]
 
         # Check all are GeneratedFile instances
         for file in files:
@@ -309,13 +342,17 @@ async def test_agentcore_target_generate_creates_all_files(mock_agentcore_config
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_terraform_main_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_terraform_main_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates Terraform main.tf with AgentCore resources."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         main_tf = next(f for f in files if f.path.name == "main.tf")
         content = main_tf.content
@@ -325,7 +362,11 @@ async def test_agentcore_target_generate_terraform_main_content(mock_agentcore_c
         assert "required_providers" in content or "provider" in content
 
         # Check for AgentCore resources
-        assert "aws_bedrockagentcore" in content or "bedrockagentcore" in content or "agentcore" in content.lower()
+        assert (
+            "aws_bedrockagentcore" in content
+            or "bedrockagentcore" in content
+            or "agentcore" in content.lower()
+        )
 
         # Check for ECR repository
         assert "ecr" in content.lower()
@@ -338,19 +379,31 @@ async def test_agentcore_target_generate_terraform_main_content(mock_agentcore_c
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_runtime_dockerfile_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_runtime_dockerfile_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates ARM64 Dockerfile for AgentCore."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
-        dockerfile = next(f for f in files if f.path.name == "Dockerfile" and f.path.parent.name == "runtime")
+        dockerfile = next(
+            f
+            for f in files
+            if f.path.name == "Dockerfile" and f.path.parent.name == "runtime"
+        )
         content = dockerfile.content
 
         # Check for ARM64 platform (required by AgentCore)
-        assert "arm64" in content.lower() or "aarch64" in content.lower() or "--platform" in content
+        assert (
+            "arm64" in content.lower()
+            or "aarch64" in content.lower()
+            or "--platform" in content
+        )
 
         # Check for Python base image
         assert "python" in content.lower()
@@ -360,19 +413,31 @@ async def test_agentcore_target_generate_runtime_dockerfile_content(mock_agentco
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_runtime_app_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_runtime_app_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates runtime app with AgentCore endpoints."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
-        app_file = next(f for f in files if f.path.name == "app.py" and f.path.parent.name == "runtime")
+        app_file = next(
+            f
+            for f in files
+            if f.path.name == "app.py" and f.path.parent.name == "runtime"
+        )
         content = app_file.content
 
         # Check for FastAPI or similar framework
-        assert "fastapi" in content.lower() or "starlette" in content.lower() or "flask" in content.lower()
+        assert (
+            "fastapi" in content.lower()
+            or "starlette" in content.lower()
+            or "flask" in content.lower()
+        )
 
         # Check for AgentCore HTTP protocol endpoints
         assert "/invocations" in content  # POST endpoint
@@ -383,15 +448,23 @@ async def test_agentcore_target_generate_runtime_app_content(mock_agentcore_conf
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_lambda_handler_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_lambda_handler_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates Lambda handler for tools."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
-        handler_file = next(f for f in files if f.path.name == "handler.py" and f.path.parent.name == "lambda")
+        handler_file = next(
+            f
+            for f in files
+            if f.path.name == "handler.py" and f.path.parent.name == "lambda"
+        )
         content = handler_file.content
 
         # Check for Lambda handler function
@@ -413,7 +486,9 @@ async def test_agentcore_target_generate_openapi_schema_has_correct_paths(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         openapi_file = next(f for f in files if f.path.name == "openapi.yaml")
         content = openapi_file.content
@@ -428,13 +503,17 @@ async def test_agentcore_target_generate_openapi_schema_has_correct_paths(
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_outputs_tf_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_outputs_tf_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates outputs.tf with correct outputs."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         outputs_file = next(f for f in files if f.path.name == "outputs.tf")
         content = outputs_file.content
@@ -445,13 +524,17 @@ async def test_agentcore_target_generate_outputs_tf_content(mock_agentcore_confi
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_variables_tf_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_variables_tf_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates variables.tf with correct variables."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         variables_file = next(f for f in files if f.path.name == "variables.tf")
         content = variables_file.content
@@ -462,15 +545,23 @@ async def test_agentcore_target_generate_variables_tf_content(mock_agentcore_con
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_pyproject_toml_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_pyproject_toml_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates pyproject.toml with correct dependencies."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
-        pyproject_file = next(f for f in files if f.path.name == "pyproject.toml" and f.path.parent == output_dir)
+        pyproject_file = next(
+            f
+            for f in files
+            if f.path.name == "pyproject.toml" and f.path.parent == output_dir
+        )
         content = pyproject_file.content
 
         # Check for project name
@@ -481,30 +572,42 @@ async def test_agentcore_target_generate_pyproject_toml_content(mock_agentcore_c
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_makefile_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_makefile_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates Makefile with correct targets."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         makefile = next(f for f in files if f.path.name == "Makefile")
         content = makefile.content
 
         # Check for expected Makefile targets
         assert ".PHONY:" in content
-        assert "terraform" in content.lower() or "deploy" in content.lower() or "build" in content.lower()
+        assert (
+            "terraform" in content.lower()
+            or "deploy" in content.lower()
+            or "build" in content.lower()
+        )
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_env_example_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_env_example_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates .env.example with correct content."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         env_file = next(f for f in files if f.path.name == ".env.example")
         content = env_file.content
@@ -515,13 +618,17 @@ async def test_agentcore_target_generate_env_example_content(mock_agentcore_conf
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_ci_workflow_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_ci_workflow_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates CI workflow with correct content."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         ci_file = next(f for f in files if f.path.name == "ci.yaml")
         content = ci_file.content
@@ -536,13 +643,17 @@ async def test_agentcore_target_generate_ci_workflow_content(mock_agentcore_conf
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_deploy_workflow_content(mock_agentcore_config, mock_single_agent_metadata):
+async def test_agentcore_target_generate_deploy_workflow_content(
+    mock_agentcore_config, mock_single_agent_metadata
+):
     """Test AgentCoreTarget.generate creates deploy workflow with correct content."""
     target = AgentCoreTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_single_agent_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_single_agent_metadata, output_dir
+        )
 
         deploy_file = next(f for f in files if f.path.name == "deploy.yaml")
         content = deploy_file.content
@@ -558,7 +669,9 @@ async def test_agentcore_target_generate_deploy_workflow_content(mock_agentcore_
 
 
 @pytest.mark.asyncio
-async def test_agentcore_target_generate_with_default_config(mock_single_agent_metadata):
+async def test_agentcore_target_generate_with_default_config(
+    mock_single_agent_metadata,
+):
     """Test AgentCoreTarget.generate uses default AgentCore config when target config is not AgentCore."""
     # Create config with AgentCore target but minimal settings
     config = BedsheetConfig(
@@ -595,12 +708,18 @@ async def test_agentcore_target_generate_supervisor_filters_delegate_tool(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_supervisor_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_supervisor_metadata, output_dir
+        )
 
         # The supervisor only has the 'delegate' tool which gets filtered out
         # AgentCore uses native agent-to-agent protocol, so no Lambda handler is generated
         # when there are no other tools
-        lambda_handlers = [f for f in files if f.path.name == "handler.py" and f.path.parent.name == "lambda"]
+        lambda_handlers = [
+            f
+            for f in files
+            if f.path.name == "handler.py" and f.path.parent.name == "lambda"
+        ]
 
         # Since delegate is the only tool and it's filtered, no Lambda files should exist
         assert len(lambda_handlers) == 0
@@ -622,10 +741,16 @@ async def test_agentcore_target_generate_supervisor_architecture(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        files = target.generate(mock_agentcore_config, mock_supervisor_metadata, output_dir)
+        files = target.generate(
+            mock_agentcore_config, mock_supervisor_metadata, output_dir
+        )
 
         # Check runtime app contains supervisor-related content
-        app_file = next(f for f in files if f.path.name == "app.py" and f.path.parent.name == "runtime")
+        app_file = next(
+            f
+            for f in files
+            if f.path.name == "app.py" and f.path.parent.name == "runtime"
+        )
         content = app_file.content
 
         # The app should handle invocations (agents are coordinated by AgentCore)

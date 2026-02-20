@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - The Sixth Sense Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 260px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-width); height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto; padding: 24px 0; z-index: 100;
+            display: flex; flex-direction: column;
+        }
+
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .sidebar-header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .sidebar-header .subtitle { font-size: 12px; color: var(--text-secondary); }
+        .nav-section { padding: 8px 20px; }
+        .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .nav-link { display: flex; align-items: center; padding: 6px 0; color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+        .nav-link:hover { color: var(--accent-blue); }
+        .nav-link .step { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--border-color); border-radius: 50%; font-size: 11px; font-weight: 600; margin-right: 8px; color: var(--text-muted); }
+        .nav-link:hover .step { background: var(--accent-blue); color: white; }
+
+        .main-content { margin-left: var(--sidebar-width); max-width: 1000px; padding: 48px 64px; }
+        .hero { margin-bottom: 48px; }
+        .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 16px; }
+        .hero .lead { font-size: 20px; color: var(--text-secondary); margin-bottom: 24px; }
+        .hero .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-purple { background: #f3e8ff; color: #6b21a8; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
+
+        h2 { font-size: 28px; font-weight: 600; margin-top: 64px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; }
+        h2 .step-number { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--accent-blue); color: white; border-radius: 50%; font-size: 18px; }
+        h3 { font-size: 20px; font-weight: 600; margin-top: 40px; margin-bottom: 16px; }
+        h4 { font-size: 16px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; color: var(--text-secondary); }
+        p { margin-bottom: 16px; }
+
+        pre { background: var(--code-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; overflow-x: auto; margin: 16px 0 24px 0; font-size: 14px; white-space: pre; }
+        code { font-family: 'JetBrains Mono', monospace; }
+        p code, li code, td code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--accent-purple); }
+
+        .info-box { border-radius: 8px; padding: 16px 20px; margin: 20px 0; border-left: 4px solid; }
+        .info-box.tip { background: #f0fdf4; border-color: var(--accent-green); }
+        .info-box.note { background: #eff6ff; border-color: var(--accent-blue); }
+        .info-box.warning { background: #fefce8; border-color: var(--accent-orange); }
+        .info-box-title { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .info-box p:last-child { margin-bottom: 0; }
+
+        .output { background: #1f2937; color: #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; }
+        .whats-happening { background: var(--bg-secondary); border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .whats-happening h4 { margin-top: 0; color: var(--accent-purple); }
+        .whats-happening ol, .whats-happening ul { margin-left: 24px; margin-bottom: 0; }
+        .whats-happening li { margin-bottom: 8px; }
+        ul, ol { margin-left: 24px; margin-bottom: 16px; }
+        li { margin-bottom: 8px; }
+        .architecture { background: var(--bg-secondary); border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; }
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 24px 0; }
+        .feature-card { background: var(--bg-secondary); border-radius: 8px; padding: 20px; border-left: 4px solid var(--accent-blue); }
+        .feature-card h4 { margin-top: 0; color: var(--accent-blue); }
+        .feature-card p { margin-bottom: 0; font-size: 14px; }
+
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 10px 14px; border: 1px solid var(--border-color); text-align: left; font-size: 14px; }
+        th { background: var(--bg-secondary); font-weight: 600; }
+
+        footer { margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--border-color); color: var(--text-muted); text-align: center; }
+        footer a { color: var(--accent-blue); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h1>Sixth Sense</h1>
+        <div class="subtitle">Distributed Agent Communication</div>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Guide</div>
+        <a href="#overview" class="nav-link"><span class="step">1</span> Overview</a>
+        <a href="#setup" class="nav-link"><span class="step">2</span> Setup</a>
+        <a href="#first-sense-agent" class="nav-link"><span class="step">3</span> First Sense Agent</a>
+        <a href="#signals" class="nav-link"><span class="step">4</span> Signals</a>
+        <a href="#request-response" class="nav-link"><span class="step">5</span> Request/Response</a>
+        <a href="#claim-protocol" class="nav-link"><span class="step">6</span> Claim Protocol</a>
+        <a href="#sense-network" class="nav-link"><span class="step">7</span> SenseNetwork API</a>
+        <a href="#demo" class="nav-link"><span class="step">8</span> Cloud Monitor Demo</a>
+        <a href="#testing" class="nav-link"><span class="step">9</span> Testing</a>
+        <a href="#reference" class="nav-link"><span class="step">10</span> Reference</a>
+    </div>
+</nav>
+
+<main class="main-content">
+    <div class="hero">
+        <h1>The Sixth Sense</h1>
+        <p class="lead">Distributed communication for Bedsheet agents. Run agents across processes, machines, and cloud providers &mdash; they find each other and collaborate over PubNub.</p>
+        <div class="badge-row">
+            <span class="badge badge-blue">PubNub-backed</span>
+            <span class="badge badge-green">Zero infrastructure</span>
+            <span class="badge badge-purple">Real-time</span>
+            <span class="badge badge-orange">Works behind firewalls</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Overview -->
+    <h2 id="overview"><span class="step-number">1</span> Overview</h2>
+
+    <p>Bedsheet's Supervisor pattern works great when all agents run in a single Python process. But what if your agents need to run on different machines, behind different firewalls, or even on different cloud providers?</p>
+
+    <p>The Sixth Sense module adds <strong>distributed communication</strong> to any Bedsheet agent via PubNub's real-time messaging platform. Agents become network-aware peers that can broadcast alerts, send requests to each other, and coordinate incident responses &mdash; all without running HTTP servers or managing service discovery.</p>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h4>Pure Clients</h4>
+            <p>Agents are PubNub clients, not servers. No ports to open, no URLs to register. Works behind NATs and firewalls.</p>
+        </div>
+        <div class="feature-card">
+            <h4>Signal-Based</h4>
+            <p>Seven signal kinds (request, response, alert, heartbeat, claim, release, event) cover all coordination patterns.</p>
+        </div>
+        <div class="feature-card">
+            <h4>Swappable Transport</h4>
+            <p><code>SenseTransport</code> protocol means PubNub is one implementation. Swap in MQTT, Redis Streams, or your own.</p>
+        </div>
+        <div class="feature-card">
+            <h4>Leaderless Coordination</h4>
+            <p>Claim-based protocol lets multiple commanders compete for incident ownership. No central coordinator needed.</p>
+        </div>
+    </div>
+
+    <div class="architecture">bedsheet/sense/
+├── __init__.py           # Exports
+├── protocol.py           # SenseTransport protocol
+├── signals.py            # Signal dataclass + kinds
+├── serialization.py      # Compact JSON (&lt;32KB)
+├── network.py            # SenseNetwork wrapper
+├── mixin.py              # SenseMixin for agents
+└── pubnub_transport.py   # PubNub implementation</div>
+
+    <!-- Step 2: Setup -->
+    <h2 id="setup"><span class="step-number">2</span> Setup</h2>
+
+    <h3>Install</h3>
+    <pre><code class="language-bash">pip install bedsheet[sense]</code></pre>
+
+    <p>This adds the <code>pubnub</code> package as a dependency.</p>
+
+    <h3>Get PubNub Keys</h3>
+    <ol>
+        <li>Sign up at <a href="https://www.pubnub.com">pubnub.com</a> (free tier: 200 MAU, unlimited channels)</li>
+        <li>Create an app in the PubNub dashboard</li>
+        <li>Copy your Subscribe Key and Publish Key</li>
+    </ol>
+
+    <pre><code class="language-bash">export PUBNUB_SUBSCRIBE_KEY=sub-c-your-key-here
+export PUBNUB_PUBLISH_KEY=pub-c-your-key-here</code></pre>
+
+    <div class="info-box tip">
+        <div class="info-box-title">Tip</div>
+        <p>Enable <strong>Presence</strong> in your PubNub keyset settings to use <code>get_online_agents()</code>.</p>
+    </div>
+
+    <!-- Step 3: First Sense Agent -->
+    <h2 id="first-sense-agent"><span class="step-number">3</span> Your First Sense Agent</h2>
+
+    <p>Any Bedsheet Agent becomes network-aware by adding the <code>SenseMixin</code>:</p>
+
+    <pre><code class="language-python">from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet.llm.anthropic import AnthropicClient
+from bedsheet.sense.pubnub_transport import PubNubTransport
+
+# 1. Create a sense-aware agent class
+class MyAgent(SenseMixin, Agent):
+    pass
+
+# 2. Build the agent as usual
+agent = MyAgent(
+    name="my-agent",
+    instruction="You are a helpful agent.",
+    model_client=AnthropicClient(),
+)
+
+# 3. Connect to the network
+transport = PubNubTransport(
+    subscribe_key="sub-c-...",
+    publish_key="pub-c-...",
+)
+await agent.join_network(transport, "my-namespace", ["alerts", "tasks"])
+
+# 4. The agent can now send and receive signals!
+# ... do work ...
+
+# 5. Disconnect when done
+await agent.leave_network()</code></pre>
+
+    <div class="whats-happening">
+        <h4>What's happening?</h4>
+        <ol>
+            <li><code>SenseMixin</code> adds network methods to the Agent without changing the core ReAct loop</li>
+            <li><code>join_network()</code> connects to PubNub, subscribes to channels, and starts a background signal processing loop</li>
+            <li>The agent automatically subscribes to its own direct channel (named after the agent)</li>
+            <li>A heartbeat broadcasts the agent's capabilities every 30 seconds</li>
+        </ol>
+    </div>
+
+    <!-- Step 4: Signals -->
+    <h2 id="signals"><span class="step-number">4</span> Signals</h2>
+
+    <p>A <code>Signal</code> is the unit of inter-agent communication. Every signal has a kind, a sender, and an optional payload:</p>
+
+    <pre><code class="language-python">from bedsheet.sense import Signal
+
+# Broadcast an alert
+alert = Signal(
+    kind="alert",
+    sender="cpu-watcher",
+    payload={"severity": "high", "cpu": 95.2},
+)
+await agent.broadcast("alerts", alert)</code></pre>
+
+    <h3>Signal Kinds</h3>
+    <table>
+        <tr><th>Kind</th><th>Purpose</th><th>Pattern</th></tr>
+        <tr><td><code>request</code></td><td>Ask an agent to do work</td><td>Peer-to-peer, expects <code>response</code></td></tr>
+        <tr><td><code>response</code></td><td>Return results</td><td>Peer-to-peer, has <code>correlation_id</code></td></tr>
+        <tr><td><code>alert</code></td><td>Broadcast an observation</td><td>One-to-many</td></tr>
+        <tr><td><code>heartbeat</code></td><td>Liveness + capabilities</td><td>One-to-many (periodic)</td></tr>
+        <tr><td><code>claim</code></td><td>Claim an incident</td><td>One-to-many (conflict resolution)</td></tr>
+        <tr><td><code>release</code></td><td>Release a claimed incident</td><td>One-to-many</td></tr>
+        <tr><td><code>event</code></td><td>Serialized bedsheet Event</td><td>One-to-many (observability)</td></tr>
+    </table>
+
+    <h3>Channel Naming</h3>
+    <p>Channels follow the convention <code>bedsheet.&lt;namespace&gt;.&lt;purpose&gt;</code>:</p>
+    <pre><code class="language-python">bedsheet.cloud-ops.alerts       # Alert broadcasts
+bedsheet.cloud-ops.tasks        # Task coordination / claims
+bedsheet.cloud-ops.cpu-watcher  # Direct channel to cpu-watcher agent</code></pre>
+
+    <h3>Custom Signal Handlers</h3>
+    <pre><code class="language-python">@agent.on_signal("alert")
+async def handle_alert(signal: Signal):
+    severity = signal.payload.get("severity")
+    print(f"Alert from {signal.sender}: {severity}")</code></pre>
+
+    <!-- Step 5: Request/Response -->
+    <h2 id="request-response"><span class="step-number">5</span> Request / Response</h2>
+
+    <p>The <code>request()</code> method sends a task to a remote agent and waits for the response. Under the hood, the receiving agent runs <code>invoke()</code> with the task and sends back the completion:</p>
+
+    <pre><code class="language-python"># Commander asks cpu-watcher to check usage
+result = await commander.request(
+    "cpu-watcher",
+    "What is the current CPU usage?",
+    timeout=30.0,
+)
+print(result)  # "Overall: 45.2%, Per-core: [32.1, 58.3, ...]"</code></pre>
+
+    <div class="whats-happening">
+        <h4>What's happening?</h4>
+        <ol>
+            <li>Commander creates a <code>request</code> signal with a unique <code>correlation_id</code></li>
+            <li>Signal is published to the cpu-watcher's direct channel</li>
+            <li>cpu-watcher's signal loop receives the request</li>
+            <li>cpu-watcher calls <code>self.invoke()</code> with the task text</li>
+            <li>The LLM uses cpu-watcher's tools to gather data</li>
+            <li>The <code>CompletionEvent</code> response is sent back as a <code>response</code> signal</li>
+            <li>Commander's future resolves with the result</li>
+        </ol>
+    </div>
+
+    <div class="info-box warning">
+        <div class="info-box-title">Timeout</div>
+        <p>If the remote agent doesn't respond within the timeout, a <code>TimeoutError</code> is raised. The default timeout is 30 seconds.</p>
+    </div>
+
+    <!-- Step 6: Claim Protocol -->
+    <h2 id="claim-protocol"><span class="step-number">6</span> Claim Protocol</h2>
+
+    <p>When multiple commander agents are online, they need to coordinate who handles an incident. The claim protocol provides leaderless conflict resolution:</p>
+
+    <pre><code class="language-python"># When an alert arrives
+won = await agent.claim_incident("incident-001", "tasks")
+if won:
+    # We are responsible for this incident
+    await investigate_and_report()
+else:
+    # Another agent claimed it first
+    pass</code></pre>
+
+    <div class="whats-happening">
+        <h4>How Claims Work</h4>
+        <ol>
+            <li>Agent publishes a <code>claim</code> signal with the incident ID and timestamp</li>
+            <li>Waits 500ms for competing claims from other agents</li>
+            <li>If competing claims arrive, the earliest timestamp wins</li>
+            <li>Loser backs off; winner coordinates the response</li>
+            <li>When done, winner publishes <code>release</code> to free the incident</li>
+        </ol>
+    </div>
+
+    <!-- Step 7: SenseNetwork -->
+    <h2 id="sense-network"><span class="step-number">7</span> SenseNetwork API</h2>
+
+    <p>For managing multiple agents in the same process (useful for testing and simpler deployments), use <code>SenseNetwork</code>:</p>
+
+    <pre><code class="language-python">from bedsheet.sense import SenseNetwork
+from bedsheet.testing import MockSenseTransport
+
+# For testing (in-memory)
+network = SenseNetwork(
+    namespace="cloud-ops",
+    transport=MockSenseTransport(),
+)
+
+# For production (PubNub)
+network = SenseNetwork(
+    namespace="cloud-ops",
+    transport_factory=lambda: PubNubTransport(sub_key, pub_key),
+)
+
+# Add agents
+await network.add(cpu_agent, channels=["alerts", "tasks"])
+await network.add(commander, channels=["alerts", "tasks"])
+
+# Later...
+await network.stop()</code></pre>
+
+    <!-- Step 8: Demo -->
+    <h2 id="demo"><span class="step-number">8</span> Cloud Monitor Demo</h2>
+
+    <p>The <code>examples/cloud-monitor/</code> directory contains a complete demo with 5 agents running as separate processes:</p>
+
+    <table>
+        <tr><th>Agent</th><th>Role</th><th>Data Source</th></tr>
+        <tr><td><code>cpu-watcher</code></td><td>Monitor CPU, alert on spikes</td><td><code>psutil</code></td></tr>
+        <tr><td><code>memory-watcher</code></td><td>Monitor RAM and swap</td><td><code>psutil</code></td></tr>
+        <tr><td><code>log-analyzer</code></td><td>Search and analyze logs</td><td>Simulated log buffer</td></tr>
+        <tr><td><code>security-scanner</code></td><td>Scan ports, check logins</td><td><code>socket</code></td></tr>
+        <tr><td><code>incident-commander</code></td><td>Coordinate alert responses</td><td>Sense network</td></tr>
+    </table>
+
+    <h3>Running the Demo</h3>
+    <pre><code class="language-bash">export PUBNUB_SUBSCRIBE_KEY=sub-c-...
+export PUBNUB_PUBLISH_KEY=pub-c-...
+export ANTHROPIC_API_KEY=sk-ant-...
+
+pip install bedsheet[sense] psutil
+
+cd examples/cloud-monitor
+python run.py</code></pre>
+
+    <div class="output">============================================================
+  Cloud Monitor - Bedsheet Sense Demo
+  Launching 5 distributed agents...
+============================================================
+  Starting cpu-watcher...
+[cpu-watcher] Online and monitoring...
+  Starting memory-watcher...
+[memory-watcher] Online and monitoring...
+  Starting log-analyzer...
+[log-analyzer] Online and ready...
+  Starting security-scanner...
+[security-scanner] Online and ready...
+  Starting incident-commander...
+[incident-commander] Online and coordinating...
+============================================================
+  All agents online! Press Ctrl+C to stop.
+============================================================</div>
+
+    <p>When CPU exceeds 80%, the cpu-watcher broadcasts an alert. The incident-commander claims it, queries the other agents for context, and synthesizes an incident report.</p>
+
+    <h3>Agent Sentinel Demo</h3>
+
+    <p>The <code>examples/agent-sentinel/</code> directory demonstrates AI agent security monitoring, inspired by the OpenClaw crisis of 2026. Three worker agents perform real tasks (DuckDuckGo searches, JSON calendar management, skill installation with SHA-256 verification), while sentinel agents monitor them for rogue behavior:</p>
+
+    <table>
+        <tr><th>Agent</th><th>Role</th><th>Data Source</th></tr>
+        <tr><td><code>web-researcher</code></td><td>Worker: web search</td><td>DuckDuckGo</td></tr>
+        <tr><td><code>scheduler</code></td><td>Worker: calendar management</td><td>JSON file</td></tr>
+        <tr><td><code>skill-acquirer</code></td><td>Worker: skill installation</td><td>Local ClawHub files</td></tr>
+        <tr><td><code>behavior-sentinel</code></td><td>Sentinel: output rate monitoring</td><td>Activity log</td></tr>
+        <tr><td><code>supply-chain-sentinel</code></td><td>Sentinel: skill integrity</td><td>SHA-256 hashing</td></tr>
+        <tr><td><code>sentinel-commander</code></td><td>Commander: alert correlation</td><td>Sense network</td></tr>
+    </table>
+
+    <p>Each worker has a ~15% chance per cycle of going rogue. Sentinels detect anomalies through real file I/O and alert the commander over PubNub, who investigates and issues quarantine orders.</p>
+
+    <pre><code class="language-bash">pip install bedsheet[sense] duckduckgo-search
+cd examples/agent-sentinel
+python run.py</code></pre>
+
+    <!-- Step 9: Testing -->
+    <h2 id="testing"><span class="step-number">9</span> Testing</h2>
+
+    <p>Use <code>MockSenseTransport</code> for unit tests &mdash; it routes signals in-memory without PubNub:</p>
+
+    <pre><code class="language-python">from bedsheet.testing import MockSenseTransport
+
+# Create a shared hub for multiple agents
+transport = MockSenseTransport()
+
+# Each agent gets its own peer transport
+t1 = transport          # First agent
+t2 = transport.create_peer()  # Second agent (shares the hub)
+
+# Agents connected to the same hub can exchange signals
+await agent1.join_network(t1, "test", ["alerts"])
+await agent2.join_network(t2, "test", ["alerts"])
+
+result = await agent1.request("agent2", "do something")
+assert result == "done"</code></pre>
+
+    <div class="info-box note">
+        <div class="info-box-title">Note</div>
+        <p><code>MockSenseTransport</code> follows the same pattern as <code>MockLLMClient</code> &mdash; a test double that satisfies the protocol without external dependencies.</p>
+    </div>
+
+    <!-- Step 10: Reference -->
+    <h2 id="reference"><span class="step-number">10</span> Reference</h2>
+
+    <h3>Signal Fields</h3>
+    <table>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+        <tr><td><code>kind</code></td><td><code>SignalKind</code></td><td>One of: request, response, alert, heartbeat, claim, release, event</td></tr>
+        <tr><td><code>sender</code></td><td><code>str</code></td><td>Name of the sending agent</td></tr>
+        <tr><td><code>payload</code></td><td><code>dict</code></td><td>Arbitrary data (default: empty dict)</td></tr>
+        <tr><td><code>correlation_id</code></td><td><code>str</code></td><td>Links requests to responses (auto-generated)</td></tr>
+        <tr><td><code>target</code></td><td><code>str | None</code></td><td>Intended recipient (None = broadcast)</td></tr>
+        <tr><td><code>timestamp</code></td><td><code>float</code></td><td>Unix timestamp (auto-set)</td></tr>
+        <tr><td><code>source_channel</code></td><td><code>str | None</code></td><td>Channel the signal arrived on (set by transport)</td></tr>
+    </table>
+
+    <h3>SenseMixin Methods</h3>
+    <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>join_network(transport, namespace, channels)</code></td><td>Connect and start listening</td></tr>
+        <tr><td><code>leave_network()</code></td><td>Disconnect and stop background tasks</td></tr>
+        <tr><td><code>broadcast(channel, signal)</code></td><td>Send signal to a channel</td></tr>
+        <tr><td><code>send_to(agent_name, signal)</code></td><td>Send signal to an agent's direct channel</td></tr>
+        <tr><td><code>request(agent_name, task, timeout)</code></td><td>Send task and await response</td></tr>
+        <tr><td><code>claim_incident(incident_id, channel)</code></td><td>Attempt to claim an incident</td></tr>
+        <tr><td><code>release_incident(incident_id, channel)</code></td><td>Release a claimed incident</td></tr>
+        <tr><td><code>on_signal(kind)</code></td><td>Decorator for custom signal handlers</td></tr>
+    </table>
+
+    <h3>New Event Types</h3>
+    <table>
+        <tr><th>Event</th><th>When Emitted</th></tr>
+        <tr><td><code>SignalReceivedEvent</code></td><td>Signal arrived from network</td></tr>
+        <tr><td><code>AgentConnectedEvent</code></td><td>Remote agent came online</td></tr>
+        <tr><td><code>AgentDisconnectedEvent</code></td><td>Remote agent went offline</td></tr>
+        <tr><td><code>RemoteDelegationEvent</code></td><td>Task sent to remote agent</td></tr>
+        <tr><td><code>RemoteResultEvent</code></td><td>Result received from remote agent</td></tr>
+    </table>
+
+    <footer>
+        <p>Bedsheet Agents &mdash; <a href="https://github.com/sivang/bedsheet">GitHub</a></p>
+    </footer>
+</main>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

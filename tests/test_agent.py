@@ -94,9 +94,7 @@ def test_agent_get_action_not_found():
 @pytest.mark.asyncio
 async def test_agent_invoke_simple_completion():
     """Test agent with LLM that returns text directly (no tool calls)."""
-    mock = MockLLMClient(responses=[
-        MockResponse(text="Hello! How can I help you?")
-    ])
+    mock = MockLLMClient(responses=[MockResponse(text="Hello! How can I help you?")])
 
     agent = Agent(
         name="TestAgent",
@@ -117,12 +115,16 @@ async def test_agent_invoke_simple_completion():
 @pytest.mark.asyncio
 async def test_agent_invoke_with_tool_call():
     """Test agent that calls a tool and then responds."""
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
-        ]),
-        MockResponse(text="The weather in SF is sunny and 72°F."),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
+                ]
+            ),
+            MockResponse(text="The weather in SF is sunny and 72°F."),
+        ]
+    )
 
     agent = Agent(
         name="WeatherAgent",
@@ -161,13 +163,17 @@ async def test_agent_invoke_with_tool_call():
 @pytest.mark.asyncio
 async def test_agent_parallel_tool_calls():
     """Test agent executes multiple tool calls in parallel."""
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="get_weather", input={"city": "SF"}),
-            ToolCall(id="call_2", name="get_weather", input={"city": "NYC"}),
-        ]),
-        MockResponse(text="SF is sunny, NYC is cloudy."),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="call_1", name="get_weather", input={"city": "SF"}),
+                    ToolCall(id="call_2", name="get_weather", input={"city": "NYC"}),
+                ]
+            ),
+            MockResponse(text="SF is sunny, NYC is cloudy."),
+        ]
+    )
 
     agent = Agent(
         name="WeatherAgent",
@@ -211,12 +217,14 @@ async def test_agent_parallel_tool_calls():
 @pytest.mark.asyncio
 async def test_agent_tool_error_recovery():
     """Test that tool errors are passed to LLM for recovery."""
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="failing_tool", input={})
-        ]),
-        MockResponse(text="Sorry, the tool failed. Let me help another way."),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[ToolCall(id="call_1", name="failing_tool", input={})]
+            ),
+            MockResponse(text="Sorry, the tool failed. Let me help another way."),
+        ]
+    )
 
     agent = Agent(
         name="TestAgent",
@@ -249,12 +257,14 @@ async def test_agent_tool_error_recovery():
 @pytest.mark.asyncio
 async def test_agent_unknown_action():
     """Test handling when LLM calls unknown action."""
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="nonexistent", input={})
-        ]),
-        MockResponse(text="I apologize, that action isn't available."),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[ToolCall(id="call_1", name="nonexistent", input={})]
+            ),
+            MockResponse(text="I apologize, that action isn't available."),
+        ]
+    )
 
     agent = Agent(
         name="TestAgent",
@@ -275,10 +285,12 @@ async def test_agent_unknown_action():
 async def test_agent_max_iterations():
     """Test that max iterations stops infinite loops."""
     # LLM always returns tool calls, never completes
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[ToolCall(id=f"call_{i}", name="loop", input={})])
-        for i in range(20)
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(tool_calls=[ToolCall(id=f"call_{i}", name="loop", input={})])
+            for i in range(20)
+        ]
+    )
 
     agent = Agent(
         name="TestAgent",

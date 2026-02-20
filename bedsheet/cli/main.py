@@ -3,6 +3,7 @@
 This module provides the command-line interface for managing Bedsheet
 agent deployments. Use `bedsheet --help` to see available commands.
 """
+
 import importlib
 import sys
 from pathlib import Path
@@ -46,6 +47,7 @@ console = Console()
 # Version - dynamically read from package metadata
 try:
     from importlib.metadata import version as get_version
+
     __version__ = get_version("bedsheet")
 except Exception:
     __version__ = "0.4.3"  # fallback
@@ -118,11 +120,12 @@ def _load_and_introspect_agent(
             # Try to find an agent instance (common pattern: module-level agent)
             # Look for common names like 'agent', 'advisor', or the lowercase class name
             agent_instance = None
-            for attr_name in [class_name.lower(), 'agent', 'advisor', 'root_agent']:
+            for attr_name in [class_name.lower(), "agent", "advisor", "root_agent"]:
                 if hasattr(module, attr_name):
                     attr = getattr(module, attr_name)
                     # Check if it's an Agent instance
                     from bedsheet.agent import Agent
+
                     if isinstance(attr, Agent):
                         agent_instance = attr
                         console.print(f"  [dim]Found agent instance: {attr_name}[/dim]")
@@ -139,6 +142,7 @@ def _load_and_introspect_agent(
 
         # Check if it's already an instance (module-level agent)
         from bedsheet.agent import Agent
+
         if isinstance(agent_class, Agent):
             console.print(f"  [dim]Found agent instance: {class_name}[/dim]")
             metadata = extract_agent_metadata(agent_class, target=target)
@@ -163,6 +167,7 @@ def _load_and_introspect_agent(
 
         # Strategy 1: Check if it's a factory function (returns an agent)
         import inspect
+
         sig = inspect.signature(agent_class)
         params = sig.parameters
 
@@ -176,7 +181,7 @@ def _load_and_introspect_agent(
                 pass
 
         # Strategy 2: Try with model_client parameter
-        if agent_instance is None and 'model_client' in params:
+        if agent_instance is None and "model_client" in params:
             try:
                 agent_instance = agent_class(model_client=mock_client)
             except Exception:
@@ -185,9 +190,9 @@ def _load_and_introspect_agent(
         # Strategy 3: Try with common parameter patterns
         if agent_instance is None:
             common_patterns = [
-                {'model_client': mock_client},
-                {'llm_client': mock_client},
-                {'client': mock_client},
+                {"model_client": mock_client},
+                {"llm_client": mock_client},
+                {"client": mock_client},
             ]
             for kwargs in common_patterns:
                 try:
@@ -232,26 +237,20 @@ def demo():
         bedsheet demo
     """
     from bedsheet.__main__ import main as demo_main
+
     demo_main()
 
 
 @app.command()
 def init(
     project_name: str = typer.Argument(
-        None,
-        help="Name of your agent project (creates a directory)"
+        None, help="Name of your agent project (creates a directory)"
     ),
     target: str = typer.Option(
-        "local",
-        "--target",
-        "-t",
-        help="Deployment target (local, gcp, aws)"
+        "local", "--target", "-t", help="Deployment target (local, gcp, aws)"
     ),
     force: bool = typer.Option(
-        False,
-        "--force",
-        "-f",
-        help="Overwrite existing project"
+        False, "--force", "-f", help="Overwrite existing project"
     ),
 ):
     """Initialize a new Bedsheet agent project.
@@ -269,7 +268,9 @@ def init(
 
     # Validate project name (no spaces, valid directory name)
     if " " in project_name or "/" in project_name:
-        rprint("[bold red]Error:[/bold red] Project name cannot contain spaces or slashes")
+        rprint(
+            "[bold red]Error:[/bold red] Project name cannot contain spaces or slashes"
+        )
         raise typer.Exit(1)
 
     # Validate target
@@ -281,7 +282,9 @@ def init(
     # Create project directory
     project_dir = Path(project_name)
     if project_dir.exists() and not force:
-        rprint(f"[bold red]Error:[/bold red] Directory '{project_name}' already exists!")
+        rprint(
+            f"[bold red]Error:[/bold red] Directory '{project_name}' already exists!"
+        )
         rprint("Use --force to overwrite.")
         raise typer.Exit(1)
 
@@ -345,7 +348,7 @@ assistant = create_assistant()
     (agents_dir / "assistant.py").write_text(assistant_code)
 
     # Create pyproject.toml (no build-system - this is not a distributable package)
-    pyproject = f'''[project]
+    pyproject = f"""[project]
 name = "{project_name}"
 version = "0.1.0"
 description = "A Bedsheet agent project"
@@ -354,11 +357,14 @@ dependencies = [
     "bedsheet>=0.4.0",
     "anthropic>=0.18.0",
 ]
-'''
+"""
     (project_dir / "pyproject.toml").write_text(pyproject)
 
     # Create target configurations
-    targets: dict[str, LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig] = {}
+    targets: dict[
+        str,
+        LocalTargetConfig | AWSTargetConfig | GCPTargetConfig | AgentCoreTargetConfig,
+    ] = {}
 
     if target == "local":
         targets["local"] = LocalTargetConfig(port=8000, hot_reload=True)
@@ -392,7 +398,7 @@ dependencies = [
         name="assistant",
         module="agents.assistant",
         class_name="Assistant",
-        description="Sample assistant agent"
+        description="Sample assistant agent",
     )
 
     # Create main config
@@ -428,19 +434,18 @@ dependencies = [
 @app.command()
 def deploy(
     config_file: Path = typer.Argument(
-        "bedsheet.yaml",
-        help="Path to bedsheet.yaml configuration file"
+        "bedsheet.yaml", help="Path to bedsheet.yaml configuration file"
     ),
     target: Optional[str] = typer.Option(
         None,
         "--target",
         "-t",
-        help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml"
+        help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml",
     ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
-        help="Show what would be deployed without actually deploying"
+        help="Show what would be deployed without actually deploying",
     ),
 ):
     """Deploy your Bedsheet agent to the specified target.
@@ -455,7 +460,9 @@ def deploy(
     """
     # Check if config file exists
     if not config_file.exists():
-        rprint(f"[bold red]Error:[/bold red] Configuration file not found: {config_file}")
+        rprint(
+            f"[bold red]Error:[/bold red] Configuration file not found: {config_file}"
+        )
         rprint("Run [bold cyan]bedsheet init[/bold cyan] to create one.")
         raise typer.Exit(1)
 
@@ -473,7 +480,9 @@ def deploy(
             rprint("Valid targets: local, gcp, aws")
             raise typer.Exit(1)
         if target not in config.targets:
-            rprint(f"[bold red]Error:[/bold red] Target '{target}' not configured in bedsheet.yaml")
+            rprint(
+                f"[bold red]Error:[/bold red] Target '{target}' not configured in bedsheet.yaml"
+            )
             rprint(f"Available targets: {', '.join(config.targets.keys())}")
             raise typer.Exit(1)
         config.target = target
@@ -484,17 +493,21 @@ def deploy(
 
     # Show deployment info
     console.print()
-    console.print(Panel.fit(
-        f"[bold cyan]Project:[/bold cyan] {config.name}\n"
-        f"[bold cyan]Target:[/bold cyan] {config.target}\n"
-        f"[bold cyan]Agents:[/bold cyan] {agent_names}",
-        title="[bold]Deployment Configuration[/bold]",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Project:[/bold cyan] {config.name}\n"
+            f"[bold cyan]Target:[/bold cyan] {config.target}\n"
+            f"[bold cyan]Agents:[/bold cyan] {agent_names}",
+            title="[bold]Deployment Configuration[/bold]",
+            border_style="cyan",
+        )
+    )
     console.print()
 
     if dry_run:
-        console.print("[bold yellow]DRY RUN MODE[/bold yellow] - No changes will be made")
+        console.print(
+            "[bold yellow]DRY RUN MODE[/bold yellow] - No changes will be made"
+        )
         console.print()
 
     # Deployment logic (skeleton)
@@ -506,7 +519,9 @@ def deploy(
         _deploy_aws(config, cast(AWSTargetConfig, target_config), dry_run)
 
 
-def _deploy_local(config: BedsheetConfig, target_config: LocalTargetConfig, dry_run: bool):
+def _deploy_local(
+    config: BedsheetConfig, target_config: LocalTargetConfig, dry_run: bool
+):
     """Deploy agent to local environment."""
     console.print("[bold]Local Deployment[/bold]")
     console.print()
@@ -592,8 +607,7 @@ def _deploy_aws(config: BedsheetConfig, target_config: AWSTargetConfig, dry_run:
 @app.command()
 def validate(
     config_file: Path = typer.Argument(
-        "bedsheet.yaml",
-        help="Path to bedsheet.yaml configuration file"
+        "bedsheet.yaml", help="Path to bedsheet.yaml configuration file"
     ),
 ):
     """Validate your bedsheet.yaml configuration.
@@ -606,17 +620,21 @@ def validate(
         bedsheet validate path/to/bedsheet.yaml
     """
     if not config_file.exists():
-        rprint(f"[bold red]Error:[/bold red] Configuration file not found: {config_file}")
+        rprint(
+            f"[bold red]Error:[/bold red] Configuration file not found: {config_file}"
+        )
         raise typer.Exit(1)
 
     try:
         config = load_config(config_file)
 
         console.print()
-        console.print(Panel.fit(
-            "[bold green]✓[/bold green] Configuration is valid!",
-            border_style="green",
-        ))
+        console.print(
+            Panel.fit(
+                "[bold green]✓[/bold green] Configuration is valid!",
+                border_style="green",
+            )
+        )
         console.print()
 
         # Show parsed config summary
@@ -630,7 +648,9 @@ def validate(
         # Show agents
         console.print("[bold]Agents:[/bold]")
         for agent in config.agents:
-            console.print(f"  - [cyan]{agent.name}:[/cyan] {agent.module}.{agent.class_name}")
+            console.print(
+                f"  - [cyan]{agent.name}:[/cyan] {agent.module}.{agent.class_name}"
+            )
         console.print()
 
         # Show target configurations
@@ -641,7 +661,11 @@ def validate(
         console.print()
 
         # Show enhancements if any enabled
-        if config.enhancements.trace or config.enhancements.metrics or config.enhancements.auth:
+        if (
+            config.enhancements.trace
+            or config.enhancements.metrics
+            or config.enhancements.auth
+        ):
             console.print("[bold]Enabled Enhancements:[/bold]")
             if config.enhancements.trace:
                 console.print("  - Tracing/Observability")
@@ -660,31 +684,28 @@ def validate(
 @app.command()
 def generate(
     config_file: Path = typer.Argument(
-        "bedsheet.yaml",
-        help="Path to bedsheet.yaml configuration file"
+        "bedsheet.yaml", help="Path to bedsheet.yaml configuration file"
     ),
     target: Optional[str] = typer.Option(
         None,
         "--target",
         "-t",
-        help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml"
+        help="Deployment target (local, gcp, aws). Overrides bedsheet.yaml",
     ),
     output_dir: Path = typer.Option(
         None,
         "--output",
         "-o",
-        help="Output directory for generated files. Defaults to deploy/<target>/"
+        help="Output directory for generated files. Defaults to deploy/<target>/",
     ),
     agent_name: Optional[str] = typer.Option(
         None,
         "--agent",
         "-a",
-        help="Name of a specific agent to generate for (from bedsheet.yaml)"
+        help="Name of a specific agent to generate for (from bedsheet.yaml)",
     ),
     dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Show what would be generated without writing files"
+        False, "--dry-run", help="Show what would be generated without writing files"
     ),
 ):
     """Generate deployment artifacts for the specified target.
@@ -699,7 +720,9 @@ def generate(
     """
     # Check if config file exists
     if not config_file.exists():
-        rprint(f"[bold red]Error:[/bold red] Configuration file not found: {config_file}")
+        rprint(
+            f"[bold red]Error:[/bold red] Configuration file not found: {config_file}"
+        )
         rprint("Run [bold cyan]bedsheet init[/bold cyan] to create one.")
         raise typer.Exit(1)
 
@@ -726,15 +749,17 @@ def generate(
 
     # Warn about experimental targets
     if target_name == "agentcore":
-        rprint(Panel(
-            "[bold yellow]⚠️  EXPERIMENTAL TARGET[/bold yellow]\n\n"
-            "The AgentCore deployment target is experimental.\n"
-            "Amazon Bedrock AgentCore is in preview and APIs may change without notice.\n"
-            "Use in production at your own risk.\n\n"
-            "Please report bugs at: [link=https://github.com/sivang/bedsheet/issues]github.com/sivang/bedsheet/issues[/link]",
-            title="Warning",
-            border_style="yellow",
-        ))
+        rprint(
+            Panel(
+                "[bold yellow]⚠️  EXPERIMENTAL TARGET[/bold yellow]\n\n"
+                "The AgentCore deployment target is experimental.\n"
+                "Amazon Bedrock AgentCore is in preview and APIs may change without notice.\n"
+                "Use in production at your own risk.\n\n"
+                "Please report bugs at: [link=https://github.com/sivang/bedsheet/issues]github.com/sivang/bedsheet/issues[/link]",
+                title="Warning",
+                border_style="yellow",
+            )
+        )
 
     # Validate configuration for this target
     validation_errors = target_generator.validate(config)
@@ -753,7 +778,9 @@ def generate(
     if agent_name:
         matching = [a for a in config.agents if a.name == agent_name]
         if not matching:
-            rprint(f"[bold red]Error:[/bold red] Agent '{agent_name}' not found in config")
+            rprint(
+                f"[bold red]Error:[/bold red] Agent '{agent_name}' not found in config"
+            )
             rprint(f"Available agents: {', '.join(a.name for a in config.agents)}")
             raise typer.Exit(1)
         agent_config = matching[0]
@@ -767,7 +794,9 @@ def generate(
     if introspection_error or introspected_metadata is None:
         # Introspection failed - fall back to config-based metadata with warning
         console.print(f"[bold yellow]Warning:[/bold yellow] {introspection_error}")
-        console.print("[dim]Falling back to config-based metadata (tools will be empty)[/dim]")
+        console.print(
+            "[dim]Falling back to config-based metadata (tools will be empty)[/dim]"
+        )
         console.print()
 
         agent_metadata = AgentMetadata(
@@ -784,23 +813,29 @@ def generate(
         collab_count = len(agent_metadata.collaborators)
         agent_type = "Supervisor" if agent_metadata.is_supervisor else "Agent"
 
-        console.print(f"  [green]✓[/green] Found {agent_type}: [cyan]{agent_metadata.name}[/cyan]")
+        console.print(
+            f"  [green]✓[/green] Found {agent_type}: [cyan]{agent_metadata.name}[/cyan]"
+        )
         console.print(f"  [green]✓[/green] Tools: [cyan]{tool_count}[/cyan]")
         if agent_metadata.is_supervisor:
-            console.print(f"  [green]✓[/green] Collaborators: [cyan]{collab_count}[/cyan]")
+            console.print(
+                f"  [green]✓[/green] Collaborators: [cyan]{collab_count}[/cyan]"
+            )
             for collab in agent_metadata.collaborators:
                 console.print(f"      - {collab.name} ({len(collab.tools)} tools)")
         console.print()
 
     # Show generation info
     console.print()
-    console.print(Panel.fit(
-        f"[bold cyan]Project:[/bold cyan] {config.name}\n"
-        f"[bold cyan]Target:[/bold cyan] {target_name}\n"
-        f"[bold cyan]Output:[/bold cyan] {output_dir}",
-        title="[bold]Code Generation[/bold]",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Project:[/bold cyan] {config.name}\n"
+            f"[bold cyan]Target:[/bold cyan] {target_name}\n"
+            f"[bold cyan]Output:[/bold cyan] {output_dir}",
+            title="[bold]Code Generation[/bold]",
+            border_style="cyan",
+        )
+    )
     console.print()
 
     # Generate files
@@ -811,7 +846,9 @@ def generate(
         raise typer.Exit(1)
 
     if dry_run:
-        console.print("[bold yellow]DRY RUN MODE[/bold yellow] - Files that would be generated:")
+        console.print(
+            "[bold yellow]DRY RUN MODE[/bold yellow] - Files that would be generated:"
+        )
         console.print()
         for gf in generated_files:
             console.print(f"  [cyan]{gf.path}[/cyan]")
@@ -833,10 +870,12 @@ def generate(
         console.print(f"  [green]✓[/green] {gf.path}")
 
     console.print()
-    console.print(Panel.fit(
-        f"[bold green]✓[/bold green] Generated {files_written} files in {output_dir}/",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold green]✓[/bold green] Generated {files_written} files in {output_dir}/",
+            border_style="green",
+        )
+    )
     console.print()
 
     # Show next steps based on target

@@ -1,4 +1,5 @@
 """Tests for token streaming functionality."""
+
 import pytest
 from bedsheet import Agent, Supervisor
 from bedsheet.testing import MockLLMClient, MockResponse
@@ -9,9 +10,11 @@ from bedsheet.events import TextTokenEvent, CollaboratorEvent, CompletionEvent
 @pytest.mark.asyncio
 async def test_mock_client_chat_stream_yields_tokens():
     """Test that MockLLMClient.chat_stream yields tokens then LLMResponse."""
-    mock = MockLLMClient(responses=[
-        MockResponse(text="Hello world"),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(text="Hello world"),
+        ]
+    )
 
     tokens = []
     final_response = None
@@ -34,9 +37,11 @@ async def test_mock_client_chat_stream_yields_tokens():
 @pytest.mark.asyncio
 async def test_agent_yields_text_token_events_when_streaming():
     """Test that Agent yields TextTokenEvent when stream=True."""
-    mock = MockLLMClient(responses=[
-        MockResponse(text="Hi there"),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(text="Hi there"),
+        ]
+    )
 
     agent = Agent(
         name="TestAgent",
@@ -59,20 +64,30 @@ async def test_agent_yields_text_token_events_when_streaming():
 @pytest.mark.asyncio
 async def test_supervisor_wraps_collaborator_token_events():
     """Test that Supervisor wraps collaborator TextTokenEvents in CollaboratorEvent."""
-    mock = MockLLMClient(responses=[
-        # Supervisor delegates
-        MockResponse(tool_calls=[
-            ToolCall(id="d1", name="delegate", input={
-                "delegations": [{"agent_name": "Worker", "task": "Do work"}]
-            })
-        ]),
-        # Supervisor synthesizes
-        MockResponse(text="Done"),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            # Supervisor delegates
+            MockResponse(
+                tool_calls=[
+                    ToolCall(
+                        id="d1",
+                        name="delegate",
+                        input={
+                            "delegations": [{"agent_name": "Worker", "task": "Do work"}]
+                        },
+                    )
+                ]
+            ),
+            # Supervisor synthesizes
+            MockResponse(text="Done"),
+        ]
+    )
 
-    worker_mock = MockLLMClient(responses=[
-        MockResponse(text="Working"),
-    ])
+    worker_mock = MockLLMClient(
+        responses=[
+            MockResponse(text="Working"),
+        ]
+    )
 
     worker = Agent(
         name="Worker",
@@ -93,8 +108,10 @@ async def test_supervisor_wraps_collaborator_token_events():
 
     # Should have CollaboratorEvents wrapping TextTokenEvents
     collab_token_events = [
-        e for e in events
-        if isinstance(e, CollaboratorEvent) and isinstance(e.inner_event, TextTokenEvent)
+        e
+        for e in events
+        if isinstance(e, CollaboratorEvent)
+        and isinstance(e.inner_event, TextTokenEvent)
     ]
     assert len(collab_token_events) > 0
     assert collab_token_events[0].agent_name == "Worker"

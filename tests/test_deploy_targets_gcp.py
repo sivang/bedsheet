@@ -1,4 +1,5 @@
 """Tests for bedsheet.deploy.targets.gcp module."""
+
 import tempfile
 from pathlib import Path
 
@@ -285,7 +286,9 @@ def test_gcp_target_validate_no_gcp_config():
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_creates_all_files(mock_gcp_config, mock_single_agent_metadata):
+async def test_gcp_target_generate_creates_all_files(
+    mock_gcp_config, mock_single_agent_metadata
+):
     """Test GCPTarget.generate creates all expected files."""
     target = GCPTarget()
 
@@ -297,8 +300,12 @@ async def test_gcp_target_generate_creates_all_files(mock_gcp_config, mock_singl
         assert len(files) == 15
 
         file_names = [f.path.name for f in files]
-        assert "agent.py" in [f.path.name for f in files if f.path.parent.name == "agent"]
-        assert "__init__.py" in [f.path.name for f in files if f.path.parent.name == "agent"]
+        assert "agent.py" in [
+            f.path.name for f in files if f.path.parent.name == "agent"
+        ]
+        assert "__init__.py" in [
+            f.path.name for f in files if f.path.parent.name == "agent"
+        ]
         assert "Dockerfile" in file_names
         assert "cloudbuild.yaml" in file_names
         assert "Makefile" in file_names
@@ -342,7 +349,7 @@ async def test_gcp_target_generate_agent_py_content_single_agent(
 async def test_gcp_target_generate_agent_py_content_supervisor(
     mock_gcp_config, mock_supervisor_metadata
 ):
-    """Test GCPTarget.generate creates agent.py with ParallelAgent for supervisor."""
+    """Test GCPTarget.generate creates agent.py with SequentialAgent for supervisor."""
     target = GCPTarget()
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -353,14 +360,14 @@ async def test_gcp_target_generate_agent_py_content_supervisor(
         content = agent_file.content
 
         # Check for expected ADK imports for multi-agent
-        assert "from google.adk.agents import LlmAgent, ParallelAgent" in content
+        assert "from google.adk.agents import LlmAgent, SequentialAgent" in content
 
         # Check for collaborator agent definitions
         assert "Calculator" in content
         assert "Weather" in content
 
-        # Check for ParallelAgent usage (parallel delegation for supervisor pattern)
-        assert "ParallelAgent" in content
+        # Check for SequentialAgent usage (rate-limit-safe sequential delegation)
+        assert "SequentialAgent" in content
         assert "sub_agents=" in content
 
 
@@ -374,15 +381,17 @@ async def test_gcp_target_determine_orchestration_single(mock_single_agent_metad
 
 @pytest.mark.asyncio
 async def test_gcp_target_determine_orchestration_supervisor(mock_supervisor_metadata):
-    """Test _determine_orchestration returns 'parallel' for supervisor pattern."""
+    """Test _determine_orchestration returns 'sequential' for supervisor pattern."""
     target = GCPTarget()
     orchestration = target._determine_orchestration(mock_supervisor_metadata)
-    # Supervisor pattern uses parallel delegation for concurrent collaborator execution
-    assert orchestration == "parallel"
+    # Supervisor pattern uses sequential delegation to stay within free-tier rate limits
+    assert orchestration == "sequential"
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_dockerfile_content(mock_gcp_config, mock_single_agent_metadata):
+async def test_gcp_target_generate_dockerfile_content(
+    mock_gcp_config, mock_single_agent_metadata
+):
     """Test GCPTarget.generate creates Dockerfile with correct content."""
     target = GCPTarget()
 
@@ -444,7 +453,9 @@ async def test_gcp_target_generate_cloudbuild_yaml_content(
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_env_example_content(mock_gcp_config, mock_single_agent_metadata):
+async def test_gcp_target_generate_env_example_content(
+    mock_gcp_config, mock_single_agent_metadata
+):
     """Test GCPTarget.generate creates .env.example with correct content."""
     target = GCPTarget()
 
@@ -461,7 +472,9 @@ async def test_gcp_target_generate_env_example_content(mock_gcp_config, mock_sin
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_makefile_content(mock_gcp_config, mock_single_agent_metadata):
+async def test_gcp_target_generate_makefile_content(
+    mock_gcp_config, mock_single_agent_metadata
+):
     """Test GCPTarget.generate creates Makefile with correct content."""
     target = GCPTarget()
 
@@ -591,7 +604,10 @@ async def test_gcp_target_generate_with_google_search(mock_single_agent_metadata
         content = agent_file.content
 
         # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
-        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
+        assert (
+            "from google.adk.tools.google_search_tool import GoogleSearchTool"
+            in content
+        )
 
         # Check that GoogleSearchTool is in tools list with bypass flag
         assert "GoogleSearchTool(bypass_multi_tools_limit=True)" in content
@@ -638,7 +654,9 @@ async def test_gcp_target_generate_with_code_execution(mock_single_agent_metadat
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_with_multiple_builtin_tools(mock_single_agent_metadata):
+async def test_gcp_target_generate_with_multiple_builtin_tools(
+    mock_single_agent_metadata,
+):
     """Test GCPTarget.generate includes multiple builtin tools."""
     config = BedsheetConfig(
         name="multi-tool-agent",
@@ -669,7 +687,10 @@ async def test_gcp_target_generate_with_multiple_builtin_tools(mock_single_agent
         content = agent_file.content
 
         # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
-        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
+        assert (
+            "from google.adk.tools.google_search_tool import GoogleSearchTool"
+            in content
+        )
         assert "from google.adk.tools import code_execution" in content
 
         # Check both are in tools list
@@ -678,7 +699,9 @@ async def test_gcp_target_generate_with_multiple_builtin_tools(mock_single_agent
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_agent_metadata):
+async def test_gcp_target_generate_with_custom_and_builtin_tools(
+    mock_single_agent_metadata,
+):
     """Test GCPTarget.generate combines custom tools with builtin tools."""
     config = BedsheetConfig(
         name="hybrid-agent",
@@ -709,7 +732,10 @@ async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_age
         content = agent_file.content
 
         # When google_search is used with custom tools, we use GoogleSearchTool with bypass flag
-        assert "from google.adk.tools.google_search_tool import GoogleSearchTool" in content
+        assert (
+            "from google.adk.tools.google_search_tool import GoogleSearchTool"
+            in content
+        )
 
         # Check for custom tool definitions (from mock_single_agent_metadata)
         assert "def add(" in content
@@ -723,7 +749,9 @@ async def test_gcp_target_generate_with_custom_and_builtin_tools(mock_single_age
 
 
 @pytest.mark.asyncio
-async def test_gcp_target_generate_no_builtin_tools_no_import(mock_gcp_config, mock_single_agent_metadata):
+async def test_gcp_target_generate_no_builtin_tools_no_import(
+    mock_gcp_config, mock_single_agent_metadata
+):
     """Test GCPTarget.generate does not import builtin tools when none specified."""
     target = GCPTarget()
 
