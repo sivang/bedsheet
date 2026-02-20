@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sixth Sense Internals — How it Actually Works</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --warning: #d29922;
+      --danger: #f85149;
+      --success: #3fb950;
+      --sidebar-w: 260px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; min-height: 100vh; }
+
+    nav { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
+    nav h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; padding-left: 8px; }
+    nav a { display: block; padding: 6px 8px; color: var(--muted); text-decoration: none; border-radius: 6px; font-size: 13px; margin-bottom: 2px; }
+    nav a:hover, nav a.active { background: rgba(88,166,255,0.1); color: var(--accent); }
+    nav .section { margin-top: 20px; }
+
+    main { margin-left: var(--sidebar-w); padding: 48px; max-width: 960px; width: 100%; }
+    h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 22px; font-weight: 600; margin: 48px 0 16px; padding-top: 48px; border-top: 1px solid var(--border); color: var(--text); }
+    h3 { font-size: 16px; font-weight: 600; margin: 28px 0 12px; color: var(--accent); }
+    h4 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    p { line-height: 1.7; color: #c9d1d9; margin-bottom: 14px; }
+    ul, ol { padding-left: 24px; margin-bottom: 14px; }
+    li { line-height: 1.7; color: #c9d1d9; margin-bottom: 4px; }
+    code { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; background: #1c2128; padding: 2px 6px; border-radius: 4px; color: #e6edf3; }
+    pre { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; margin: 16px 0 24px; }
+    pre code { background: none; padding: 0; font-size: 13px; }
+
+    .callout { border-left: 3px solid; border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 20px 0; }
+    .callout.info { border-color: var(--accent); background: rgba(88,166,255,0.08); }
+    .callout.warning { border-color: var(--warning); background: rgba(210,153,34,0.08); }
+    .callout.danger { border-color: var(--danger); background: rgba(248,81,73,0.08); }
+    .callout strong { display: block; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .callout.info strong { color: var(--accent); }
+    .callout.warning strong { color: var(--warning); }
+    .callout.danger strong { color: var(--danger); }
+
+    .diagram { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin: 20px 0; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; line-height: 1.6; white-space: pre; overflow-x: auto; color: #c9d1d9; }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th { background: var(--surface); color: var(--muted); padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c9d1d9; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+
+    .subtitle { color: var(--muted); font-size: 16px; margin-bottom: 32px; }
+    .file-ref { font-size: 12px; color: var(--muted); font-family: monospace; margin-bottom: 6px; display: block; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <h2>Sixth Sense Internals</h2>
+  <a href="#overview">Overview</a>
+  <a href="#architecture">Architecture</a>
+  <div class="section">
+    <h2>Core Concepts</h2>
+    <a href="#signal">Signal</a>
+    <a href="#transport">SenseTransport Protocol</a>
+    <a href="#mixin">SenseMixin</a>
+    <a href="#network">SenseNetwork</a>
+  </div>
+  <div class="section">
+    <h2>PubNub Transport</h2>
+    <a href="#pubnub-thread-bridge">Thread → asyncio bridge</a>
+    <a href="#pubnub-channels">Channel namespacing</a>
+    <a href="#pubnub-serialization">Serialization</a>
+  </div>
+  <div class="section">
+    <h2>Signal Protocols</h2>
+    <a href="#signal-loop">The signal loop</a>
+    <a href="#request-response">Request / Response</a>
+    <a href="#claim-release">Claim / Release</a>
+    <a href="#heartbeat">Heartbeat</a>
+  </div>
+  <div class="section">
+    <h2>Open Questions</h2>
+    <a href="#sequential-vs-parallel">Sequential vs Parallel ADK</a>
+    <a href="#known-limitations">Known Limitations</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Sixth Sense Internals</h1>
+  <p class="subtitle">How distributed agent communication actually works — what the code does, line by line, and what's still unresolved.</p>
+
+  <div class="callout warning">
+    <strong>Honest Scope</strong>
+    This document describes what the code <em>actually does</em>, not what it was intended to do. Where there are open questions, limitations, or untested assumptions, they are called out explicitly. Read this before making architectural decisions based on this module.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ OVERVIEW -->
+  <h2 id="overview">Overview</h2>
+
+  <p>Sixth Sense lets Bedsheet agents talk to each other across process boundaries. Without it, agents are isolated — a Supervisor can coordinate collaborators within the same process, but cannot reach agents in another process, container, or machine.</p>
+
+  <p>With Sixth Sense, any agent can:</p>
+  <ul>
+    <li>Broadcast signals to a named channel (PubNub topic)</li>
+    <li>Send a signal directly to a specific agent and await a response</li>
+    <li>Compete for exclusive ownership of an incident ID</li>
+    <li>Receive typed signals and route them to registered handlers</li>
+  </ul>
+
+  <p>The module lives entirely in <code>bedsheet/sense/</code> and is accessed via the <code>SenseMixin</code> class and <code>SenseNetwork</code> helper.</p>
+
+  <!-- ═══════════════════════════════════════════════════ ARCHITECTURE -->
+  <h2 id="architecture">Architecture</h2>
+
+<div class="diagram">
+  Your Agent Process A                   Your Agent Process B
+  ┌─────────────────────────────┐        ┌─────────────────────────────┐
+  │  MyAgent(SenseMixin, Agent) │        │  MyAgent(SenseMixin, Agent) │
+  │  ┌───────────────────────┐  │        │  ┌───────────────────────┐  │
+  │  │  SenseMixin           │  │        │  │  SenseMixin           │  │
+  │  │  _signal_loop (task)  │  │        │  │  _signal_loop (task)  │  │
+  │  │  _heartbeat_loop      │  │        │  │  _heartbeat_loop      │  │
+  │  │  _pending_requests    │  │        │  │  _pending_requests    │  │
+  │  │  _claimed_incidents   │  │        │  │  _claimed_incidents   │  │
+  │  └──────────┬────────────┘  │        │  └──────────┬────────────┘  │
+  │             │               │        │             │               │
+  │  ┌──────────▼────────────┐  │        │  ┌──────────▼────────────┐  │
+  │  │  SenseTransport       │  │        │  │  SenseTransport       │  │
+  │  │  (PubNubTransport or  │  │        │  │  (PubNubTransport or  │  │
+  │  │   MockSenseTransport) │  │        │  │   MockSenseTransport) │  │
+  │  └──────────┬────────────┘  │        │  └──────────┬────────────┘  │
+  └─────────────│───────────────┘        └─────────────│───────────────┘
+                │                                       │
+                ▼                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                         PubNub Cloud                                │
+  │   bedsheet.{namespace}.alerts   (broadcast channel)                │
+  │   bedsheet.{namespace}.tasks    (broadcast channel)                │
+  │   bedsheet.{namespace}.heartbeat (broadcast channel)               │
+  │   bedsheet.{namespace}.agent-name (direct channel per agent)       │
+  └─────────────────────────────────────────────────────────────────────┘
+</div>
+
+  <p>Each agent runs two persistent asyncio background tasks: the <strong>signal loop</strong> (reads from the transport's queue and dispatches signals) and the <strong>heartbeat loop</strong> (broadcasts presence every 30 seconds).</p>
+
+  <!-- ═══════════════════════════════════════════════════ SIGNAL -->
+  <h2 id="signal">Signal — the unit of communication</h2>
+  <span class="file-ref">bedsheet/sense/signals.py</span>
+
+  <p>A <code>Signal</code> is a dataclass with seven fields:</p>
+
+<pre><code class="language-python">@dataclass
+class Signal:
+    kind: SignalKind           # "request"|"response"|"alert"|"heartbeat"|"claim"|"release"|"event"
+    sender: str                # agent name that sent this
+    payload: dict[str, Any]    # arbitrary data, defaults to {}
+    correlation_id: str        # auto-generated 12-char hex, used to match request→response
+    target: str | None         # if set, only the named agent processes this signal
+    timestamp: float           # unix timestamp set at creation (time.time())
+    source_channel: str | None # set by PubNubTransport on receive, None from MockTransport
+</code></pre>
+
+  <div class="callout warning">
+    <strong>Known Gap</strong>
+    <code>source_channel</code> is populated by PubNubTransport during deserialization but is never set by MockSenseTransport. Tests that assert routing logic based on which channel a signal arrived on will get <code>None</code> from the mock but a real value in production. This is a testing blind spot.
+  </div>
+
+  <h3>Signal Kinds</h3>
+  <table>
+    <thead><tr><th>Kind</th><th>Meaning</th><th>Typical sender</th><th>Reply expected?</th></tr></thead>
+    <tbody>
+      <tr><td><code>request</code></td><td>Ask a specific agent to do something and return a result</td><td>Commander / orchestrator</td><td>Yes — a <code>response</code> on the same correlation_id</td></tr>
+      <tr><td><code>response</code></td><td>Result from an agent that received a <code>request</code></td><td>Worker / sentinel</td><td>No</td></tr>
+      <tr><td><code>alert</code></td><td>Broadcast notification of an anomaly or event</td><td>Sentinel agents</td><td>No — fire and forget</td></tr>
+      <tr><td><code>heartbeat</code></td><td>Presence ping with capabilities list</td><td>All agents, every 30s</td><td>No</td></tr>
+      <tr><td><code>claim</code></td><td>Announce intent to handle an incident_id exclusively</td><td>Any agent</td><td>Indirectly — competing claims trigger eviction</td></tr>
+      <tr><td><code>release</code></td><td>Relinquish ownership of a previously claimed incident</td><td>Any agent</td><td>No</td></tr>
+      <tr><td><code>event</code></td><td>Generic application event — not handled internally by SenseMixin</td><td>Any agent</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══════════════════════════════════════════════════ TRANSPORT -->
+  <h2 id="transport">SenseTransport Protocol</h2>
+  <span class="file-ref">bedsheet/sense/protocol.py</span>
+
+  <p>The transport is a structural Protocol — any class that implements these seven methods satisfies it, no inheritance needed (same pattern as <code>LLMClient</code> and <code>Memory</code>):</p>
+
+<pre><code class="language-python">class SenseTransport(Protocol):
+    async def connect(self, agent_id: str, namespace: str) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def broadcast(self, channel: str, signal: Signal) -> None: ...
+    async def subscribe(self, channel: str) -> None: ...
+    async def unsubscribe(self, channel: str) -> None: ...
+    def signals(self) -> AsyncIterator[Signal]: ...  # must be an async generator
+    async def get_online_agents(self, channel: str) -> list[AgentPresence]: ...
+</code></pre>
+
+  <div class="callout info">
+    <strong>Calling Convention for signals()</strong>
+    <code>signals()</code> is declared as <code>def</code> (not <code>async def</code>) in the Protocol, but both implementations (<code>PubNubTransport</code> and <code>MockSenseTransport</code>) define it as <code>async def</code> with <code>yield</code> — making them async generator functions. An async generator function, when called, returns an <code>AsyncIterator</code> directly without needing to be awaited. Callers use: <code>async for signal in transport.signals()</code>. Do NOT add <code>await</code> before the call.
+  </div>
+
+  <p>There are two implementations:</p>
+  <table>
+    <thead><tr><th>Class</th><th>File</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>PubNubTransport</code></td><td>bedsheet/sense/pubnub_transport.py</td><td>Production — real PubNub cloud messaging</td></tr>
+      <tr><td><code>MockSenseTransport</code></td><td>bedsheet/testing.py</td><td>Tests — in-process shared queue via _MockSenseHub</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══════════════════════════════════════════════════ PUBNUB INTERNALS -->
+  <h2 id="pubnub-thread-bridge">PubNub Transport — Thread → asyncio bridge</h2>
+  <span class="file-ref">bedsheet/sense/pubnub_transport.py</span>
+
+  <p>PubNub's Python SDK delivers incoming messages via callbacks on its own internal thread, not on the asyncio event loop. This is the central challenge of the PubNub integration.</p>
+
+  <p>The solution is a thread-safe queue bridge:</p>
+
+<pre><code class="language-python"># The queue lives on the asyncio side
+self._queue: asyncio.Queue[Signal] = asyncio.Queue()
+
+# _SignalListener.message() is called by PubNub's thread
+def message(self, pubnub, message: PNMessageResult) -> None:
+    signal = deserialize(message.message, source_channel=message.channel)
+    # call_soon_threadsafe schedules a put onto the asyncio event loop
+    # from the PubNub thread — this is the ONLY safe way to cross this boundary
+    self._loop.call_soon_threadsafe(self._queue.put_nowait, signal)
+</code></pre>
+
+  <p>The asyncio side reads from the queue via the <code>signals()</code> async generator:</p>
+
+<pre><code class="language-python">async def signals(self) -> AsyncIterator[Signal]:
+    while True:
+        signal = await self._queue.get()   # suspends until a message arrives
+        yield signal
+</code></pre>
+
+  <p>This generator never returns — it loops forever until the task is cancelled. The <code>_signal_loop</code> in SenseMixin iterates it with <code>async for</code>, which suspends on each <code>await self._queue.get()</code> call and yields control to the event loop while waiting.</p>
+
+  <div class="callout info">
+    <strong>Why call_soon_threadsafe?</strong>
+    <code>queue.put_nowait()</code> is not thread-safe if called from a non-asyncio thread — it can corrupt internal state. <code>loop.call_soon_threadsafe()</code> schedules the call to run on the next iteration of the asyncio event loop, safely crossing the thread boundary. This is the standard Python pattern for bridging threaded callbacks into asyncio.
+  </div>
+
+  <h3 id="pubnub-channels">Channel Namespacing</h3>
+
+  <p>All channels are prefixed to avoid collisions with other PubNub users on the same account:</p>
+
+<pre><code class="language-python">def _full_channel(self, channel: str) -> str:
+    if channel.startswith("bedsheet."):
+        return channel                               # already prefixed
+    return f"bedsheet.{self._namespace}.{channel}"  # e.g. "bedsheet.cloud-ops.alerts"
+</code></pre>
+
+  <p>So when you call <code>agent.broadcast("alerts", signal)</code>, PubNub actually publishes to <code>bedsheet.cloud-ops.alerts</code>. Each agent also automatically subscribes to its own name as a direct channel: <code>bedsheet.cloud-ops.my-agent-name</code>.</p>
+
+  <h3 id="pubnub-serialization">Serialization — compact JSON under 32KB</h3>
+  <span class="file-ref">bedsheet/sense/serialization.py</span>
+
+  <p>PubNub has a 32KB message limit per publish. Signals are serialized with shortened keys to reduce payload size:</p>
+
+<pre><code class="language-python">_KEY_MAP = {
+    "kind": "k",
+    "sender": "s",
+    "payload": "p",
+    "correlation_id": "c",
+    "target": "t",
+    "timestamp": "ts",
+}
+</code></pre>
+
+  <p>If the serialized signal still exceeds 30,000 bytes (leaving 2KB headroom), the payload is replaced with a truncation notice:</p>
+
+<pre><code class="language-python">if len(encoded.encode("utf-8")) > MAX_MESSAGE_BYTES:
+    data["p"] = {"_truncated": True, "summary": str(signal.payload)[:500]}
+</code></pre>
+
+  <div class="callout warning">
+    <strong>Truncation is silent to the receiver</strong>
+    The receiver gets a signal with <code>payload = {"_truncated": True, "summary": "..."}</code> and no error is raised. No application code currently checks for the <code>_truncated</code> key. If an agent sends a very large response (e.g. an LLM output over 30KB), the receiving agent will get a truncated summary and silently use it as if it were the full result.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ MIXIN -->
+  <h2 id="mixin">SenseMixin — what it adds to an Agent</h2>
+  <span class="file-ref">bedsheet/sense/mixin.py</span>
+
+  <p>SenseMixin is a Python mixin class. To use it:</p>
+
+<pre><code class="language-python">class MyAgent(SenseMixin, Agent):
+    pass
+</code></pre>
+
+  <p>Python's MRO (Method Resolution Order) ensures <code>SenseMixin.__init__</code> runs <em>before</em> <code>Agent.__init__</code> via <code>super()</code> chaining. SenseMixin adds these instance variables to every agent:</p>
+
+  <table>
+    <thead><tr><th>Variable</th><th>Type</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>_transport</code></td><td><code>SenseTransport | None</code></td><td>The active transport, or None if not connected</td></tr>
+      <tr><td><code>_namespace</code></td><td><code>str</code></td><td>The network namespace (e.g. "cloud-ops")</td></tr>
+      <tr><td><code>_signal_handlers</code></td><td><code>dict[SignalKind, list[Callable]]</code></td><td>Registered handlers per signal kind</td></tr>
+      <tr><td><code>_signal_task</code></td><td><code>asyncio.Task | None</code></td><td>Background task running _signal_loop</td></tr>
+      <tr><td><code>_pending_requests</code></td><td><code>dict[str, asyncio.Future[Signal]]</code></td><td>Futures waiting for responses, keyed by correlation_id</td></tr>
+      <tr><td><code>_claimed_incidents</code></td><td><code>set[str]</code></td><td>Incident IDs this agent currently owns</td></tr>
+      <tr><td><code>_heartbeat_task</code></td><td><code>asyncio.Task | None</code></td><td>Background task broadcasting heartbeat every 30s</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══════════════════════════════════════════════════ SIGNAL LOOP -->
+  <h2 id="signal-loop">The Signal Loop — how incoming signals are dispatched</h2>
+
+  <p>When <code>join_network()</code> is called, an asyncio background task is created running <code>_signal_loop()</code>. This loop runs forever until cancelled (by <code>leave_network()</code>).</p>
+
+<pre><code class="language-python">async def _signal_loop(self) -> None:
+    async for signal in self._transport.signals():
+
+        # 1. Skip signals we sent ourselves
+        if signal.sender == self.name:
+            continue
+
+        # 2. Skip signals targeted at a different agent
+        if signal.target and signal.target != self.name:
+            continue
+
+        # 3. If this is a response to one of our pending requests, resolve the future
+        if signal.kind == "response" and signal.correlation_id in self._pending_requests:
+            future = self._pending_requests[signal.correlation_id]
+            future.set_result(signal)
+            continue
+
+        # 4. If this is a request to us, handle it in a new task (non-blocking)
+        if signal.kind == "request":
+            asyncio.create_task(self._handle_request(signal))
+            continue
+
+        # 5. Claim conflict resolution
+        if signal.kind == "claim":
+            self._handle_claim(signal)
+            continue
+
+        # 6. Release an incident we were tracking
+        if signal.kind == "release":
+            self._claimed_incidents.discard(signal.payload.get("incident_id"))
+            continue
+
+        # 7. Run user-registered handlers
+        for handler in self._signal_handlers.get(signal.kind, []):
+            await handler(signal)
+</code></pre>
+
+  <div class="callout info">
+    <strong>Why asyncio.create_task for requests?</strong>
+    A request handler calls <code>self.invoke()</code> which is a full LLM ReAct loop — it could take seconds. If we awaited it directly in the signal loop, no other signals could be processed during that time. <code>create_task()</code> schedules the handler as a concurrent task, letting the signal loop continue immediately.
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ REQUEST/RESPONSE -->
+  <h2 id="request-response">Request / Response — asking another agent for a result</h2>
+
+  <p>This is a synchronous-looking call that crosses a process boundary:</p>
+
+<pre><code class="language-python">result = await commander.request("behavior-sentinel", "Check web-researcher for anomalies")
+</code></pre>
+
+  <p>Internally, the full flow is:</p>
+
+<div class="diagram">
+Commander process                              Sentinel process
+     │                                              │
+     │  1. Generate correlation_id = "a3f9bc12"    │
+     │  2. Create asyncio.Future, store it in       │
+     │     _pending_requests["a3f9bc12"]            │
+     │  3. broadcast to "behavior-sentinel" channel │
+     │─────── Signal{kind="request", target="behavior-sentinel", ────────▶│
+     │         correlation_id="a3f9bc12", payload={"task":"Check..."}} │
+     │                                              │
+     │  4. await asyncio.wait_for(future, 30s)      │  5. _signal_loop receives signal
+     │     (suspended)                              │  6. asyncio.create_task(_handle_request)
+     │                                              │  7. _handle_request calls self.invoke()
+     │                                              │     (full LLM ReAct loop)
+     │                                              │  8. Collects CompletionEvent.response
+     │                                              │  9. broadcast to "commander" channel
+     │◀───── Signal{kind="response",  ──────────────│
+     │        correlation_id="a3f9bc12",             │
+     │        payload={"result":"Agent is normal"}} │
+     │                                              │
+     │  10. _signal_loop sees correlation_id match  │
+     │      future.set_result(signal)               │
+     │  11. asyncio.wait_for() returns              │
+     │  12. return signal.payload["result"]         │
+</div>
+
+  <h3>Timeout behaviour</h3>
+  <p>If no response arrives within <code>timeout</code> seconds (default 30), <code>asyncio.wait_for</code> raises <code>asyncio.TimeoutError</code>, which is caught and re-raised as Python's built-in <code>TimeoutError</code>. The pending future is cleaned up in the <code>finally</code> block regardless.</p>
+
+  <!-- ═══════════════════════════════════════════════════ CLAIM/RELEASE -->
+  <h2 id="claim-release">Claim / Release — exclusive incident ownership</h2>
+
+  <p>When multiple agents might respond to the same incident, the claim protocol ensures only one of them handles it. This is a distributed consensus problem solved with a simple heuristic: <strong>lower agent name wins</strong>.</p>
+
+  <h3>How claim works</h3>
+
+<div class="diagram">
+Agent "sentinel-a" calls claim_incident("alert-007"):
+
+  1. OPTIMISTICALLY add "alert-007" to _claimed_incidents
+     (we assume we won unless evicted)
+
+  2. broadcast Signal{kind="claim", sender="sentinel-a",
+                      payload={"incident_id":"alert-007"}}
+
+  3. asyncio.sleep(0.5)  -- wait 500ms for competing claims
+
+  4. Meanwhile, if "sentinel-b" also broadcast a claim,
+     "sentinel-a"'s _signal_loop receives it and calls _handle_claim:
+
+     def _handle_claim(self, signal):
+         if incident_id in self._claimed_incidents:
+             if signal.sender < self.name:   # "sentinel-b" < "sentinel-a" ?
+                 self._claimed_incidents.discard(incident_id)  # we lose
+
+  5. After sleep: return ("alert-007" in self._claimed_incidents)
+     → True if we still hold it, False if evicted
+</div>
+
+  <div class="callout danger">
+    <strong>Critical Limitation: The 500ms window is a race condition</strong>
+    If two agents call <code>claim_incident</code> simultaneously and the network latency between them exceeds 500ms (e.g. agents in different regions), both agents may complete the sleep before seeing each other's claim signal. Both return <code>True</code>. This can cause duplicate handling of the same incident. The current implementation is suitable for agents on a low-latency LAN or within the same cloud region, not for globally distributed agents with >250ms one-way latency.
+  </div>
+
+  <div class="callout warning">
+    <strong>Limitation: Name-based tiebreak is fragile</strong>
+    The winner is determined by lexicographic ordering of agent names. This means agent naming conventions directly affect which agent handles which incident. There is no priority field, no capability-based routing, and no retry if the winner fails. A proper implementation would use PubNub's presence timestamps or a distributed lock (e.g. Redis <code>SET NX PX</code>).
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ HEARTBEAT -->
+  <h2 id="heartbeat">Heartbeat — presence and capability advertisement</h2>
+
+  <p>Every 30 seconds, each agent broadcasts a heartbeat to the hardcoded <code>"heartbeat"</code> channel:</p>
+
+<pre><code class="language-python">signal = Signal(
+    kind="heartbeat",
+    sender=self.name,
+    payload={
+        "capabilities": [action.name for group in self._action_groups
+                         for action in group.get_actions()],
+        "status": "ready",
+    },
+)
+await self.broadcast("heartbeat", signal)
+</code></pre>
+
+  <div class="callout warning">
+    <strong>Limitation: hardcoded channel name "heartbeat"</strong>
+    The heartbeat channel is hardcoded as the string <code>"heartbeat"</code>. If any application creates a channel also named <code>"heartbeat"</code>, it will receive a flood of heartbeat signals from every agent every 30 seconds. The channel should use an internal prefix like <code>"__bedsheet_heartbeat__"</code>.
+  </div>
+
+  <p>Heartbeat signals are not handled internally by the signal loop — they pass through to user-registered handlers. If no handler is registered for <code>"heartbeat"</code>, they are silently dropped. The dashboard demo (agent-sentinel) registers a heartbeat handler to update agent presence cards.</p>
+
+  <!-- ═══════════════════════════════════════════════════ NETWORK -->
+  <h2 id="network">SenseNetwork — managing multiple agents</h2>
+  <span class="file-ref">bedsheet/sense/network.py</span>
+
+  <p><code>SenseNetwork</code> is a convenience wrapper that gives each agent its own transport instance and connects them all to the same namespace:</p>
+
+<pre><code class="language-python"># Testing: MockSenseTransport with hub pattern
+network = SenseNetwork(namespace="ops", transport=MockSenseTransport())
+await network.add(commander, channels=["alerts", "tasks"])
+await network.add(sentinel, channels=["alerts"])
+
+# Production: each agent gets its own independent PubNub connection
+network = SenseNetwork(
+    namespace="cloud-ops",
+    transport_factory=lambda: PubNubTransport(subscribe_key, publish_key),
+)
+await network.add(commander, channels=["alerts", "tasks"])
+await network.add(sentinel, channels=["alerts"])
+
+# Shutdown
+await network.stop()
+</code></pre>
+
+  <p>The transport factory pattern is important: in production, each agent needs its own PubNub connection because PubNub tracks presence per connection (UUID). If two agents shared one connection, they would have the same UUID and PubNub would not be able to tell them apart.</p>
+
+  <h3>MockSenseTransport and the hub pattern</h3>
+  <span class="file-ref">bedsheet/testing.py</span>
+
+  <p>For tests, all agents need to share the same in-memory routing logic while each having their own queue. This is solved with <code>_MockSenseHub</code>:</p>
+
+<pre><code class="language-python"># _MockSenseHub is shared by all transports
+# Each transport has its own queue but shares the hub's subscription registry
+
+hub = _MockSenseHub()
+transport_a = MockSenseTransport(hub)
+transport_b = transport_a.create_peer()  # creates a new MockSenseTransport(hub)
+
+# When transport_a broadcasts to "alerts":
+# hub routes a copy of the signal into the queue of every
+# transport subscribed to "alerts" (except the sender)
+</code></pre>
+
+  <!-- ═══════════════════════════════════════════════════ OPEN QUESTIONS -->
+  <h2 id="sequential-vs-parallel">Open Question: Sequential vs Parallel in GCP ADK templates</h2>
+
+  <p>The GCP transpiler template (<code>bedsheet/deploy/templates/gcp/agent.py.j2</code>) generates a <code>SequentialAgent</code> sweep for the sub-agents, not a <code>ParallelAgent</code>.</p>
+
+  <h3>Why it was changed to Sequential</h3>
+  <p>The original template used <code>ParallelAgent</code>. During testing of the sentinel-gcp demo, all 4-5 sub-agents were invoked simultaneously, producing a burst of 5+ API calls within a few seconds. The <code>gemini-3-flash-preview</code> free tier allows 5 requests per minute total. The burst triggered HTTP 429 (RESOURCE_EXHAUSTED) errors from the Gemini API, causing the demo to fail. Changing to <code>SequentialAgent</code> fixed the rate limit issue by running one sub-agent at a time.</p>
+
+  <h3>Why this may be wrong</h3>
+  <p>The architectural intent was parallel delegation — a supervisor dispatches to all collaborators simultaneously and waits for all results. <code>SequentialAgent</code> changes the semantics: collaborators run one after another, meaning the total time is the sum of all individual times rather than the maximum. For a production ADK deployment on Vertex AI (not the free Gemini API), there are no such rate limits and <code>ParallelAgent</code> is the correct choice.</p>
+
+  <h3>The right resolution</h3>
+  <p>The template should offer both options. The decision should be driven by a config value in <code>bedsheet.yaml</code>, not hardcoded. For example:</p>
+
+<pre><code class="language-yaml">targets:
+  gcp:
+    model: gemini-2.0-flash-001
+    sub_agent_mode: parallel   # or: sequential
+</code></pre>
+
+  <p>Until that config option exists, the template defaults to <code>SequentialAgent</code> as a safe default for free-tier Gemini. If you are deploying to Vertex AI with production quota, change <code>SequentialAgent</code> to <code>ParallelAgent</code> in the generated <code>agent.py</code> manually.</p>
+
+  <!-- ═══════════════════════════════════════════════════ KNOWN LIMITATIONS -->
+  <h2 id="known-limitations">Known Limitations Summary</h2>
+
+  <table>
+    <thead><tr><th>Issue</th><th>Location</th><th>Severity</th><th>Workaround</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Claim race condition if latency &gt; 250ms</td>
+        <td>mixin.py claim_incident</td>
+        <td>High for global deployments</td>
+        <td>Only use within a single region / low-latency network</td>
+      </tr>
+      <tr>
+        <td>Name-based tiebreak for claim conflicts</td>
+        <td>mixin.py _handle_claim</td>
+        <td>Medium — predictable but fragile</td>
+        <td>Name agents deliberately (lexicographically earlier = higher priority)</td>
+      </tr>
+      <tr>
+        <td>Payload truncation is silent</td>
+        <td>serialization.py</td>
+        <td>Medium for large LLM outputs</td>
+        <td>Check for <code>payload.get("_truncated")</code> in handlers</td>
+      </tr>
+      <tr>
+        <td>Hardcoded "heartbeat" channel name</td>
+        <td>mixin.py _heartbeat_loop</td>
+        <td>Low — collision only if you name a channel "heartbeat"</td>
+        <td>Don't use "heartbeat" as a channel name in your application</td>
+      </tr>
+      <tr>
+        <td>source_channel not set in MockSenseTransport</td>
+        <td>testing.py MockSenseTransport.broadcast</td>
+        <td>Low — only affects tests asserting channel routing</td>
+        <td>Don't write tests that assert signal.source_channel</td>
+      </tr>
+      <tr>
+        <td>SequentialAgent vs ParallelAgent hardcoded</td>
+        <td>agent.py.j2 template</td>
+        <td>Medium for production deployments</td>
+        <td>Change to ParallelAgent manually for Vertex AI deployments</td>
+      </tr>
+    </tbody>
+  </table>
+
+</main>
+</body>
+</html>
