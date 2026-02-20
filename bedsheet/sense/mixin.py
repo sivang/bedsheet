@@ -133,6 +133,10 @@ class SenseMixin:
         Uses a simple timestamp-based conflict resolution: earliest claim wins.
         Waits 500ms for competing claims before declaring victory.
         """
+        # Optimistically claim the incident before broadcasting.
+        # _handle_claim will discard it if a competing agent wins.
+        self._claimed_incidents.add(incident_id)
+
         signal = Signal(
             kind="claim",
             sender=self.name,  # type: ignore[attr-defined]
@@ -141,15 +145,11 @@ class SenseMixin:
         )
         await self.broadcast(channel, signal)
 
-        # Wait for competing claims
+        # Wait for competing claims to arrive and potentially evict our claim
         await asyncio.sleep(0.5)
 
-        # If no one else claimed (our claim is in _claimed_incidents), we won
-        if incident_id in self._claimed_incidents:
-            return True
-
-        # We lost the claim
-        return False
+        # Still in _claimed_incidents means no higher-priority agent evicted us
+        return incident_id in self._claimed_incidents
 
     async def release_incident(self, incident_id: str, channel: str = "tasks") -> None:
         """Release a previously claimed incident."""

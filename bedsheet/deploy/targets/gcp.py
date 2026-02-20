@@ -141,13 +141,12 @@ class GCPTarget(DeploymentTarget):
 
         Maps Bedsheet patterns to ADK orchestration:
         - Single agent → "single" (LlmAgent)
-        - Supervisor with collaborators → "parallel" (ParallelAgent)
-          The supervisor pattern typically delegates in parallel
+        - Supervisor with collaborators → "sequential" (SequentialAgent sweep)
+          Sub-agents run sequentially to stay within free-tier rate limits.
         """
         if not agent_metadata.collaborators:
             return "single"
-        # Use parallel for supervisor pattern (parallel delegation)
-        return "parallel"
+        return "sequential"
 
     def validate(self, config: BedsheetConfig) -> list[str]:
         """Validate GCP target configuration."""
@@ -159,9 +158,7 @@ class GCPTarget(DeploymentTarget):
                 if gcp.project:
                     # GCP project IDs must be 6-30 chars, lowercase letters, digits, hyphens
                     # Must start with letter, cannot end with hyphen
-                    if not gcp.project:
-                        errors.append("GCP project ID cannot be empty")
-                    elif len(gcp.project) < 6 or len(gcp.project) > 30:
+                    if len(gcp.project) < 6 or len(gcp.project) > 30:
                         errors.append(
                             f"Invalid GCP project ID length: {gcp.project} (must be 6-30 characters)"
                         )

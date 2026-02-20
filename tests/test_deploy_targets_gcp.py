@@ -381,11 +381,11 @@ async def test_gcp_target_determine_orchestration_single(mock_single_agent_metad
 
 @pytest.mark.asyncio
 async def test_gcp_target_determine_orchestration_supervisor(mock_supervisor_metadata):
-    """Test _determine_orchestration returns 'parallel' for supervisor pattern."""
+    """Test _determine_orchestration returns 'sequential' for supervisor pattern."""
     target = GCPTarget()
     orchestration = target._determine_orchestration(mock_supervisor_metadata)
-    # Supervisor pattern uses parallel delegation for concurrent collaborator execution
-    assert orchestration == "parallel"
+    # Supervisor pattern uses sequential delegation to stay within free-tier rate limits
+    assert orchestration == "sequential"
 
 
 @pytest.mark.asyncio

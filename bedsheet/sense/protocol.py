@@ -47,7 +47,12 @@ class SenseTransport(Protocol):
         ...
 
     def signals(self) -> AsyncIterator[Signal]:
-        """Async iterator of incoming signals from subscribed channels."""
+        """Async generator of incoming signals from subscribed channels.
+
+        Implementations should be declared as 'async def' with 'yield' (an
+        async generator function). Calling signals() returns an AsyncIterator
+        directly — callers use 'async for signal in transport.signals()'.
+        """
         ...
 
     async def get_online_agents(self, channel: str) -> list[AgentPresence]:

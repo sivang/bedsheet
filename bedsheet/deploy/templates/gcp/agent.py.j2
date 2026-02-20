@@ -88,9 +88,9 @@ root_agent = LlmAgent(
 {% endfor %}
 
 {% if agent.tools %}
-# Parallel sub-agents sweep
-_parallel_sweep = SequentialAgent(
-    name="{{ project_name }}_parallel_sweep",
+# Sequential sub-agents sweep (runs collaborators one at a time)
+_sequential_sweep = SequentialAgent(
+    name="{{ project_name }}_sequential_sweep",
     sub_agents=[{% for collab in agent.collaborators %}{{ collab.name | replace('-', '_') }}_agent{% if not loop.last %}, {% endif %}{% endfor %}],
 )
 
@@ -100,10 +100,10 @@ root_agent = LlmAgent(
     model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
     instruction="""{{ agent.instruction | replace('"""', '\\"\\"\\"') }}""",
     tools=[{% for tool in agent.tools %}{{ tool.name }}, {% endfor %}],
-    sub_agents=[_parallel_sweep],
+    sub_agents=[_sequential_sweep],
 )
 {% else %}
-# Orchestrator (parallel)
+# Orchestrator (sequential)
 root_agent = SequentialAgent(
     name="{{ agent.name | replace('-', '_') }}",
     sub_agents=[{% for collab in agent.collaborators %}{{ collab.name | replace('-', '_') }}_agent{% if not loop.last %}, {% endif %}{% endfor %}],

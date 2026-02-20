@@ -383,7 +383,7 @@ class TestSenseMixin:
 
 class TestClaimProtocol:
     async def test_claim_incident(self):
-        """Test basic incident claiming."""
+        """Test that a sole claimant wins the incident."""
         hub = _MockSenseHub()
         transport = MockSenseTransport(hub)
         agent = SenseAgent(
@@ -393,12 +393,47 @@ class TestClaimProtocol:
         )
         await agent.join_network(transport, "test-ns", ["tasks"])
 
-        # Mark ourselves as having claimed (simulate winning)
-        agent._claimed_incidents.add("incident-001")
+        # No pre-seeding — claim_incident must add itself optimistically
         won = await agent.claim_incident("incident-001", "tasks")
         assert won is True
+        # Incident should now be tracked as claimed
+        assert "incident-001" in agent._claimed_incidents
 
         await agent.leave_network()
+
+    async def test_claim_incident_lost_to_competitor(self):
+        """Test that a higher-name agent loses the claim to a lower-name one.
+
+        The tiebreak rule is: lower sender name wins.
+        'agent-zzz' holds a claim but 'agent-aaa' sends a competing claim —
+        agent-zzz must yield because 'agent-aaa' < 'agent-zzz'.
+        """
+        hub = _MockSenseHub()
+        agent_z = SenseAgent(
+            name="agent-zzz",  # lexicographically higher — loses
+            instruction="Worker Z",
+            model_client=MockLLMClient([MockResponse(text="ok")]),
+        )
+        transport_z = MockSenseTransport(hub)
+        await agent_z.join_network(transport_z, "test-ns", ["tasks"])
+
+        # agent-zzz optimistically claims the incident
+        agent_z._claimed_incidents.add("incident-xyz")
+
+        # A competing claim arrives from agent-aaa (lower name — wins)
+        from bedsheet.sense.signals import Signal
+
+        competing = Signal(
+            kind="claim",
+            sender="agent-aaa",
+            payload={"incident_id": "incident-xyz"},
+            correlation_id="incident-xyz",
+        )
+        agent_z._handle_claim(competing)
+        # agent-zzz should have yielded
+        assert "incident-xyz" not in agent_z._claimed_incidents
+
+        await agent_z.leave_network()
 
     async def test_release_incident(self):
         """Test releasing a claimed incident."""
