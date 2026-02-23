@@ -706,28 +706,86 @@
             pointer-events: none;
         }
 
+        /* SVG layer for 90-degree elbow connector lines */
+        .mini-connectors-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .connector-line {
+            fill: none;
+            stroke-width: 1.2;
+            opacity: 0;
+            animation: connector-draw 0.6s ease-out forwards;
+        }
+
+        @keyframes connector-draw {
+            from { stroke-dashoffset: 1000; opacity: 0.7; }
+            to   { stroke-dashoffset: 0; opacity: 0.7; }
+        }
+
+        /* Animated dash flow along connector */
+        .connector-flow {
+            fill: none;
+            stroke-width: 1.2;
+            stroke-dasharray: 6 8;
+            opacity: 0.35;
+            animation: connector-flow-anim 1.5s linear infinite;
+        }
+
+        @keyframes connector-flow-anim {
+            from { stroke-dashoffset: 14; }
+            to   { stroke-dashoffset: 0; }
+        }
+
+        /* Dot at the agent end of the connector */
+        .connector-dot {
+            opacity: 0;
+            animation: connector-dot-in 0.3s ease-out 0.4s forwards;
+        }
+
+        @keyframes connector-dot-in {
+            from { opacity: 0; r: 0; }
+            to   { opacity: 0.8; }
+        }
+
+        /* Small bracket at the window end */
+        .connector-bracket {
+            fill: none;
+            stroke-width: 1.2;
+            opacity: 0;
+            animation: connector-dot-in 0.3s ease-out 0.5s forwards;
+        }
+
         .agent-mini-win {
             position: absolute;
-            width: 220px;
-            height: 170px;
-            background: rgba(18, 28, 48, 0.94);
+            width: 210px;
+            height: 160px;
+            background: rgba(14, 22, 42, 0.95);
             border: 1px solid var(--border-glow);
-            border-radius: 8px;
+            border-radius: 6px;
             display: flex;
             flex-direction: column;
             pointer-events: auto;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 200, 255, 0.08);
-            animation: mini-win-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 200, 255, 0.06);
+            opacity: 0;
+            animation: mini-win-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
             overflow: hidden;
         }
 
         @keyframes mini-win-in {
-            from { opacity: 0; transform: scale(0.85) translateY(6px); }
+            from { opacity: 0; transform: scale(0.88) translateY(4px); }
             to   { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .agent-mini-win .mini-win-header {
-            padding: 6px 10px;
+            padding: 5px 8px;
             border-bottom: 1px solid var(--border-dim);
             display: flex;
             align-items: center;
@@ -809,19 +867,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 190px;
-        }
-
-        /* Leader line from window to agent dot */
-        .agent-mini-win::before {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 50%;
-            width: 1px;
-            height: 12px;
-            background: var(--border-glow);
-            transform: translateX(-50%) translateY(100%);
-            opacity: 0.5;
         }
 
         /* Toggle button in topbar */
@@ -1088,6 +1133,9 @@
 
             <!-- Floating mini-windows for all agents (toggled on/off) -->
             <div class="mini-windows-container" id="miniWindowsContainer"></div>
+
+            <!-- SVG layer for sci-fi elbow connector lines -->
+            <svg class="mini-connectors-svg" id="miniConnectorsSvg"></svg>
 
             <!-- Zoom controls -->
             <div class="map-controls">
@@ -1747,6 +1795,65 @@
     var miniWindowEls = {};  // { agentName: { container: div, body: div } }
     var VIEWBOX_W = 1009.6727;
     var VIEWBOX_H = 665.96301;
+    var WIN_W = 210;
+    var WIN_H = 160;
+
+    // Pre-defined scattered positions for each window (percentage of map area).
+    // Carefully placed so no two windows overlap, spread around the map edges.
+    // Scattered positions: each window gets its own zone to avoid overlap.
+    // pctX/pctY = fraction of (area - windowSize) for positioning.
+    // anchor = which edge of window the connector attaches to.
+    var WINDOW_SLOTS = {
+        'behavior-sentinel':     { pctX: 0.01,  pctY: 0.02, anchor: 'bottom-right' },
+        'action-gateway':        { pctX: 0.20,  pctY: 0.44, anchor: 'top' },
+        'web-researcher':        { pctX: 0.01,  pctY: 0.74, anchor: 'top-right' },
+        'sentinel-commander':    { pctX: 0.36,  pctY: 0.02, anchor: 'bottom' },
+        'scheduler':             { pctX: 0.58,  pctY: 0.02, anchor: 'bottom-left' },
+        'supply-chain-sentinel': { pctX: 0.58,  pctY: 0.68, anchor: 'top' },
+        'skill-acquirer':        { pctX: 0.80,  pctY: 0.02, anchor: 'bottom-left' },
+    };
+
+    var COLOR_HEX = {
+        worker: '#00ef82', sentinel: '#c49fff',
+        commander: '#00d4ff', gateway: '#ffc030'
+    };
+
+    function svgToScreen(svgX, svgY, areaW, areaH) {
+        var svgAspect = VIEWBOX_W / VIEWBOX_H;
+        var areaAspect = areaW / areaH;
+        var renderW, renderH, offsetX, offsetY;
+        if (areaAspect > svgAspect) {
+            renderH = areaH; renderW = areaH * svgAspect;
+            offsetX = (areaW - renderW) / 2; offsetY = 0;
+        } else {
+            renderW = areaW; renderH = areaW / svgAspect;
+            offsetX = 0; offsetY = (areaH - renderH) / 2;
+        }
+        return {
+            x: offsetX + (svgX / VIEWBOX_W) * renderW,
+            y: offsetY + (svgY / VIEWBOX_H) * renderH
+        };
+    }
+
+    // Build a 90-degree elbow path between two points (sci-fi callout style)
+    function elbowPath(x1, y1, x2, y2, anchor) {
+        // Strategy: vertical from dot, then horizontal to window edge
+        // Choose elbow direction based on anchor hint
+        var midY, midX;
+        if (anchor === 'bottom' || anchor === 'bottom-right' || anchor === 'bottom-left') {
+            // Window is above dot — go up from dot, then horizontal
+            midY = y2 + WIN_H + 8;
+            return 'M' + x1 + ',' + y1 + ' V' + midY + ' H' + x2;
+        } else if (anchor === 'top' || anchor === 'top-right' || anchor === 'top-left') {
+            // Window is below dot — go down from dot, then horizontal
+            midY = y2 - 8;
+            return 'M' + x1 + ',' + y1 + ' V' + midY + ' H' + x2;
+        } else {
+            // Window is beside dot — go horizontal from dot, then vertical
+            midX = x2 + (x1 > x2 ? WIN_W + 8 : -8);
+            return 'M' + x1 + ',' + y1 + ' H' + midX + ' V' + y2;
+        }
+    }
 
     function buildMiniEventCard(signal) {
         var payload = signal.payload || {};
@@ -1754,7 +1861,6 @@
         var label = EVENT_TYPE_LABELS[eventType] || eventType;
 
         var card = createEl('div', 'mini-event ' + eventType);
-
         card.appendChild(createEl('span', 'mini-event-badge', label));
 
         var text = '';
@@ -1773,29 +1879,12 @@
 
     function createMiniWindows() {
         var container = document.getElementById('miniWindowsContainer');
+        var connSvg = document.getElementById('miniConnectorsSvg');
         var mapArea = document.getElementById('mapArea');
-        if (!container || !mapArea) return;
+        if (!container || !connSvg || !mapArea) return;
 
         var areaW = mapArea.offsetWidth;
         var areaH = mapArea.offsetHeight;
-
-        // Compute how SVG viewBox maps to the map-area (preserveAspectRatio xMidYMid meet)
-        var svgAspect = VIEWBOX_W / VIEWBOX_H;
-        var areaAspect = areaW / areaH;
-        var renderW, renderH, offsetX, offsetY;
-        if (areaAspect > svgAspect) {
-            // Height is the constraint
-            renderH = areaH;
-            renderW = areaH * svgAspect;
-            offsetX = (areaW - renderW) / 2;
-            offsetY = 0;
-        } else {
-            // Width is the constraint
-            renderW = areaW;
-            renderH = areaW / svgAspect;
-            offsetX = 0;
-            offsetY = (areaH - renderH) / 2;
-        }
 
         var colorMap = {
             worker: 'var(--green)', sentinel: 'var(--purple)',
@@ -1806,22 +1895,95 @@
         for (var i = 0; i < names.length; i++) {
             var name = names[i];
             var info = AGENTS[name];
+            var slot = WINDOW_SLOTS[name];
+            if (!slot) continue;
 
-            // Map SVG coords to screen coords
-            var screenX = offsetX + (info.x / VIEWBOX_W) * renderW;
-            var screenY = offsetY + (info.y / VIEWBOX_H) * renderH;
+            var color = COLOR_HEX[info.role] || '#00ef82';
 
+            // Agent dot position in screen coords
+            var dotPos = svgToScreen(info.x, info.y, areaW, areaH);
+
+            // Window position from slot percentages
+            var winLeft = slot.pctX * (areaW - WIN_W);
+            var winTop = slot.pctY * (areaH - WIN_H);
+
+            // Connection point on the window edge (center of nearest edge to dot)
+            var winCenterX = winLeft + WIN_W / 2;
+            var winCenterY = winTop + WIN_H / 2;
+            var connWinX, connWinY;
+            if (slot.anchor === 'bottom' || slot.anchor === 'bottom-right' || slot.anchor === 'bottom-left') {
+                connWinX = winCenterX; connWinY = winTop + WIN_H;
+            } else if (slot.anchor === 'top' || slot.anchor === 'top-right' || slot.anchor === 'top-left') {
+                connWinX = winCenterX; connWinY = winTop;
+            } else if (slot.anchor === 'right') {
+                connWinX = winLeft + WIN_W; connWinY = winCenterY;
+            } else {
+                connWinX = winLeft; connWinY = winCenterY;
+            }
+
+            // Draw elbow connector
+            var pathD = elbowPath(dotPos.x, dotPos.y, connWinX, connWinY, slot.anchor);
+
+            // Solid line (draws in)
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-dasharray', '1000');
+            path.classList.add('connector-line');
+            path.style.animationDelay = (i * 0.06) + 's';
+            connSvg.appendChild(path);
+
+            // Flowing dash overlay
+            var flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            flow.setAttribute('d', pathD);
+            flow.setAttribute('stroke', color);
+            flow.classList.add('connector-flow');
+            flow.style.animationDelay = (0.6 + i * 0.06) + 's';
+            flow.style.opacity = '0';
+            setTimeout((function(f) { return function() { f.style.opacity = '0.35'; }; })(flow), 600 + i * 60);
+            connSvg.appendChild(flow);
+
+            // Dot at agent end
+            var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', dotPos.x);
+            dot.setAttribute('cy', dotPos.y);
+            dot.setAttribute('r', '3');
+            dot.setAttribute('fill', color);
+            dot.classList.add('connector-dot');
+            dot.style.animationDelay = (0.3 + i * 0.06) + 's';
+            connSvg.appendChild(dot);
+
+            // Small bracket/tick at window end
+            var bracket = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            var bSize = 5;
+            var bPath;
+            if (slot.anchor === 'bottom' || slot.anchor === 'bottom-right' || slot.anchor === 'bottom-left') {
+                bPath = 'M' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize) + ' L' + (connWinX + bSize) + ',' + connWinY;
+            } else if (slot.anchor === 'top' || slot.anchor === 'top-right' || slot.anchor === 'top-left') {
+                bPath = 'M' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX + bSize) + ',' + connWinY;
+            } else if (slot.anchor === 'right') {
+                bPath = 'M' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX + bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize);
+            } else {
+                bPath = 'M' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize);
+            }
+            bracket.setAttribute('d', bPath);
+            bracket.setAttribute('stroke', color);
+            bracket.classList.add('connector-bracket');
+            bracket.style.animationDelay = (0.4 + i * 0.06) + 's';
+            connSvg.appendChild(bracket);
+
+            // Create the window
             var win = createEl('div', 'agent-mini-win');
-            // Position: center above the agent dot
-            win.style.left = (screenX - 110) + 'px';
-            win.style.top = (screenY - 185) + 'px';
-            win.style.animationDelay = (i * 0.05) + 's';
+            win.style.left = winLeft + 'px';
+            win.style.top = winTop + 'px';
+            win.style.animationDelay = (i * 0.06) + 's';
+            win.style.borderColor = color;
 
             var header = createEl('div', 'mini-win-header');
-            var dot = createEl('div', 'mini-win-dot');
-            dot.style.background = colorMap[info.role] || 'var(--green)';
-            dot.style.boxShadow = '0 0 4px ' + (colorMap[info.role] || 'var(--green)');
-            header.appendChild(dot);
+            var hdot = createEl('div', 'mini-win-dot');
+            hdot.style.background = color;
+            hdot.style.boxShadow = '0 0 4px ' + color;
+            header.appendChild(hdot);
             header.appendChild(createEl('span', 'mini-win-title', name));
             win.appendChild(header);
 
@@ -1837,12 +1999,10 @@
             if (buf.length === 0) {
                 body.appendChild(createEl('div', 'mini-win-empty', 'Awaiting events...'));
             } else {
-                // Show last 20 events
                 var start = Math.max(0, buf.length - 20);
                 for (var j = start; j < buf.length; j++) {
                     body.appendChild(buildMiniEventCard(buf[j]));
                 }
-                // Auto-scroll to bottom
                 setTimeout(function(b) { b.scrollTop = b.scrollHeight; }.bind(null, body), 50);
             }
 
@@ -1856,6 +2016,8 @@
     function destroyMiniWindows() {
         var container = document.getElementById('miniWindowsContainer');
         if (container) container.textContent = '';
+        var connSvg = document.getElementById('miniConnectorsSvg');
+        if (connSvg) connSvg.textContent = '';
         miniWindowEls = {};
     }
 
