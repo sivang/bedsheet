@@ -706,7 +706,7 @@
             pointer-events: none;
         }
 
-        /* SVG layer for 90-degree elbow connector lines */
+        /* SVG layer for connector lines from agent dots to windows */
         .mini-connectors-svg {
             position: absolute;
             top: 0;
@@ -721,46 +721,39 @@
         .connector-line {
             fill: none;
             stroke-width: 1.2;
+            stroke-dasharray: 6 4;
             opacity: 0;
-            animation: connector-draw 0.6s ease-out forwards;
+            animation: connector-in 0.5s ease-out forwards;
         }
 
-        @keyframes connector-draw {
-            from { stroke-dashoffset: 1000; opacity: 0.7; }
-            to   { stroke-dashoffset: 0; opacity: 0.7; }
+        @keyframes connector-in {
+            from { opacity: 0; }
+            to   { opacity: 0.55; }
         }
 
-        /* Animated dash flow along connector */
+        /* Animated flow overlay */
         .connector-flow {
             fill: none;
             stroke-width: 1.2;
-            stroke-dasharray: 6 8;
-            opacity: 0.35;
-            animation: connector-flow-anim 1.5s linear infinite;
+            stroke-dasharray: 4 10;
+            opacity: 0;
+            animation: connector-flow-anim 1.2s linear infinite;
         }
 
         @keyframes connector-flow-anim {
-            from { stroke-dashoffset: 14; }
-            to   { stroke-dashoffset: 0; }
+            from { stroke-dashoffset: 14; opacity: 0.4; }
+            to   { stroke-dashoffset: 0; opacity: 0.4; }
         }
 
-        /* Dot at the agent end of the connector */
+        /* Dot at the agent end */
         .connector-dot {
             opacity: 0;
-            animation: connector-dot-in 0.3s ease-out 0.4s forwards;
+            animation: connector-dot-in 0.3s ease-out 0.3s forwards;
         }
 
         @keyframes connector-dot-in {
-            from { opacity: 0; r: 0; }
+            from { opacity: 0; }
             to   { opacity: 0.8; }
-        }
-
-        /* Small bracket at the window end */
-        .connector-bracket {
-            fill: none;
-            stroke-width: 1.2;
-            opacity: 0;
-            animation: connector-dot-in 0.3s ease-out 0.5s forwards;
         }
 
         .agent-mini-win {
@@ -1800,17 +1793,15 @@
 
     // Pre-defined scattered positions for each window (percentage of map area).
     // Carefully placed so no two windows overlap, spread around the map edges.
-    // Scattered positions: each window gets its own zone to avoid overlap.
-    // pctX/pctY = fraction of (area - windowSize) for positioning.
-    // anchor = which edge of window the connector attaches to.
+    // Scattered positions: pctX/pctY = fraction of (area - windowSize).
     var WINDOW_SLOTS = {
-        'behavior-sentinel':     { pctX: 0.01,  pctY: 0.02, anchor: 'bottom-right' },
-        'action-gateway':        { pctX: 0.20,  pctY: 0.44, anchor: 'top' },
-        'web-researcher':        { pctX: 0.01,  pctY: 0.74, anchor: 'top-right' },
-        'sentinel-commander':    { pctX: 0.36,  pctY: 0.02, anchor: 'bottom' },
-        'scheduler':             { pctX: 0.58,  pctY: 0.02, anchor: 'bottom-left' },
-        'supply-chain-sentinel': { pctX: 0.58,  pctY: 0.68, anchor: 'top' },
-        'skill-acquirer':        { pctX: 0.80,  pctY: 0.02, anchor: 'bottom-left' },
+        'behavior-sentinel':     { pctX: 0.01,  pctY: 0.02 },
+        'action-gateway':        { pctX: 0.20,  pctY: 0.50 },
+        'web-researcher':        { pctX: 0.01,  pctY: 0.74 },
+        'sentinel-commander':    { pctX: 0.36,  pctY: 0.02 },
+        'scheduler':             { pctX: 0.58,  pctY: 0.02 },
+        'supply-chain-sentinel': { pctX: 0.58,  pctY: 0.68 },
+        'skill-acquirer':        { pctX: 0.80,  pctY: 0.02 },
     };
 
     var COLOR_HEX = {
@@ -1835,23 +1826,31 @@
         };
     }
 
-    // Build a 90-degree elbow path between two points (sci-fi callout style)
-    function elbowPath(x1, y1, x2, y2, anchor) {
-        // Strategy: vertical from dot, then horizontal to window edge
-        // Choose elbow direction based on anchor hint
-        var midY, midX;
-        if (anchor === 'bottom' || anchor === 'bottom-right' || anchor === 'bottom-left') {
-            // Window is above dot — go up from dot, then horizontal
-            midY = y2 + WIN_H + 8;
-            return 'M' + x1 + ',' + y1 + ' V' + midY + ' H' + x2;
-        } else if (anchor === 'top' || anchor === 'top-right' || anchor === 'top-left') {
-            // Window is below dot — go down from dot, then horizontal
-            midY = y2 - 8;
-            return 'M' + x1 + ',' + y1 + ' V' + midY + ' H' + x2;
+    // Find the point where a line from an external point to the rect center
+    // intersects the rectangle edge. Returns the exact tangent point.
+    function rectEdgePoint(px, py, rx, ry, rw, rh) {
+        var cx = rx + rw / 2;
+        var cy = ry + rh / 2;
+        var dx = px - cx;
+        var dy = py - cy;
+        if (dx === 0 && dy === 0) return { x: cx, y: ry }; // on top of center
+
+        var absDx = Math.abs(dx);
+        var absDy = Math.abs(dy);
+        var halfW = rw / 2;
+        var halfH = rh / 2;
+
+        // Which edge does the line cross?
+        if (absDx * halfH > absDy * halfW) {
+            // Hits left or right edge
+            var signX = dx > 0 ? 1 : -1;
+            var t = halfW / absDx;
+            return { x: cx + signX * halfW, y: cy + dy * t };
         } else {
-            // Window is beside dot — go horizontal from dot, then vertical
-            midX = x2 + (x1 > x2 ? WIN_W + 8 : -8);
-            return 'M' + x1 + ',' + y1 + ' H' + midX + ' V' + y2;
+            // Hits top or bottom edge
+            var signY = dy > 0 ? 1 : -1;
+            var t2 = halfH / absDy;
+            return { x: cx + dx * t2, y: cy + signY * halfH };
         }
     }
 
@@ -1907,70 +1906,40 @@
             var winLeft = slot.pctX * (areaW - WIN_W);
             var winTop = slot.pctY * (areaH - WIN_H);
 
-            // Connection point on the window edge (center of nearest edge to dot)
-            var winCenterX = winLeft + WIN_W / 2;
-            var winCenterY = winTop + WIN_H / 2;
-            var connWinX, connWinY;
-            if (slot.anchor === 'bottom' || slot.anchor === 'bottom-right' || slot.anchor === 'bottom-left') {
-                connWinX = winCenterX; connWinY = winTop + WIN_H;
-            } else if (slot.anchor === 'top' || slot.anchor === 'top-right' || slot.anchor === 'top-left') {
-                connWinX = winCenterX; connWinY = winTop;
-            } else if (slot.anchor === 'right') {
-                connWinX = winLeft + WIN_W; connWinY = winCenterY;
-            } else {
-                connWinX = winLeft; connWinY = winCenterY;
-            }
+            // Find exact point where line from dot hits the window rectangle edge
+            var edgePt = rectEdgePoint(dotPos.x, dotPos.y, winLeft, winTop, WIN_W, WIN_H);
 
-            // Draw elbow connector
-            var pathD = elbowPath(dotPos.x, dotPos.y, connWinX, connWinY, slot.anchor);
+            // Straight dashed line from agent dot to window edge
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', dotPos.x);
+            line.setAttribute('y1', dotPos.y);
+            line.setAttribute('x2', edgePt.x);
+            line.setAttribute('y2', edgePt.y);
+            line.setAttribute('stroke', color);
+            line.classList.add('connector-line');
+            line.style.animationDelay = (i * 0.06) + 's';
+            connSvg.appendChild(line);
 
-            // Solid line (draws in)
-            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathD);
-            path.setAttribute('stroke', color);
-            path.setAttribute('stroke-dasharray', '1000');
-            path.classList.add('connector-line');
-            path.style.animationDelay = (i * 0.06) + 's';
-            connSvg.appendChild(path);
-
-            // Flowing dash overlay
-            var flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            flow.setAttribute('d', pathD);
+            // Flowing dash overlay (animated)
+            var flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            flow.setAttribute('x1', dotPos.x);
+            flow.setAttribute('y1', dotPos.y);
+            flow.setAttribute('x2', edgePt.x);
+            flow.setAttribute('y2', edgePt.y);
             flow.setAttribute('stroke', color);
             flow.classList.add('connector-flow');
-            flow.style.animationDelay = (0.6 + i * 0.06) + 's';
-            flow.style.opacity = '0';
-            setTimeout((function(f) { return function() { f.style.opacity = '0.35'; }; })(flow), 600 + i * 60);
+            flow.style.animationDelay = (i * 0.06) + 's';
             connSvg.appendChild(flow);
 
-            // Dot at agent end
-            var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            dot.setAttribute('cx', dotPos.x);
-            dot.setAttribute('cy', dotPos.y);
-            dot.setAttribute('r', '3');
-            dot.setAttribute('fill', color);
-            dot.classList.add('connector-dot');
-            dot.style.animationDelay = (0.3 + i * 0.06) + 's';
-            connSvg.appendChild(dot);
-
-            // Small bracket/tick at window end
-            var bracket = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            var bSize = 5;
-            var bPath;
-            if (slot.anchor === 'bottom' || slot.anchor === 'bottom-right' || slot.anchor === 'bottom-left') {
-                bPath = 'M' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize) + ' L' + (connWinX + bSize) + ',' + connWinY;
-            } else if (slot.anchor === 'top' || slot.anchor === 'top-right' || slot.anchor === 'top-left') {
-                bPath = 'M' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX + bSize) + ',' + connWinY;
-            } else if (slot.anchor === 'right') {
-                bPath = 'M' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX + bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize);
-            } else {
-                bPath = 'M' + connWinX + ',' + (connWinY - bSize) + ' L' + (connWinX - bSize) + ',' + connWinY + ' L' + connWinX + ',' + (connWinY + bSize);
-            }
-            bracket.setAttribute('d', bPath);
-            bracket.setAttribute('stroke', color);
-            bracket.classList.add('connector-bracket');
-            bracket.style.animationDelay = (0.4 + i * 0.06) + 's';
-            connSvg.appendChild(bracket);
+            // Small dot at agent end
+            var cdot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            cdot.setAttribute('cx', dotPos.x);
+            cdot.setAttribute('cy', dotPos.y);
+            cdot.setAttribute('r', '3');
+            cdot.setAttribute('fill', color);
+            cdot.classList.add('connector-dot');
+            cdot.style.animationDelay = (0.2 + i * 0.06) + 's';
+            connSvg.appendChild(cdot);
 
             // Create the window
             var win = createEl('div', 'agent-mini-win');
@@ -2052,7 +2021,10 @@
         }
     }
 
-    document.getElementById('btnMiniWindows').addEventListener('click', toggleMiniWindows);
+    document.getElementById('btnMiniWindows').addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleMiniWindows();
+    });
 
     // Reposition mini-windows on resize
     window.addEventListener('resize', function() {
