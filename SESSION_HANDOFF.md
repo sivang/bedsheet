@@ -21,8 +21,8 @@ This session focused on **getting the Agent Sentinel demo running locally** with
 
 ### 3. API Key Migration
 
-- **Old free-tier key** (`AIzaSyClNTwWZTc8fnBehf-Ht7zHyGU7WoRWpA4`): Daily quota exhausted
-- **New billed key** (`AIzaSyAiFOhaxiKBC7sYSbWO8h364JVAkvDYh_E`): Works with no rate limits on `gemini-3-flash-preview`
+- **Old free-tier key** (`REDACTED`): Daily quota exhausted
+- **New billed key** (`REDACTED`): Works with no rate limits on `gemini-3-flash-preview`
 - Note: `gemini-2.0-flash` is blocked for new projects ("no longer available to new users")
 
 ### 4. Dashboard CSS
@@ -75,10 +75,10 @@ This session focused on **getting the Agent Sentinel demo running locally** with
 
 ## API Keys
 
-- **GEMINI_API_KEY** (billed): `AIzaSyAiFOhaxiKBC7sYSbWO8h364JVAkvDYh_E`
-- **PUBNUB_PUBLISH_KEY**: `pub-c-19e39ec2-505e-444c-a7d6-5b4b5c9937cd`
-- **PUBNUB_SUBSCRIBE_KEY**: `sub-c-ef68d9ed-4d44-4a42-b52a-a04d4afcd830`
-- **PUBNUB_SECRET_KEY**: `sec-c-OWFhNWFmM2YtOTBlZi00MjU5LWJmZDktNGQ2OWM5MmQ3YWZk`
+- **GEMINI_API_KEY** (billed): `REDACTED`
+- **PUBNUB_PUBLISH_KEY**: `REDACTED`
+- **PUBNUB_SUBSCRIBE_KEY**: `REDACTED`
+- **PUBNUB_SECRET_KEY**: `REDACTED`
 
 ## GCP Projects
 
@@ -100,9 +100,9 @@ cd /Users/sivan/VitakkaProjects/BedsheetAgents
 source .venv/bin/activate
 
 # Set keys
-export GEMINI_API_KEY="AIzaSyAiFOhaxiKBC7sYSbWO8h364JVAkvDYh_E"
-export PUBNUB_PUBLISH_KEY="pub-c-19e39ec2-505e-444c-a7d6-5b4b5c9937cd"
-export PUBNUB_SUBSCRIBE_KEY="sub-c-ef68d9ed-4d44-4a42-b52a-a04d4afcd830"
+export GEMINI_API_KEY="REDACTED"
+export PUBNUB_PUBLISH_KEY="REDACTED"
+export PUBNUB_SUBSCRIBE_KEY="REDACTED"
 
 # Run single agent test
 python -c "
