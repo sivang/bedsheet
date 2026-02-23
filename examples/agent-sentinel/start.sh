@@ -21,6 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DASHBOARD_PORT=8765
 DASH_PID=""
+TAIL_PID=""
 AGENT_PIDS=()
 AGENT_NAMES=()
 
@@ -95,6 +96,11 @@ rm -rf "$DATA_DIR/installed_skills"
 cleanup() {
     echo ""
     echo -e "${YELLOW}Shutting down...${NC}"
+
+    # Stop log tail
+    if [ -n "$TAIL_PID" ] && kill -0 "$TAIL_PID" 2>/dev/null; then
+        kill "$TAIL_PID" 2>/dev/null || true
+    fi
 
     # Stop dashboard
     if [ -n "$DASH_PID" ] && kill -0 "$DASH_PID" 2>/dev/null; then
@@ -189,9 +195,10 @@ for entry in "${AGENTS[@]}"; do
         commander) color="$CYAN" ;;
     esac
 
-    # Each agent's stdout+stderr goes to both its log file AND the terminal
-    # sed prefixes every line with the agent name for easy identification
-    python -u "$full_path" 2>&1 | tee "/tmp/sentinel-${name}.log" | sed "s/^/[${name}] /" &
+    # Write directly to log file. We capture the actual python PID so cleanup
+    # kills the real process (not a pipe tail). Terminal output via tail below.
+    > "/tmp/sentinel-${name}.log"
+    python -u "$full_path" >> "/tmp/sentinel-${name}.log" 2>&1 &
     pid=$!
     AGENT_PIDS+=("$pid")
     AGENT_NAMES+=("$name")
@@ -210,6 +217,17 @@ echo -e "${DIM}  Logs:       /tmp/sentinel-<agent>.log${NC}"
 echo -e "${DIM}  Press Ctrl+C to stop all processes${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
+
+# Stream all agent logs to terminal (merged output)
+TAIL_PID=""
+if [ ${#AGENT_NAMES[@]} -gt 0 ]; then
+    LOG_FILES=()
+    for name in "${AGENT_NAMES[@]}"; do
+        LOG_FILES+=("/tmp/sentinel-${name}.log")
+    done
+    tail -f "${LOG_FILES[@]}" &
+    TAIL_PID=$!
+fi
 
 # Wait for any agent to exit — if one dies, keep running the rest
 # (use wait without args to block until all background jobs finish or Ctrl+C)
