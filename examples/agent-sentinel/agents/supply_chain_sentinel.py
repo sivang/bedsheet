@@ -182,27 +182,56 @@ async def main():
     await agent.join_network(transport, "agent-sentinel", ["alerts", "quarantine"])
     print("[supply-chain-sentinel] Online and monitoring skill integrity...")
 
+    async def _publish_observation(text: str) -> None:
+        """Publish an observation event so the dashboard can show sentinel activity."""
+        try:
+            signal = Signal(
+                kind="event",
+                sender="supply-chain-sentinel",
+                payload={"event_type": "observation", "text": text},
+            )
+            await agent.broadcast(agent.name, signal)
+        except Exception:
+            pass
+
     try:
         while True:
+            installed_count = 0
+            if os.path.exists(_INSTALLED_DIR):
+                installed_count = len(
+                    [f for f in os.listdir(_INSTALLED_DIR) if f.endswith(".py")]
+                )
+            await _publish_observation(
+                f"Scanning installed skills... {installed_count} files to verify"
+            )
+
             issues = _scan_for_issues()
-            for issue in issues:
-                severity = "critical" if issue["type"] == "known_malicious" else "high"
-                print(
-                    f"[supply-chain-sentinel] ALERT: {issue['type']} - {issue['skill']}"
-                )
-                alert = Signal(
-                    kind="alert",
-                    sender="supply-chain-sentinel",
-                    payload={
-                        "severity": severity,
-                        "category": "supply_chain",
-                        "issue_type": issue["type"],
-                        "skill": issue["skill"],
-                        "hash": issue["hash"],
-                        "message": f"Supply chain issue: {issue['type']} for {issue['skill']}",
-                    },
-                )
-                await agent.broadcast("alerts", alert)
+            if issues:
+                for issue in issues:
+                    await _publish_observation(
+                        f"ISSUE: {issue['type']} — {issue['skill']}"
+                    )
+                    severity = (
+                        "critical" if issue["type"] == "known_malicious" else "high"
+                    )
+                    print(
+                        f"[supply-chain-sentinel] ALERT: {issue['type']} - {issue['skill']}"
+                    )
+                    alert = Signal(
+                        kind="alert",
+                        sender="supply-chain-sentinel",
+                        payload={
+                            "severity": severity,
+                            "category": "supply_chain",
+                            "issue_type": issue["type"],
+                            "skill": issue["skill"],
+                            "hash": issue["hash"],
+                            "message": f"Supply chain issue: {issue['type']} for {issue['skill']}",
+                        },
+                    )
+                    await agent.broadcast("alerts", alert)
+            else:
+                await _publish_observation("All installed skills pass integrity check")
 
             await asyncio.sleep(15)
     except KeyboardInterrupt:

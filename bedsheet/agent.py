@@ -174,6 +174,10 @@ Current date: $current_datetime$
                         for tc in response.tool_calls
                     ],
                 )
+                # Preserve raw Gemini parts (thought_signature) for echo-back
+                raw_parts = getattr(response, "_gemini_raw_parts", None)
+                if raw_parts:
+                    assistant_message._gemini_parts = raw_parts
                 messages.append(assistant_message)
                 new_messages.append(assistant_message)
 

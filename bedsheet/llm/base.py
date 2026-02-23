@@ -24,6 +24,7 @@ class LLMResponse:
     stop_reason: str = "end_turn"
     thinking: str | None = None
     parsed_output: Any = None  # Populated when output_schema is used
+    _gemini_raw_parts: Any = field(default=None, repr=False)
 
 
 @dataclass

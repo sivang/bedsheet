@@ -101,7 +101,7 @@ class PubNubTransport:
         config.publish_key = self._publish_key
         if self._secret_key:
             config.secret_key = self._secret_key
-        config.uuid = agent_id
+        config.user_id = agent_id
         config.reconnect_policy = PNReconnectionPolicy.EXPONENTIAL
 
         self._pubnub = PubNubAsyncio(config)

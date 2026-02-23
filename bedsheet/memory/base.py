@@ -1,6 +1,6 @@
 """Memory protocol and message types."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, runtime_checkable
 
 
@@ -12,6 +12,7 @@ class Message:
     content: str | None
     tool_calls: list[dict[str, Any]] | None = None
     tool_call_id: str | None = None
+    _gemini_parts: Any = field(default=None, repr=False)
 
 
 @runtime_checkable

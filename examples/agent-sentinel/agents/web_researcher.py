@@ -1,7 +1,8 @@
-"""Web Researcher agent - performs real DuckDuckGo searches.
+"""Web Researcher agent - performs real DuckDuckGo searches via Action Gateway.
 
 Normal behavior: searches for interesting topics every 15 seconds.
 Rogue behavior (~15% chance): fires 50+ rapid searches in a burst.
+  The gateway rate-limits after 10/min — every subsequent attempt is denied.
 """
 
 import asyncio
@@ -10,35 +11,65 @@ import os
 import random
 import time
 
-from duckduckgo_search import DDGS
-
 from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet.events import (
+    ThinkingEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+    CompletionEvent,
+    ErrorEvent,
+)
 from bedsheet.llm import make_llm_client
+from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
+
+from gateway_client import gateway_request
 
 
 class WebResearcher(SenseMixin, Agent):
     pass
 
 
+def _truncate(text: str, limit: int = 300) -> str:
+    return text[:limit] + "..." if len(text) > limit else text
+
+
+async def _publish_llm_event(agent: WebResearcher, session_id: str, event) -> None:
+    """Publish an LLM activity event to the agent's PubNub channel."""
+    try:
+        payload: dict | None = None
+        if isinstance(event, ThinkingEvent):
+            payload = {"event_type": "thinking", "text": _truncate(event.content)}
+        elif isinstance(event, ToolCallEvent):
+            payload = {
+                "event_type": "tool_call",
+                "tool_name": event.tool_name,
+                "tool_input": _truncate(json.dumps(event.tool_input)),
+            }
+        elif isinstance(event, ToolResultEvent):
+            result_str = str(event.result) if event.result else (event.error or "")
+            payload = {
+                "event_type": "tool_result",
+                "call_id": event.call_id,
+                "result": _truncate(result_str, 200),
+            }
+        elif isinstance(event, CompletionEvent):
+            payload = {"event_type": "completion", "text": _truncate(event.response)}
+        elif isinstance(event, ErrorEvent):
+            payload = {"event_type": "error", "text": _truncate(event.error)}
+
+        if payload:
+            payload["session_id"] = session_id
+            signal = Signal(kind="event", sender=agent.name, payload=payload)
+            await agent.broadcast(agent.name, signal)
+    except Exception:
+        pass  # Never kill the agent loop
+
+
 research_tools = ActionGroup("research_tools", "Web research tools")
 
-# Shared state
-_search_count = 0
-_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-
-
-def _log_activity(agent: str, action: str, details: str) -> None:
-    """Append an activity entry to the shared activity log."""
-    entry = {
-        "timestamp": time.time(),
-        "agent": agent,
-        "action": action,
-        "details": details,
-    }
-    log_path = os.path.join(_DATA_DIR, "activity_log.jsonl")
-    with open(log_path, "a") as f:
-        f.write(json.dumps(entry) + "\n")
+# Module-level agent reference for tool proxy functions
+_agent: WebResearcher | None = None
 
 
 @research_tools.action(
@@ -53,31 +84,36 @@ def _log_activity(agent: str, action: str, details: str) -> None:
     },
 )
 async def search_web(query: str) -> str:
-    global _search_count
-    try:
-        ddgs = DDGS()
-        results = ddgs.text(query, max_results=3)
-        _search_count += 1
-        _log_activity("web-researcher", "search", query)
-        if not results:
-            return f"No results for '{query}'"
-        lines = []
-        for r in results:
-            lines.append(f"- {r['title']}: {r['body'][:120]}")
-        return f"Results for '{query}':\n" + "\n".join(lines)
-    except Exception as e:
-        return f"Search error: {e}"
+    response = await gateway_request(
+        _agent,
+        action="search_web",
+        params={"query": query},
+    )
+    if response["verdict"] != "approved":
+        return f"Action denied: {response['reason']}"
+    return response["result"]
 
 
 @research_tools.action(
     "get_search_summary", "Get count of searches performed this session"
 )
 async def get_search_summary() -> str:
-    return f"Total searches this session: {_search_count}"
+    response = await gateway_request(
+        _agent,
+        action="get_search_summary",
+        params={},
+    )
+    if response["verdict"] != "approved":
+        return f"Action denied: {response['reason']}"
+    return response["result"]
 
 
 async def _rogue_search_burst() -> None:
-    """Fire rapid searches to simulate rogue behavior."""
+    """Fire rapid searches to simulate rogue behavior.
+
+    Each search goes through the gateway. The first few get approved.
+    Once the rate exceeds 10/min, every subsequent request is denied.
+    """
     print("[web-researcher] ROGUE MODE: firing rapid search burst!")
     junk_queries = [
         "password dump site",
@@ -86,18 +122,28 @@ async def _rogue_search_burst() -> None:
         "exploit database 2026",
         "leaked credentials pastebin",
     ]
-    ddgs = DDGS()
+    approved = 0
+    denied = 0
     for i in range(50):
         query = random.choice(junk_queries) + f" {i}"
-        try:
-            ddgs.text(query, max_results=1)
-        except Exception:
-            pass
-        _log_activity("web-researcher", "search", f"[ROGUE] {query}")
-    print("[web-researcher] ROGUE MODE: burst complete (50 searches logged)")
+        response = await gateway_request(
+            _agent,
+            action="search_web",
+            params={"query": query},
+        )
+        if response["verdict"] == "approved":
+            approved += 1
+        else:
+            denied += 1
+    print(
+        f"[web-researcher] ROGUE MODE: burst complete "
+        f"({approved} approved, {denied} denied by gateway)"
+    )
 
 
 async def main():
+    global _agent
+
     transport = PubNubTransport(
         subscribe_key=os.environ["PUBNUB_SUBSCRIBE_KEY"],
         publish_key=os.environ["PUBNUB_PUBLISH_KEY"],
@@ -113,8 +159,13 @@ async def main():
         model_client=make_llm_client(),
     )
     agent.add_action_group(research_tools)
+    _agent = agent
 
     await agent.join_network(transport, "agent-sentinel", ["alerts", "quarantine"])
+
+    # Subscribe to gateway channel so responses come back
+    await transport.subscribe("action-gateway")
+
     print("[web-researcher] Online and researching...")
 
     try:
@@ -128,7 +179,7 @@ async def main():
                     session_id,
                     "Search for something interesting about AI or cloud computing.",
                 ):
-                    pass
+                    await _publish_llm_event(agent, session_id, event)
             await asyncio.sleep(15)
     except KeyboardInterrupt:
         pass

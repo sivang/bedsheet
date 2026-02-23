@@ -6,11 +6,18 @@ then issues quarantine signals for confirmed compromises.
 """
 
 import asyncio
+import json
 import os
 import time
 
 from bedsheet import Agent, ActionGroup, SenseMixin
-from bedsheet.events import CompletionEvent, ToolCallEvent
+from bedsheet.events import (
+    CompletionEvent,
+    ErrorEvent,
+    ThinkingEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+)
 from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
@@ -141,6 +148,42 @@ async def get_threat_summary() -> str:
     return "\n".join(lines)
 
 
+def _truncate(text: str, limit: int = 300) -> str:
+    return text[:limit] + "..." if len(text) > limit else text
+
+
+async def _publish_llm_event(agent: SentinelCommander, session_id: str, event) -> None:
+    """Publish an LLM activity event to the agent's PubNub channel."""
+    try:
+        payload: dict | None = None
+        if isinstance(event, ThinkingEvent):
+            payload = {"event_type": "thinking", "text": _truncate(event.content)}
+        elif isinstance(event, ToolCallEvent):
+            payload = {
+                "event_type": "tool_call",
+                "tool_name": event.tool_name,
+                "tool_input": _truncate(json.dumps(event.tool_input)),
+            }
+        elif isinstance(event, ToolResultEvent):
+            result_str = str(event.result) if event.result else (event.error or "")
+            payload = {
+                "event_type": "tool_result",
+                "call_id": event.call_id,
+                "result": _truncate(result_str, 200),
+            }
+        elif isinstance(event, CompletionEvent):
+            payload = {"event_type": "completion", "text": _truncate(event.response)}
+        elif isinstance(event, ErrorEvent):
+            payload = {"event_type": "error", "text": _truncate(event.error)}
+
+        if payload:
+            payload["session_id"] = session_id
+            signal = Signal(kind="event", sender=agent.name, payload=payload)
+            await agent.broadcast(agent.name, signal)
+    except Exception:
+        pass
+
+
 async def main():
     global _commander
 
@@ -217,6 +260,7 @@ async def main():
                 "Provide a threat assessment report."
             )
             async for event in agent.invoke(session_id, prompt):
+                await _publish_llm_event(agent, session_id, event)
                 if isinstance(event, ToolCallEvent):
                     print(
                         f"  -> {event.tool_name}({', '.join(str(v) for v in event.tool_input.values())})"

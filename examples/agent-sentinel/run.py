@@ -1,49 +1,109 @@
-"""Agent Sentinel - launches worker and sentinel agents as separate processes.
+"""Agent Sentinel - launches the Action Gateway + worker and sentinel agents.
 
-Workers start first (they produce the activity that sentinels monitor),
-then sentinels, then the commander that correlates alerts.
+Launch order: gateway first (owns all tool execution), then workers
+(thin LLM shells that proxy tools through the gateway), then sentinels
+(query the gateway's tamper-proof ledger), then the commander.
 
 Required environment variables:
     PUBNUB_SUBSCRIBE_KEY - PubNub subscribe key
     PUBNUB_PUBLISH_KEY   - PubNub publish key
-    ANTHROPIC_API_KEY    - Anthropic API key for Claude
+    GEMINI_API_KEY       - Gemini API key
 
 Usage:
     python run.py
 """
 
+import logging
 import os
+import select
 import signal
 import subprocess
 import sys
 import time
 
-# Workers start first, then sentinels, then commander
+
+# ============================================================================
+# Diagnostic Logging Setup (adapted from ZeteoAI)
+# ============================================================================
+
+
+class ColorFormatter(logging.Formatter):
+    """Custom formatter with colors for terminal output."""
+
+    COLORS = {
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
+    }
+    RESET = "\033[0m"
+
+    def format(self, record):
+        color = self.COLORS.get(record.levelname, self.RESET)
+        record.levelname = f"{color}{record.levelname}{self.RESET}"
+        return super().format(record)
+
+
+def setup_logging():
+    """Configure diagnostic logging for the sentinel launcher."""
+    logger = logging.getLogger("sentinel")
+    logger.setLevel(logging.DEBUG)
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+
+    formatter = ColorFormatter(
+        fmt="%(asctime)s | %(levelname)-17s | %(message)s", datefmt="%H:%M:%S"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    return logger
+
+
+logger = setup_logging()
+
+
+def log_section(title: str):
+    """Log a section divider."""
+    logger.info(f"{'─' * 55}")
+    logger.info(f"  {title}")
+    logger.info(f"{'─' * 55}")
+
+
+# Gateway first, then workers, then sentinels, then commander
 AGENTS = [
-    # Workers (produce real activity)
+    # Action Gateway (owns all tool execution — must start first)
+    "middleware/action_gateway.py",
+    # Workers (thin LLM shells, proxy tools through gateway)
     "agents/web_researcher.py",
     "agents/scheduler.py",
     "agents/skill_acquirer.py",
-    # Sentinels (monitor workers)
+    # Sentinels (query gateway ledger)
     "agents/behavior_sentinel.py",
     "agents/supply_chain_sentinel.py",
     # Commander (correlates alerts)
     "agents/sentinel_commander.py",
 ]
 
-REQUIRED_ENV = ["PUBNUB_SUBSCRIBE_KEY", "PUBNUB_PUBLISH_KEY", "ANTHROPIC_API_KEY"]
+REQUIRED_ENV = ["PUBNUB_SUBSCRIBE_KEY", "PUBNUB_PUBLISH_KEY", "GEMINI_API_KEY"]
+
+
+def agent_name_from_script(script: str) -> str:
+    return os.path.basename(script).replace(".py", "").replace("_", "-")
 
 
 def main():
     missing = [v for v in REQUIRED_ENV if not os.environ.get(v)]
     if missing:
-        print("Missing required environment variables:")
+        logger.error("Missing required environment variables:")
         for v in missing:
-            print(f"  {v}")
-        print("\nSet them and try again:")
-        print("  export PUBNUB_SUBSCRIBE_KEY=sub-c-...")
-        print("  export PUBNUB_PUBLISH_KEY=pub-c-...")
-        print("  export ANTHROPIC_API_KEY=sk-ant-...")
+            logger.error(f"  {v}")
+        logger.info("Set them and try again:")
+        logger.info("  export PUBNUB_SUBSCRIBE_KEY=sub-c-...")
+        logger.info("  export PUBNUB_PUBLISH_KEY=pub-c-...")
+        logger.info("  export GEMINI_API_KEY=AIza...")
         sys.exit(1)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,63 +111,99 @@ def main():
     # Ensure data directory exists and clean up previous run artifacts
     data_dir = os.path.join(script_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
-    log_path = os.path.join(data_dir, "activity_log.jsonl")
-    if os.path.exists(log_path):
-        os.remove(log_path)
     installed_dir = os.path.join(data_dir, "installed_skills")
     if os.path.exists(installed_dir):
         import shutil
 
         shutil.rmtree(installed_dir)
 
-    processes: list[subprocess.Popen] = []
+    log_section("Agent Sentinel - AI Agent Security Monitoring")
+    logger.info("  Inspired by the OpenClaw crisis of 2026")
+    logger.info(
+        "  Launching 7 processes (1 gateway + 3 workers + 2 sentinels + 1 commander)"
+    )
 
-    print("=" * 60)
-    print("  Agent Sentinel - AI Agent Security Monitoring")
-    print("  Inspired by the OpenClaw crisis of 2026")
-    print("  Launching 6 agents (3 workers + 2 sentinels + 1 commander)...")
-    print("=" * 60)
+    # Map of agent name -> (process, pipe)
+    processes: list[tuple[str, subprocess.Popen]] = []
 
     try:
         for agent_script in AGENTS:
             full_path = os.path.join(script_dir, agent_script)
-            agent_name = (
-                os.path.basename(agent_script).replace(".py", "").replace("_", "-")
-            )
-            print(f"  Starting {agent_name}...")
+            name = agent_name_from_script(agent_script)
+            logger.info(f"[LAUNCH] Starting {name}...")
 
             proc = subprocess.Popen(
-                [sys.executable, full_path],
+                [sys.executable, "-u", full_path],
                 env=os.environ.copy(),
-                stdout=sys.stdout,
-                stderr=sys.stderr,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
-            processes.append(proc)
+            processes.append((name, proc))
             time.sleep(2)  # Stagger startup
 
-        print("=" * 60)
-        print("  All agents online! Workers are doing real work.")
-        print("  Sentinels are watching. ~15% chance of rogue behavior per cycle.")
-        print("  Press Ctrl+C to stop.")
-        print("=" * 60)
+        log_section("All Processes Online")
+        logger.info("  Action Gateway owns all tool execution.")
+        logger.info("  Workers proxy tools through the gateway.")
+        logger.info("  Sentinels query the gateway's tamper-proof ledger.")
+        logger.info("  ~15% chance of rogue behavior per cycle.")
+        logger.info("  Press Ctrl+C to stop.")
+        log_section("Live Agent Output")
 
-        while all(p.poll() is None for p in processes):
-            time.sleep(1)
+        # Multiplex all subprocess stdout/stderr into our logger
+        while True:
+            alive = [(name, p) for name, p in processes if p.poll() is None]
+            if not alive:
+                break
+
+            # Collect readable file descriptors
+            readable_fds = {p.stdout.fileno(): name for name, p in alive if p.stdout}
+            if not readable_fds:
+                break
+
+            ready, _, _ = select.select(list(readable_fds.keys()), [], [], 1.0)
+            for fd in ready:
+                name = readable_fds[fd]
+                line = os.read(fd, 4096).decode("utf-8", errors="replace")
+                if not line:
+                    continue
+                for ln in line.rstrip("\n").split("\n"):
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    # Route to appropriate log level based on content
+                    lower = ln.lower()
+                    if any(
+                        w in lower
+                        for w in ["error", "exception", "traceback", "failed"]
+                    ):
+                        logger.error(f"[{name}] {ln}")
+                    elif any(
+                        w in lower
+                        for w in ["warning", "warn", "handshake", "reconnect"]
+                    ):
+                        logger.warning(f"[{name}] {ln}")
+                    elif any(w in lower for w in ["rogue", "quarantine", "alert"]):
+                        logger.critical(f"[{name}] {ln}")
+                    else:
+                        logger.info(f"[{name}] {ln}")
 
     except KeyboardInterrupt:
-        print("\nShutting down agents...")
+        log_section("Shutting Down")
+
     finally:
-        for proc in processes:
+        for name, proc in processes:
             if proc.poll() is None:
+                logger.info(f"[STOP] Sending SIGINT to {name} (pid {proc.pid})")
                 proc.send_signal(signal.SIGINT)
 
         time.sleep(2)
 
-        for proc in processes:
+        for name, proc in processes:
             if proc.poll() is None:
+                logger.warning(f"[STOP] Force-terminating {name} (pid {proc.pid})")
                 proc.terminate()
 
-        print("All agents stopped.")
+        log_section("All Agents Stopped")
 
 
 if __name__ == "__main__":

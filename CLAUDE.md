@@ -8,8 +8,8 @@
 
 - **Version:** 0.4.7 (Released on PyPI), codename "Hermes"
 - **Tests:** 265 passing (`pytest -v`)
-- **Demo:** `uvx bedsheet demo` (requires `ANTHROPIC_API_KEY`, uses REAL DATA from Yahoo Finance + DuckDuckGo)
-- **Default Model:** `claude-sonnet-4-5-20250929`
+- **Demo:** `uvx bedsheet demo` (requires `GEMINI_API_KEY`, uses REAL DATA from Yahoo Finance + DuckDuckGo)
+- **Default Model:** Gemini (via `make_llm_client()` factory, picks up `GEMINI_API_KEY`)
 - **Demo deps:** `pip install bedsheet[demo]` (adds yfinance, ddgs)
 
 ## Key Features
@@ -74,7 +74,7 @@ bedsheet/
 pytest -v
 
 # Run demo (requires API key)
-export ANTHROPIC_API_KEY=your-key
+export GEMINI_API_KEY=your-key
 uvx bedsheet demo
 
 # CLI commands (v0.4)

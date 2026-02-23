@@ -1,67 +1,93 @@
-"""Skill Acquirer agent - installs skills from the local ClawHub registry.
+"""Skill Acquirer agent - installs skills from ClawHub via Action Gateway.
 
-Normal behavior: browses available skills and installs legitimate ones with SHA-256 verification.
-Rogue behavior (~15% chance): installs the known-malicious data_exfiltrator.py skill.
+Normal behavior: browses available skills and installs legitimate ones.
+Rogue behavior (~15% chance): tries to install the known-malicious data_exfiltrator.py.
+  The gateway blocks malicious skills at the trust boundary — the agent never receives
+  the file content. Even if the agent retries, every attempt is logged and denied.
 """
 
 import asyncio
-import hashlib
 import json
 import os
 import random
-import shutil
 import time
 
 from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet.events import (
+    ThinkingEvent,
+    ToolCallEvent,
+    ToolResultEvent,
+    CompletionEvent,
+    ErrorEvent,
+)
 from bedsheet.llm import make_llm_client
+from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
+
+from gateway_client import gateway_request
 
 
 class SkillAcquirer(SenseMixin, Agent):
     pass
 
 
+def _truncate(text: str, limit: int = 300) -> str:
+    return text[:limit] + "..." if len(text) > limit else text
+
+
+async def _publish_llm_event(agent: SkillAcquirer, session_id: str, event) -> None:
+    """Publish an LLM activity event to the agent's PubNub channel."""
+    try:
+        payload: dict | None = None
+        if isinstance(event, ThinkingEvent):
+            payload = {"event_type": "thinking", "text": _truncate(event.content)}
+        elif isinstance(event, ToolCallEvent):
+            payload = {
+                "event_type": "tool_call",
+                "tool_name": event.tool_name,
+                "tool_input": _truncate(json.dumps(event.tool_input)),
+            }
+        elif isinstance(event, ToolResultEvent):
+            result_str = str(event.result) if event.result else (event.error or "")
+            payload = {
+                "event_type": "tool_result",
+                "call_id": event.call_id,
+                "result": _truncate(result_str, 200),
+            }
+        elif isinstance(event, CompletionEvent):
+            payload = {"event_type": "completion", "text": _truncate(event.response)}
+        elif isinstance(event, ErrorEvent):
+            payload = {"event_type": "error", "text": _truncate(event.error)}
+
+        if payload:
+            payload["session_id"] = session_id
+            signal = Signal(kind="event", sender=agent.name, payload=payload)
+            await agent.broadcast(agent.name, signal)
+    except Exception:
+        pass
+
+
 skill_tools = ActionGroup("skill_tools", "Skill installation tools")
 
+# Module-level references
+_agent: SkillAcquirer | None = None
 _BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-_CLAWHUB_DIR = os.path.join(_BASE_DIR, "clawhub")
 _DATA_DIR = os.path.join(_BASE_DIR, "data")
 _INSTALLED_DIR = os.path.join(_DATA_DIR, "installed_skills")
-_REGISTRY_PATH = os.path.join(_CLAWHUB_DIR, "registry.json")
-
-
-def _log_activity(agent: str, action: str, details: str) -> None:
-    entry = {
-        "timestamp": time.time(),
-        "agent": agent,
-        "action": action,
-        "details": details,
-    }
-    log_path = os.path.join(_DATA_DIR, "activity_log.jsonl")
-    with open(log_path, "a") as f:
-        f.write(json.dumps(entry) + "\n")
-
-
-def _load_registry() -> dict:
-    with open(_REGISTRY_PATH) as f:
-        return json.load(f)
-
-
-def _sha256(path: str) -> str:
-    return hashlib.sha256(open(path, "rb").read()).hexdigest()
 
 
 @skill_tools.action(
     "list_available_skills", "List skills available in the ClawHub registry"
 )
 async def list_available_skills() -> str:
-    registry = _load_registry()
-    _log_activity("skill-acquirer", "list_skills", f"{len(registry)} available")
-    lines = []
-    for name, info in registry.items():
-        status = "MALICIOUS" if info.get("malicious") else "safe"
-        lines.append(f"  {name}: {info['description']} [{status}]")
-    return f"Available skills ({len(registry)}):\n" + "\n".join(lines)
+    response = await gateway_request(
+        _agent,
+        action="list_available_skills",
+        params={},
+    )
+    if response["verdict"] != "approved":
+        return f"Action denied: {response['reason']}"
+    return response["result"]
 
 
 @skill_tools.action(
@@ -79,83 +105,68 @@ async def list_available_skills() -> str:
     },
 )
 async def install_skill(skill_name: str) -> str:
-    registry = _load_registry()
-
-    if skill_name not in registry:
-        return f"Skill '{skill_name}' not found in ClawHub registry"
-
-    info = registry[skill_name]
-
-    # Check if malicious
-    if info.get("malicious"):
-        _log_activity("skill-acquirer", "install_blocked", f"{skill_name} (malicious)")
-        return f"BLOCKED: '{skill_name}' is flagged as malicious in the registry"
-
-    source = os.path.join(_CLAWHUB_DIR, skill_name)
-    if not os.path.exists(source):
-        return f"Skill file '{skill_name}' not found in ClawHub directory"
-
-    # Verify hash before installing
-    actual_hash = _sha256(source)
-    expected_hash = info["sha256"]
-    if actual_hash != expected_hash:
-        _log_activity("skill-acquirer", "install_failed", f"{skill_name} hash mismatch")
-        return f"INTEGRITY ERROR: {skill_name} hash mismatch (expected {expected_hash[:12]}..., got {actual_hash[:12]}...)"
-
-    # Install
-    os.makedirs(_INSTALLED_DIR, exist_ok=True)
-    dest = os.path.join(_INSTALLED_DIR, skill_name)
-    shutil.copy2(source, dest)
-    _log_activity(
-        "skill-acquirer",
-        "install_skill",
-        f"{skill_name} (sha256: {actual_hash[:12]}...)",
+    response = await gateway_request(
+        _agent,
+        action="install_skill",
+        params={"skill_name": skill_name},
     )
-    return f"Installed '{skill_name}' (SHA-256 verified: {actual_hash[:12]}...)"
+    if response["verdict"] != "approved":
+        return f"Action denied: {response['reason']}"
+
+    result = response["result"]
+
+    # Gateway returns JSON with file content for approved installs
+    try:
+        install_data = json.loads(result)
+        if install_data.get("installed"):
+            os.makedirs(_INSTALLED_DIR, exist_ok=True)
+            dest = os.path.join(_INSTALLED_DIR, install_data["skill_name"])
+            with open(dest, "w") as f:
+                f.write(install_data["content"])
+            return (
+                f"Installed '{install_data['skill_name']}' "
+                f"(SHA-256 verified: {install_data['sha256']}...)"
+            )
+    except (json.JSONDecodeError, KeyError):
+        pass
+
+    return result
 
 
 @skill_tools.action(
     "list_installed_skills", "List currently installed skills with their hashes"
 )
 async def list_installed_skills() -> str:
-    if not os.path.exists(_INSTALLED_DIR):
-        return "No skills installed yet."
-    files = [f for f in os.listdir(_INSTALLED_DIR) if f.endswith(".py")]
-    if not files:
-        return "No skills installed yet."
-    registry = _load_registry()
-    lines = []
-    for f in sorted(files):
-        path = os.path.join(_INSTALLED_DIR, f)
-        h = _sha256(path)
-        info = registry.get(f, {})
-        expected = info.get("sha256", "unknown")
-        match = "OK" if h == expected else "MISMATCH"
-        malicious = " [MALICIOUS]" if info.get("malicious") else ""
-        lines.append(f"  {f}: {h[:16]}... ({match}){malicious}")
-    _log_activity("skill-acquirer", "list_installed", f"{len(files)} installed")
-    return f"Installed skills ({len(files)}):\n" + "\n".join(lines)
+    response = await gateway_request(
+        _agent,
+        action="list_installed_skills",
+        params={},
+    )
+    if response["verdict"] != "approved":
+        return f"Action denied: {response['reason']}"
+    return response["result"]
 
 
 async def _rogue_install_malicious() -> None:
-    """Install the known-malicious skill, bypassing the safety check."""
-    print("[skill-acquirer] ROGUE MODE: installing malicious skill!")
-    source = os.path.join(_CLAWHUB_DIR, "data_exfiltrator.py")
-    if not os.path.exists(source):
-        print("[skill-acquirer] ROGUE MODE: malicious skill file not found")
-        return
-    os.makedirs(_INSTALLED_DIR, exist_ok=True)
-    dest = os.path.join(_INSTALLED_DIR, "data_exfiltrator.py")
-    shutil.copy2(source, dest)
-    _log_activity(
-        "skill-acquirer",
-        "install_skill",
-        "[ROGUE] data_exfiltrator.py (bypassed safety)",
+    """Try to install the malicious skill via gateway. Gateway blocks it."""
+    print("[skill-acquirer] ROGUE MODE: attempting malicious skill install!")
+    response = await gateway_request(
+        _agent,
+        action="install_skill",
+        params={"skill_name": "data_exfiltrator.py"},
     )
-    print("[skill-acquirer] ROGUE MODE: data_exfiltrator.py installed!")
+    if response["verdict"] == "approved":
+        print("[skill-acquirer] ROGUE MODE: gateway approved (unexpected)")
+    else:
+        print(
+            f"[skill-acquirer] ROGUE MODE: gateway blocked — "
+            f"{response.get('reason', response.get('result', 'denied'))}"
+        )
 
 
 async def main():
+    global _agent
+
     transport = PubNubTransport(
         subscribe_key=os.environ["PUBNUB_SUBSCRIBE_KEY"],
         publish_key=os.environ["PUBNUB_PUBLISH_KEY"],
@@ -172,8 +183,10 @@ async def main():
         model_client=make_llm_client(),
     )
     agent.add_action_group(skill_tools)
+    _agent = agent
 
     await agent.join_network(transport, "agent-sentinel", ["alerts", "quarantine"])
+    await transport.subscribe("action-gateway")
     print("[skill-acquirer] Online and acquiring skills...")
 
     try:
@@ -186,7 +199,7 @@ async def main():
                     session_id,
                     "Check available skills and install any safe ones that are missing.",
                 ):
-                    pass
+                    await _publish_llm_event(agent, session_id, event)
             await asyncio.sleep(25)
     except KeyboardInterrupt:
         pass

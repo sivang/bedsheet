@@ -1,5 +1,7 @@
 """Google Gemini LLM client implementation."""
 
+import asyncio
+import logging
 import uuid
 from typing import Any, AsyncIterator
 
@@ -16,18 +18,50 @@ except ImportError as e:
     ) from e
 
 
+_log = logging.getLogger(__name__)
+
+
 class GeminiClient:
     """LLM client for Google Gemini models via the Gemini API (AI Studio key or Vertex AI)."""
 
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gemini-2.0-flash-exp",
+        model: str = "gemini-3-flash-preview",
         max_tokens: int = 4096,
+        max_retries: int = 5,
     ) -> None:
         self.model = model
         self.max_tokens = max_tokens
+        self.max_retries = max_retries
         self._client = genai.Client(api_key=api_key)
+
+    async def _call_with_retry(
+        self, contents: list, config: "gtypes.GenerateContentConfig"
+    ) -> Any:
+        """Call generate_content with exponential backoff on 429 rate limit errors."""
+        delay = 15.0  # gemini-3-flash free tier = 5 RPM, so start at 15s
+        for attempt in range(self.max_retries + 1):
+            try:
+                return await self._client.aio.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=config,
+                )
+            except Exception as e:
+                err_str = str(e)
+                is_rate_limit = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str
+                if is_rate_limit and attempt < self.max_retries:
+                    _log.warning(
+                        "Rate limited (attempt %d/%d), retrying in %.0fs...",
+                        attempt + 1,
+                        self.max_retries,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 1.5, 120.0)
+                else:
+                    raise
 
     async def chat(
         self,
@@ -38,11 +72,7 @@ class GeminiClient:
     ) -> LLMResponse:
         contents = self._convert_messages(messages)
         config = self._build_config(system, tools)
-        response = await self._client.aio.models.generate_content(
-            model=self.model,
-            contents=contents,
-            config=config,
-        )
+        response = await self._call_with_retry(contents, config)
         return self._parse_response(response)
 
     async def chat_stream(
@@ -94,15 +124,14 @@ class GeminiClient:
                     ]
                 )
             ]
-            # Thinking models (e.g. gemini-3-flash-preview) attach a thought_signature
-            # to function call parts that must be echoed back in subsequent turns.
-            # Since bedsheet's ToolCall only stores name/id/input, disable thinking
-            # when tools are active to avoid the INVALID_ARGUMENT error.
-            kwargs["thinking_config"] = gtypes.ThinkingConfig(thinking_budget=0)
         return gtypes.GenerateContentConfig(**kwargs)
 
     def _convert_messages(self, messages: list[Message]) -> list["gtypes.Content"]:
-        """Convert bedsheet messages to Gemini Content objects."""
+        """Convert bedsheet messages to Gemini Content objects.
+
+        Preserves raw Gemini parts (including thought_signature) when available
+        via the _gemini_parts stash on assistant messages with tool calls.
+        """
         result: list[gtypes.Content] = []
         for msg in messages:
             if msg.role == "user":
@@ -112,7 +141,11 @@ class GeminiClient:
                     )
                 )
             elif msg.role == "assistant":
-                if msg.tool_calls:
+                # Use raw Gemini parts if stashed (preserves thought_signature)
+                raw_parts = getattr(msg, "_gemini_parts", None)
+                if raw_parts:
+                    result.append(gtypes.Content(role="model", parts=raw_parts))
+                elif msg.tool_calls:
                     parts = [
                         gtypes.Part.from_function_call(
                             name=tc["name"], args=tc["input"]
@@ -128,7 +161,6 @@ class GeminiClient:
                         )
                     )
             elif msg.role == "tool_result":
-                # Gemini expects function responses as a user turn
                 result.append(
                     gtypes.Content(
                         role="user",
@@ -163,4 +195,10 @@ class GeminiClient:
                 )
 
         stop_reason = "tool_use" if tool_calls else "end_turn"
-        return LLMResponse(text=text, tool_calls=tool_calls, stop_reason=stop_reason)
+        llm_response = LLMResponse(
+            text=text, tool_calls=tool_calls, stop_reason=stop_reason
+        )
+        # Stash raw parts so they can be echoed back with thought_signature intact
+        if tool_calls:
+            llm_response._gemini_raw_parts = list(candidate.content.parts)
+        return llm_response
