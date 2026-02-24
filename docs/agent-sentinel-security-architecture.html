@@ -619,6 +619,36 @@
         <strong>The single vulnerability:</strong> The sentinel-commander is the only component where untrusted bus data flows into an LLM prompt. All other components use deterministic logic for their security-critical decisions. Hardening the commander (sender validation, structured tool results instead of string interpolation, signed signals) would close this gap.
     </div>
 
+    <h2>Two Orthogonal Enforcement Planes</h2>
+
+    <div class="callout safe">
+        <strong>Key architectural insight:</strong> The gateway controls what the agent <em>can do</em> (capability plane &mdash; tool access, rate limits, keyword blocks). The sentinel controls whether the agent <em>exists</em> (existence plane &mdash; process lifecycle, kill switch). These are orthogonal: the gateway restricts actions, the sentinel restricts the process itself. Together they provide defense-in-depth where neither alone is sufficient.
+    </div>
+
+    <div class="two-col">
+        <div class="col-panel safe-list">
+            <h3>Capability Plane (Gateway)</h3>
+            <ul>
+                <li>Controls tool execution access</li>
+                <li>Enforces rate limits and keyword blocks</li>
+                <li>Quarantine = revoke capability</li>
+                <li>Agent process still runs but cannot act</li>
+                <li>Deterministic, no LLM in path</li>
+            </ul>
+        </div>
+
+        <div class="col-panel safe-list">
+            <h3>Existence Plane (Sentinel Sidecar)</h3>
+            <ul>
+                <li>Monitors process health (CPU, memory, tokens)</li>
+                <li>Kills runaway LLM loops to save costs</li>
+                <li>OS-level kill switch &mdash; process termination</li>
+                <li>Agent process ceases to exist</li>
+                <li>LLM-based pattern recognition beyond telemetry</li>
+            </ul>
+        </div>
+    </div>
+
     <!-- ── POTENTIAL MITIGATIONS ──────────────────────────────── -->
 
     <h2>Potential Mitigations</h2>

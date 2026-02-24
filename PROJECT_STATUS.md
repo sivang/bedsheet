@@ -812,6 +812,25 @@ bedsheet/
 
 **Approach:** Use lightweight classification models (not full LLMs) for input/output validation. Fast inference for real-time safety checks.
 
+**Sentinel Architecture (from Agent Sentinel security analysis):**
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Private worker-gateway channels | 🔮 Planned | High |
+| Commander receives structured telemetry only (no free-text) | 🔮 Planned | High |
+| Sentinel as local sidecar (process supervisor) | 🔮 Planned | High |
+| All agent I/O routed through gateway (fs, network, tools) | 🔮 Planned | Medium |
+| Cryptographic signal signing | 🔮 Planned | Medium |
+| Sentinel process kill switch (stop runaway LLM loops) | 🔮 Planned | Medium |
+
+**Layered security model (two orthogonal enforcement planes):**
+
+*Key insight:* Gateway controls what the agent *can do* (capability plane — tool access, rate limits, keyword blocks). Sentinel controls whether the agent *exists* (existence plane — process lifecycle, kill switch). These are orthogonal: gateway restricts actions, sentinel restricts the process itself. Together they provide defense-in-depth where neither alone is sufficient.
+
+- **Gateway (Layer 1 — Capability Plane):** Deterministic enforcement — rate limits, keyword blocks, quarantine. Owns all tool execution. Not an LLM, cannot be prompt-injected. Cutting gateway access = full quarantine of the agent's capabilities.
+- **Sentinels (Layer 2 — Existence Plane):** LLM-based local sidecars — deep pattern recognition on gateway telemetry + local process monitoring (CPU, memory, token burn, runaway loops). One per worker/compute node. OS-level kill switch to terminate the agent process entirely.
+- **Commander (Layer 3):** LLM-based judgment — correlates structured findings from sentinels, decides quarantine for ambiguous cases the gateway's rules didn't catch. Receives only structured data, no free-text signal payloads.
+
 ### v0.7: GCP Agent Engine, A2A Protocol (Planned)
 
 | Feature | Status | Priority |
