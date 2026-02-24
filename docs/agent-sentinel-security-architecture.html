@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Sentinel - Security Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #141c2b;
+            --bg-panel: rgba(24, 34, 56, 0.92);
+            --bg-panel-solid: #1a2540;
+            --border-glow: rgba(0, 200, 255, 0.3);
+            --border-dim: rgba(255, 255, 255, 0.12);
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.5);
+            --red: #ff4d6d;
+            --red-dim: rgba(255, 77, 109, 0.5);
+            --amber: #ffc030;
+            --amber-dim: rgba(255, 192, 48, 0.5);
+            --green: #00ef82;
+            --green-dim: rgba(0, 239, 130, 0.5);
+            --purple: #c49fff;
+            --text-primary: #f0f4fa;
+            --text-secondary: #9aacbf;
+            --text-dim: #6a7d94;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-size: 15px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+
+        h1 {
+            font-family: var(--font-mono);
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--cyan);
+            margin-bottom: 8px;
+        }
+
+        h1 .subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        h2 {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 40px 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        /* ── Diagram ────────────────────────────────── */
+
+        .diagram-container {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+        }
+
+        svg text {
+            font-family: var(--font-mono);
+        }
+
+        /* ── Legend ──────────────────────────────────── */
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin: 16px 0 32px 0;
+            padding: 16px 20px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .legend-swatch {
+            width: 32px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .legend-swatch.data-plane { background: var(--cyan); }
+        .legend-swatch.control-plane { background: var(--amber); }
+        .legend-swatch.attack { background: var(--red); }
+        .legend-swatch.hardened { background: var(--green); }
+        .legend-swatch.eavesdrop {
+            background: repeating-linear-gradient(
+                90deg, var(--purple) 0px, var(--purple) 4px, transparent 4px, transparent 8px
+            );
+        }
+
+        /* ── Attack surface table ───────────────────── */
+
+        .surface-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .surface-table th {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .surface-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: top;
+        }
+
+        .surface-table tr:last-child td { border-bottom: none; }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .tag.vulnerable { background: rgba(255,77,109,0.2); color: var(--red); }
+        .tag.hardened { background: rgba(0,239,130,0.15); color: var(--green); }
+        .tag.medium { background: rgba(255,192,48,0.2); color: var(--amber); }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            background: rgba(255,255,255,0.07);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        p { margin: 8px 0; color: var(--text-secondary); }
+
+        .callout {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .callout.danger {
+            background: rgba(255,77,109,0.1);
+            border-left: 3px solid var(--red);
+        }
+
+        .callout.safe {
+            background: rgba(0,239,130,0.08);
+            border-left: 3px solid var(--green);
+        }
+
+        .callout strong { color: var(--text-primary); }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin: 16px 0;
+        }
+
+        @media (max-width: 900px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+
+        .col-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .col-panel h3 {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .col-panel ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .col-panel li {
+            padding: 4px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .col-panel li::before {
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        .col-panel.danger-list h3 { color: var(--red); }
+        .col-panel.danger-list li::before { content: "\2718"; color: var(--red); }
+
+        .col-panel.safe-list h3 { color: var(--green); }
+        .col-panel.safe-list li::before { content: "\2714"; color: var(--green); }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <h1>Agent Sentinel Security Architecture
+        <br><span class="subtitle">Data plane, control plane, attack surfaces, and hardened boundaries</span>
+    </h1>
+
+    <!-- ── MAIN DIAGRAM ──────────────────────────────────────────── -->
+
+    <div class="diagram-container">
+        <svg viewBox="0 0 1100 680" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- Arrow markers -->
+                <marker id="arrow-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#00d4ff"/>
+                </marker>
+                <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#ffc030"/>
+                </marker>
+                <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#ff4d6d"/>
+                </marker>
+                <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#c49fff"/>
+                </marker>
+                <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#00ef82"/>
+                </marker>
+
+                <!-- Glow filter -->
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="blur"/>
+                    <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <!-- ── Background zones ───────────────────────── -->
+
+            <!-- Data Plane zone -->
+            <rect x="30" y="220" width="1040" height="200" rx="12" fill="rgba(0,212,255,0.04)" stroke="rgba(0,212,255,0.15)" stroke-dasharray="6,4"/>
+            <text x="50" y="248" fill="#00d4ff" font-size="11" opacity="0.6" font-weight="500" letter-spacing="1">DATA PLANE &mdash; action-gateway channel</text>
+
+            <!-- Control Plane zone -->
+            <rect x="30" y="440" width="1040" height="210" rx="12" fill="rgba(255,192,48,0.04)" stroke="rgba(255,192,48,0.15)" stroke-dasharray="6,4"/>
+            <text x="50" y="468" fill="#ffc030" font-size="11" opacity="0.6" font-weight="500" letter-spacing="1">CONTROL PLANE &mdash; agent-sentinel network (alerts + quarantine topics)</text>
+
+            <!-- ── ACTION GATEWAY (center, data plane) ────── -->
+            <rect x="420" y="280" width="260" height="110" rx="8"
+                  fill="#1a2540" stroke="#00ef82" stroke-width="2"/>
+            <rect x="420" y="280" width="260" height="110" rx="8"
+                  fill="none" stroke="#00ef82" stroke-width="1" opacity="0.3" filter="url(#glow)"/>
+            <text x="550" y="308" fill="#00ef82" font-size="14" font-weight="600" text-anchor="middle">ACTION GATEWAY</text>
+            <text x="550" y="328" fill="#9aacbf" font-size="10" text-anchor="middle">NOT an LLM agent &mdash; pure Python</text>
+            <text x="550" y="348" fill="#6a7d94" font-size="10" text-anchor="middle">AnomalyDetector + ToolExecutor</text>
+            <text x="550" y="365" fill="#6a7d94" font-size="10" text-anchor="middle">ActionLedger (append-only)</text>
+            <text x="550" y="382" fill="#6a7d94" font-size="10" text-anchor="middle">Rate limit: 10 req/min/agent</text>
+
+            <!-- ── WORKER AGENTS (left side) ──────────────── -->
+
+            <!-- Scheduler -->
+            <rect x="60" y="60" width="180" height="70" rx="6"
+                  fill="#1a2540" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="150" y="86" fill="#f0f4fa" font-size="12" font-weight="500" text-anchor="middle">scheduler</text>
+            <text x="150" y="104" fill="#6a7d94" font-size="10" text-anchor="middle">LLM + calendar tools</text>
+            <text x="150" y="118" fill="#ff4d6d" font-size="9" text-anchor="middle">~15% rogue: rapid-fire junk</text>
+
+            <!-- Web Researcher -->
+            <rect x="60" y="140" width="180" height="70" rx="6"
+                  fill="#1a2540" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="150" y="166" fill="#f0f4fa" font-size="12" font-weight="500" text-anchor="middle">web-researcher</text>
+            <text x="150" y="184" fill="#6a7d94" font-size="10" text-anchor="middle">LLM + search tools</text>
+            <text x="150" y="198" fill="#ff4d6d" font-size="9" text-anchor="middle">~15% rogue: 50 rapid searches</text>
+
+            <!-- Skill Acquirer -->
+            <rect x="270" y="60" width="180" height="70" rx="6"
+                  fill="#1a2540" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="360" y="86" fill="#f0f4fa" font-size="12" font-weight="500" text-anchor="middle">skill-acquirer</text>
+            <text x="360" y="104" fill="#6a7d94" font-size="10" text-anchor="middle">LLM + install tools</text>
+            <text x="360" y="118" fill="#ff4d6d" font-size="9" text-anchor="middle">~15% rogue: malicious install</text>
+
+            <!-- Worker label -->
+            <text x="230" y="46" fill="#f0f4fa" font-size="12" font-weight="600" text-anchor="middle" opacity="0.5">WORKER AGENTS</text>
+
+            <!-- ── SENTINEL AGENTS (right side) ───────────── -->
+
+            <!-- Behavior Sentinel -->
+            <rect x="820" y="60" width="220" height="70" rx="6"
+                  fill="#1a2540" stroke="rgba(0,239,130,0.4)" stroke-width="1"/>
+            <text x="930" y="86" fill="#00ef82" font-size="12" font-weight="500" text-anchor="middle">behavior-sentinel</text>
+            <text x="930" y="104" fill="#6a7d94" font-size="10" text-anchor="middle">LLM registered (unused in loop)</text>
+            <text x="930" y="118" fill="#00ef82" font-size="9" text-anchor="middle">Detection: rate > threshold (Python)</text>
+
+            <!-- Supply Chain Sentinel -->
+            <rect x="820" y="140" width="220" height="70" rx="6"
+                  fill="#1a2540" stroke="rgba(0,239,130,0.4)" stroke-width="1"/>
+            <text x="930" y="166" fill="#00ef82" font-size="12" font-weight="500" text-anchor="middle">supply-chain-sentinel</text>
+            <text x="930" y="184" fill="#6a7d94" font-size="10" text-anchor="middle">LLM registered (unused in loop)</text>
+            <text x="930" y="198" fill="#00ef82" font-size="9" text-anchor="middle">Detection: SHA-256 comparison (Python)</text>
+
+            <!-- Sentinel Commander -->
+            <rect x="820" y="500" width="220" height="80" rx="6"
+                  fill="#1a2540" stroke="rgba(255,77,109,0.5)" stroke-width="2"/>
+            <text x="930" y="526" fill="#ffc030" font-size="12" font-weight="600" text-anchor="middle">sentinel-commander</text>
+            <text x="930" y="544" fill="#6a7d94" font-size="10" text-anchor="middle">LLM-based decision maker</text>
+            <text x="930" y="560" fill="#ff4d6d" font-size="9" text-anchor="middle">on_signal("alert") &#x2192; agent.invoke()</text>
+            <text x="930" y="574" fill="#ff4d6d" font-size="9" text-anchor="middle">Signal payloads injected into prompt</text>
+
+            <!-- Sentinel label -->
+            <text x="930" y="46" fill="#00ef82" font-size="12" font-weight="600" text-anchor="middle" opacity="0.5">SENTINEL AGENTS</text>
+
+            <!-- ── DATA PLANE CONNECTIONS (cyan) ──────────── -->
+
+            <!-- Workers -> Gateway (requests) -->
+            <line x1="150" y1="130" x2="150" y2="270" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+            <line x1="150" y1="270" x2="420" y2="320" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+            <text x="230" y="268" fill="#00d4ff" font-size="9" opacity="0.7">gateway_request()</text>
+
+            <line x1="150" y1="210" x2="150" y2="290" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+            <line x1="150" y1="290" x2="420" y2="340" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+            <line x1="360" y1="130" x2="360" y2="270" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+            <line x1="360" y1="270" x2="420" y2="310" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+            <!-- Gateway -> Workers (responses) -->
+            <line x1="420" y1="360" x2="200" y2="360" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity="0.3"/>
+            <text x="300" y="374" fill="#00d4ff" font-size="8" opacity="0.5">responses</text>
+
+            <!-- Sentinels eavesdrop on data plane -->
+            <line x1="680" y1="300" x2="820" y2="95" stroke="#c49fff" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrow-purple)"/>
+            <text x="765" y="215" fill="#c49fff" font-size="9" opacity="0.7" transform="rotate(-30 765 215)">eavesdrop</text>
+
+            <line x1="680" y1="320" x2="820" y2="175" stroke="#c49fff" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrow-purple)"/>
+
+            <!-- Behavior sentinel queries gateway -->
+            <line x1="820" y1="108" x2="680" y2="290" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+            <text x="775" y="165" fill="#00d4ff" font-size="8" opacity="0.5" transform="rotate(50 775 165)">gateway_query()</text>
+
+            <!-- ── CONTROL PLANE CONNECTIONS (amber) ──────── -->
+
+            <!-- Workers listen to alerts/quarantine -->
+            <line x1="150" y1="210" x2="150" y2="520" stroke="#ffc030" stroke-width="1" stroke-dasharray="4,3" opacity="0.3"/>
+            <line x1="150" y1="520" x2="200" y2="520" stroke="#ffc030" stroke-width="1" stroke-dasharray="4,3" opacity="0.3"/>
+            <text x="100" y="510" fill="#ffc030" font-size="8" opacity="0.4">subscribe</text>
+
+            <line x1="360" y1="130" x2="360" y2="500" stroke="#ffc030" stroke-width="1" stroke-dasharray="4,3" opacity="0.3"/>
+            <text x="310" y="490" fill="#ffc030" font-size="8" opacity="0.4">subscribe</text>
+
+            <!-- Workers broadcast LLM events -->
+            <line x1="200" y1="560" x2="500" y2="560" stroke="#ffc030" stroke-width="1" opacity="0.25"/>
+            <text x="350" y="555" fill="#ffc030" font-size="8" opacity="0.4">broadcast LLM events</text>
+
+            <!-- Sentinels -> alerts topic -->
+            <line x1="820" y1="108" x2="700" y2="510" stroke="#ffc030" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+            <text x="710" y="500" fill="#ffc030" font-size="9" opacity="0.7">broadcast("alerts")</text>
+
+            <line x1="820" y1="190" x2="680" y2="530" stroke="#ffc030" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+
+            <!-- Commander listens to alerts -->
+            <line x1="700" y1="520" x2="820" y2="530" stroke="#ffc030" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+            <text x="740" y="538" fill="#ffc030" font-size="8" opacity="0.5">on_signal</text>
+
+            <!-- Commander -> quarantine -> gateway -->
+            <line x1="820" y1="560" x2="600" y2="560" stroke="#00ef82" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+            <line x1="600" y1="560" x2="600" y2="390" stroke="#00ef82" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+            <text x="630" y="480" fill="#00ef82" font-size="9" opacity="0.7">quarantine order</text>
+
+            <!-- Gateway escalates denials -->
+            <line x1="550" y1="390" x2="550" y2="510" stroke="#ffc030" stroke-width="1" stroke-dasharray="3,3" opacity="0.3"/>
+            <text x="475" y="500" fill="#ffc030" font-size="8" opacity="0.4">escalate denials</text>
+
+            <!-- ══ ATTACK VECTOR CALLOUTS ═══════════════════ -->
+
+            <!-- Attack 1: Prompt injection via sentinel bus -->
+            <rect x="60" y="485" width="340" height="90" rx="6"
+                  fill="rgba(255,77,109,0.08)" stroke="rgba(255,77,109,0.3)" stroke-width="1" stroke-dasharray="4,2"/>
+            <text x="80" y="508" fill="#ff4d6d" font-size="11" font-weight="600">ATTACK VECTOR 1: Prompt Injection</text>
+            <text x="80" y="524" fill="#9aacbf" font-size="10">Rogue worker crafts signal.payload.message</text>
+            <text x="80" y="540" fill="#9aacbf" font-size="10">with adversarial text &#x2192; commander feeds it</text>
+            <text x="80" y="556" fill="#9aacbf" font-size="10">into agent.invoke() &#x2192; LLM follows injected</text>
+            <text x="80" y="572" fill="#9aacbf" font-size="10">instructions &#x2192; quarantines real sentinels</text>
+
+            <!-- Arrow from attack box to commander -->
+            <line x1="400" y1="540" x2="820" y2="540" stroke="#ff4d6d" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow-red)" opacity="0.6"/>
+
+            <!-- Attack 2: Two-hop via request() -->
+            <rect x="60" y="590" width="340" height="60" rx="6"
+                  fill="rgba(255,77,109,0.08)" stroke="rgba(255,77,109,0.3)" stroke-width="1" stroke-dasharray="4,2"/>
+            <text x="80" y="612" fill="#ff4d6d" font-size="11" font-weight="600">ATTACK VECTOR 2: Two-Hop Injection</text>
+            <text x="80" y="628" fill="#9aacbf" font-size="10">Compromised commander sends poisoned task</text>
+            <text x="80" y="644" fill="#9aacbf" font-size="10">via request() &#x2192; sentinel LLM executes it</text>
+
+            <!-- HARDENED label on gateway -->
+            <rect x="448" y="258" width="80" height="18" rx="9" fill="rgba(0,239,130,0.2)"/>
+            <text x="488" y="270" fill="#00ef82" font-size="9" font-weight="600" text-anchor="middle">HARDENED</text>
+
+            <!-- HARDENED label on sentinels -->
+            <rect x="870" y="130" width="120" height="14" rx="7" fill="rgba(0,239,130,0.15)"/>
+            <text x="930" y="140" fill="#00ef82" font-size="8" font-weight="500" text-anchor="middle">deterministic loops</text>
+
+            <!-- VULNERABLE label on commander -->
+            <rect x="870" y="488" width="120" height="14" rx="7" fill="rgba(255,77,109,0.2)"/>
+            <text x="930" y="498" fill="#ff4d6d" font-size="8" font-weight="500" text-anchor="middle">LLM prompt sink</text>
+
+            <!-- RESOURCES (above gateway) -->
+            <rect x="490" y="60" width="130" height="50" rx="6"
+                  fill="#1a2540" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <text x="555" y="82" fill="#6a7d94" font-size="10" text-anchor="middle">calendar.json</text>
+            <text x="555" y="96" fill="#6a7d94" font-size="10" text-anchor="middle">installed_skills/</text>
+            <line x1="555" y1="110" x2="555" y2="280" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="575" y="200" fill="#6a7d94" font-size="8" opacity="0.4">owned by gateway</text>
+
+            <rect x="640" y="60" width="130" height="50" rx="6"
+                  fill="#1a2540" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <text x="705" y="82" fill="#6a7d94" font-size="10" text-anchor="middle">ClawHub registry</text>
+            <text x="705" y="96" fill="#6a7d94" font-size="10" text-anchor="middle">DuckDuckGo API</text>
+            <line x1="705" y1="110" x2="650" y2="280" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,3"/>
+        </svg>
+    </div>
+
+    <!-- ── LEGEND ────────────────────────────────────────────────── -->
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-swatch data-plane"></div> Data plane (gateway requests/responses)</div>
+        <div class="legend-item"><div class="legend-swatch control-plane"></div> Control plane (alerts, quarantine, events)</div>
+        <div class="legend-item"><div class="legend-swatch eavesdrop"></div> Eavesdrop (sentinels observe gateway traffic)</div>
+        <div class="legend-item"><div class="legend-swatch attack"></div> Attack vector (prompt injection path)</div>
+        <div class="legend-item"><div class="legend-swatch hardened"></div> Hardened (deterministic, no LLM in loop)</div>
+    </div>
+
+    <!-- ── ATTACK SURFACE ANALYSIS ───────────────────────────────── -->
+
+    <h2>Attack Surface Analysis</h2>
+
+    <table class="surface-table">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Status</th>
+                <th>Decision Logic</th>
+                <th>Bus Input &rarr; LLM?</th>
+                <th>Attack Vector</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>action-gateway</code></td>
+                <td><span class="tag hardened">Hardened</span></td>
+                <td>Deterministic Python: rate limit + keyword block</td>
+                <td>No &mdash; no LLM at all</td>
+                <td>None. Cannot be prompt-injected.</td>
+            </tr>
+            <tr>
+                <td><code>behavior-sentinel</code></td>
+                <td><span class="tag hardened">Hardened</span></td>
+                <td><code>if rate &gt; 10</code> in Python loop</td>
+                <td>LLM registered but unused in main loop</td>
+                <td>None via bus. Two-hop risk if commander sends poisoned <code>request()</code>.</td>
+            </tr>
+            <tr>
+                <td><code>supply-chain-sentinel</code></td>
+                <td><span class="tag hardened">Hardened</span></td>
+                <td>SHA-256 comparison in Python loop</td>
+                <td>LLM registered but unused in main loop</td>
+                <td>None via bus. Two-hop risk if commander sends poisoned <code>request()</code>.</td>
+            </tr>
+            <tr>
+                <td><code>sentinel-commander</code></td>
+                <td><span class="tag vulnerable">Vulnerable</span></td>
+                <td>LLM decides whether to quarantine</td>
+                <td><strong>Yes</strong> &mdash; <code>signal.payload</code> interpolated into <code>agent.invoke()</code> prompt</td>
+                <td><strong>Direct prompt injection.</strong> Rogue agent crafts adversarial <code>message</code> field in alert signal. Commander LLM follows injected instructions.</td>
+            </tr>
+            <tr>
+                <td><code>scheduler</code></td>
+                <td><span class="tag medium">Contained</span></td>
+                <td>LLM decides tool calls, but all routed through gateway</td>
+                <td>No &mdash; bus signals don't reach LLM prompt</td>
+                <td>Rogue mode is built-in (demo). Gateway rate-limits contain damage.</td>
+            </tr>
+            <tr>
+                <td><code>web-researcher</code></td>
+                <td><span class="tag medium">Contained</span></td>
+                <td>LLM decides search queries, routed through gateway</td>
+                <td>No &mdash; bus signals don't reach LLM prompt</td>
+                <td>Rogue mode is built-in (demo). Gateway blocks suspicious keywords + rate-limits.</td>
+            </tr>
+            <tr>
+                <td><code>skill-acquirer</code></td>
+                <td><span class="tag medium">Contained</span></td>
+                <td>LLM decides installs, routed through gateway</td>
+                <td>No &mdash; bus signals don't reach LLM prompt</td>
+                <td>Rogue mode is built-in (demo). Gateway blocks malicious skills by registry check.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- ── TWO ATTACK VECTORS DETAIL ─────────────────────────────── -->
+
+    <h2>Attack Vectors in Detail</h2>
+
+    <div class="two-col">
+        <div class="col-panel danger-list">
+            <h3>1. Direct Prompt Injection via Sentinel Bus</h3>
+            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:12px;">
+                Any agent on the <code>agent-sentinel</code> network can publish to the <code>alerts</code> topic. The commander's <code>on_signal("alert")</code> handler takes the signal payload and interpolates it directly into the LLM prompt:
+            </p>
+            <p style="color:var(--text-dim); font-size:12px; font-family:var(--font-mono); background:rgba(0,0,0,0.3); padding:10px; border-radius:4px; line-height:1.7;">
+                prompt = f"SECURITY ALERT...<br>
+                &nbsp;&nbsp;Details: {message}<br>
+                &nbsp;&nbsp;..."<br>
+                agent.invoke(session_id, prompt)
+            </p>
+            <ul style="margin-top:12px;">
+                <li>Rogue worker publishes crafted alert signal</li>
+                <li>message field contains adversarial instructions</li>
+                <li>Commander LLM may quarantine real sentinels</li>
+                <li>Security monitoring goes blind</li>
+            </ul>
+        </div>
+
+        <div class="col-panel danger-list">
+            <h3>2. Two-Hop Injection via request()</h3>
+            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:12px;">
+                If attack #1 succeeds, the compromised commander can use its <code>request_remote_agent()</code> tool to send a poisoned task string to a sentinel agent:
+            </p>
+            <p style="color:var(--text-dim); font-size:12px; font-family:var(--font-mono); background:rgba(0,0,0,0.3); padding:10px; border-radius:4px; line-height:1.7;">
+                rogue bus signal<br>
+                &nbsp;&nbsp;&#x2192; commander LLM (compromised)<br>
+                &nbsp;&nbsp;&#x2192; request("behavior-sentinel", "...")<br>
+                &nbsp;&nbsp;&#x2192; sentinel LLM executes poisoned task
+            </p>
+            <ul style="margin-top:12px;">
+                <li>Requires attack #1 to succeed first</li>
+                <li>Sentinel LLMs are dormant but reachable</li>
+                <li>Could produce false alerts or suppress real ones</li>
+                <li>Multi-hop makes attribution harder</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ── WHY THESE ARE HARD / WHY THESE ARE SAFE ────────────── -->
+
+    <h2>Defense Boundaries</h2>
+
+    <div class="two-col">
+        <div class="col-panel safe-list">
+            <h3>Why the Gateway Cannot Be Prompt-Injected</h3>
+            <ul>
+                <li>Not an LLM agent &mdash; pure Python process</li>
+                <li>AnomalyDetector: deterministic rate + keyword checks</li>
+                <li>ToolExecutor: executes tools directly, no LLM in path</li>
+                <li>ActionLedger: append-only, time-windowed, tamper-proof</li>
+                <li>Workers cannot bypass gateway &mdash; tools only exist inside it</li>
+                <li>Quarantine enforcement is a set lookup, not a decision</li>
+            </ul>
+        </div>
+
+        <div class="col-panel safe-list">
+            <h3>Why Sentinels' Main Loops Are Safe</h3>
+            <ul>
+                <li>behavior-sentinel: <code>rate &gt; _RATE_THRESHOLD</code> is Python math</li>
+                <li>supply-chain-sentinel: SHA-256 comparison is cryptographic</li>
+                <li>Neither feeds bus signals into <code>agent.invoke()</code></li>
+                <li>LLM clients are registered but dormant in normal operation</li>
+                <li>Detection cannot be fooled by clever strings</li>
+                <li>They query the gateway's tamper-proof ledger, not agent claims</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="callout danger">
+        <strong>The single vulnerability:</strong> The sentinel-commander is the only component where untrusted bus data flows into an LLM prompt. All other components use deterministic logic for their security-critical decisions. Hardening the commander (sender validation, structured tool results instead of string interpolation, signed signals) would close this gap.
+    </div>
+
+    <!-- ── POTENTIAL MITIGATIONS ──────────────────────────────── -->
+
+    <h2>Potential Mitigations</h2>
+
+    <table class="surface-table">
+        <thead>
+            <tr>
+                <th>Mitigation</th>
+                <th>Addresses</th>
+                <th>Approach</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Sender validation</td>
+                <td>Attack #1</td>
+                <td>Commander only accepts alerts from known sentinel names, not workers. Does not prevent spoofing on a shared bus.</td>
+            </tr>
+            <tr>
+                <td>Cryptographic signal signing</td>
+                <td>Attacks #1 &amp; #2</td>
+                <td>Each agent signs signals with a private key. Commander verifies sender identity. Prevents identity spoofing.</td>
+            </tr>
+            <tr>
+                <td>Structured tool results</td>
+                <td>Attack #1</td>
+                <td>Pass signal data as structured tool results instead of interpolating into the prompt string. Reduces injection surface.</td>
+            </tr>
+            <tr>
+                <td>Channel isolation</td>
+                <td>Attack #1</td>
+                <td>Sentinels publish alerts on a channel workers cannot write to. Requires PubNub access control (PAM).</td>
+            </tr>
+            <tr>
+                <td>Remove dormant LLMs</td>
+                <td>Attack #2</td>
+                <td>Don't register LLM clients on sentinels that don't use them. Eliminates the two-hop path entirely.</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+</body>
+</html>
