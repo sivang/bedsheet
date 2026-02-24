@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import pytest
 from bedsheet.action_group import ActionGroup, generate_schema
 
@@ -140,3 +142,71 @@ def test_get_tool_definitions():
     assert tools[0].name == "get_weather"
     assert tools[0].description == "Get weather for a city"
     assert tools[0].input_schema["properties"]["city"]["type"] == "string"
+
+
+def test_generate_schema_annotated_string():
+    def fn(title: Annotated[str, "Appointment title"]) -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["title"] == {
+        "type": "string",
+        "description": "Appointment title",
+    }
+    assert schema["required"] == ["title"]
+
+
+def test_generate_schema_annotated_with_default():
+    def fn(time: Annotated[str, "Time (HH:MM)"] = "09:00") -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["time"] == {
+        "type": "string",
+        "description": "Time (HH:MM)",
+        "default": "09:00",
+    }
+    assert "time" not in schema["required"]
+
+
+def test_generate_schema_annotated_int():
+    def fn(minutes: Annotated[int, "Time window in minutes"] = 5) -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["minutes"] == {
+        "type": "integer",
+        "description": "Time window in minutes",
+        "default": 5,
+    }
+
+
+def test_generate_schema_mixed_annotated_and_plain():
+    def fn(name: str, age: Annotated[int, "Age in years"], active: bool = True) -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["name"] == {"type": "string"}
+    assert schema["properties"]["age"] == {
+        "type": "integer",
+        "description": "Age in years",
+    }
+    assert schema["properties"]["active"] == {"type": "boolean", "default": True}
+    assert set(schema["required"]) == {"name", "age"}
+
+
+def test_generate_schema_annotated_non_string_metadata_ignored():
+    def fn(value: Annotated[str, 42, {"extra": True}]) -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["value"] == {"type": "string"}
+    assert "description" not in schema["properties"]["value"]
+
+
+def test_generate_schema_annotated_picks_first_string():
+    def fn(value: Annotated[str, "First desc", "Second desc"]) -> str:
+        pass
+
+    schema = generate_schema(fn)
+    assert schema["properties"]["value"]["description"] == "First desc"
