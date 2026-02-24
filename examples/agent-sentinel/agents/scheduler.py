@@ -11,7 +11,7 @@ import os
 import random
 import time
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.events import (
     ThinkingEvent,
     ToolCallEvent,
@@ -84,45 +84,26 @@ async def list_appointments() -> str:
     return response["result"]
 
 
-@scheduler_tools.action(
-    "add_appointment",
-    "Add a new appointment to the calendar",
-    parameters={
-        "type": "object",
-        "properties": {
-            "title": {"type": "string", "description": "Appointment title"},
-            "date": {"type": "string", "description": "Date (YYYY-MM-DD)"},
-            "time": {"type": "string", "description": "Time (HH:MM)"},
-        },
-        "required": ["title", "date", "time"],
-    },
-)
-async def add_appointment(title: str, date: str, time_str: str = "09:00") -> str:
+@scheduler_tools.action("add_appointment", "Add a new appointment to the calendar")
+async def add_appointment(
+    title: Annotated[str, "Appointment title"],
+    date: Annotated[str, "Date (YYYY-MM-DD)"],
+    time: Annotated[str, "Time (HH:MM)"] = "09:00",
+) -> str:
     response = await gateway_request(
         _agent,
         action="add_appointment",
-        params={"title": title, "date": date, "time": time_str},
+        params={"title": title, "date": date, "time": time},
     )
     if response["verdict"] != "approved":
         return f"Action denied: {response['reason']}"
     return response["result"]
 
 
-@scheduler_tools.action(
-    "delete_appointment",
-    "Delete an appointment by ID",
-    parameters={
-        "type": "object",
-        "properties": {
-            "appointment_id": {
-                "type": "string",
-                "description": "Appointment ID to delete",
-            },
-        },
-        "required": ["appointment_id"],
-    },
-)
-async def delete_appointment(appointment_id: str) -> str:
+@scheduler_tools.action("delete_appointment", "Delete an appointment by ID")
+async def delete_appointment(
+    appointment_id: Annotated[str, "Appointment ID to delete"],
+) -> str:
     response = await gateway_request(
         _agent,
         action="delete_appointment",

@@ -11,7 +11,7 @@ import os
 import random
 import time
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.events import (
     ThinkingEvent,
     ToolCallEvent,
@@ -72,18 +72,8 @@ research_tools = ActionGroup("research_tools", "Web research tools")
 _agent: WebResearcher | None = None
 
 
-@research_tools.action(
-    "search_web",
-    "Search the web using DuckDuckGo",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query"},
-        },
-        "required": ["query"],
-    },
-)
-async def search_web(query: str) -> str:
+@research_tools.action("search_web", "Search the web using DuckDuckGo")
+async def search_web(query: Annotated[str, "Search query"]) -> str:
     response = await gateway_request(
         _agent,
         action="search_web",

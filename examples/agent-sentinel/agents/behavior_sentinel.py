@@ -8,7 +8,7 @@ gateway that actually enforced the rules — it cannot be tampered with.
 import asyncio
 import os
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
@@ -32,17 +32,10 @@ _sentinel: BehaviorSentinel | None = None
 @behavior_tools.action(
     "check_activity_log",
     "Query the Action Gateway ledger for actions per agent",
-    parameters={
-        "type": "object",
-        "properties": {
-            "minutes": {
-                "type": "integer",
-                "description": "Time window in minutes (default 5)",
-            },
-        },
-    },
 )
-async def check_activity_log(minutes: int = 5) -> str:
+async def check_activity_log(
+    minutes: Annotated[int, "Time window in minutes"] = 5,
+) -> str:
     result = await gateway_query(_sentinel, "query_rates", {"minutes": minutes})
     if not result:
         return "Gateway unreachable — cannot read activity ledger."
@@ -67,18 +60,10 @@ async def check_activity_log(minutes: int = 5) -> str:
 @behavior_tools.action(
     "check_output_rate",
     "Get the actions-per-minute rate for a specific agent",
-    parameters={
-        "type": "object",
-        "properties": {
-            "agent_name": {
-                "type": "string",
-                "description": "Name of the agent to check",
-            },
-        },
-        "required": ["agent_name"],
-    },
 )
-async def check_output_rate(agent_name: str) -> str:
+async def check_output_rate(
+    agent_name: Annotated[str, "Name of the agent to check"],
+) -> str:
     result = await gateway_query(_sentinel, "query_rates", {"minutes": 2})
     if not result:
         return "Gateway unreachable."

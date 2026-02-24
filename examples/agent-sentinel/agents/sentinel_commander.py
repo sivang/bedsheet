@@ -10,7 +10,7 @@ import json
 import os
 import time
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.events import (
     CompletionEvent,
     ErrorEvent,
@@ -38,16 +38,11 @@ _recent_alerts: list[dict] = []
 @commander_tools.action(
     "request_remote_agent",
     "Send a task to a remote agent and wait for its response",
-    parameters={
-        "type": "object",
-        "properties": {
-            "agent_name": {"type": "string", "description": "Name of the remote agent"},
-            "task": {"type": "string", "description": "Task description for the agent"},
-        },
-        "required": ["agent_name", "task"],
-    },
 )
-async def request_remote_agent(agent_name: str, task: str) -> str:
+async def request_remote_agent(
+    agent_name: Annotated[str, "Name of the remote agent"],
+    task: Annotated[str, "Task description for the agent"],
+) -> str:
     if _commander is None:
         return "Error: Commander not initialized"
     try:
@@ -62,19 +57,11 @@ async def request_remote_agent(agent_name: str, task: str) -> str:
 @commander_tools.action(
     "broadcast_alert",
     "Broadcast an alert to all agents on the network",
-    parameters={
-        "type": "object",
-        "properties": {
-            "severity": {
-                "type": "string",
-                "description": "Alert severity: low, medium, high, critical",
-            },
-            "message": {"type": "string", "description": "Alert message"},
-        },
-        "required": ["severity", "message"],
-    },
 )
-async def broadcast_alert(severity: str, message: str) -> str:
+async def broadcast_alert(
+    severity: Annotated[str, "Alert severity: low, medium, high, critical"],
+    message: Annotated[str, "Alert message"],
+) -> str:
     if _commander is None:
         return "Error: Commander not initialized"
     signal = Signal(
@@ -89,19 +76,11 @@ async def broadcast_alert(severity: str, message: str) -> str:
 @commander_tools.action(
     "issue_quarantine",
     "Issue a quarantine order for a compromised agent",
-    parameters={
-        "type": "object",
-        "properties": {
-            "agent_name": {
-                "type": "string",
-                "description": "Name of the agent to quarantine",
-            },
-            "reason": {"type": "string", "description": "Reason for quarantine"},
-        },
-        "required": ["agent_name", "reason"],
-    },
 )
-async def issue_quarantine(agent_name: str, reason: str) -> str:
+async def issue_quarantine(
+    agent_name: Annotated[str, "Name of the agent to quarantine"],
+    reason: Annotated[str, "Reason for quarantine"],
+) -> str:
     if _commander is None:
         return "Error: Commander not initialized"
     signal = Signal(

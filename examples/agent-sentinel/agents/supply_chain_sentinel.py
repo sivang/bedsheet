@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
@@ -103,15 +103,10 @@ async def check_known_malicious() -> str:
 @supply_chain_tools.action(
     "verify_skill_integrity",
     "Verify a specific installed skill's hash against the registry",
-    parameters={
-        "type": "object",
-        "properties": {
-            "skill_name": {"type": "string", "description": "Skill filename to verify"},
-        },
-        "required": ["skill_name"],
-    },
 )
-async def verify_skill_integrity(skill_name: str) -> str:
+async def verify_skill_integrity(
+    skill_name: Annotated[str, "Skill filename to verify"],
+) -> str:
     path = os.path.join(_INSTALLED_DIR, skill_name)
     if not os.path.exists(path):
         return f"Skill '{skill_name}' is not installed."

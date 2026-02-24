@@ -12,7 +12,7 @@ import os
 import random
 import time
 
-from bedsheet import Agent, ActionGroup, SenseMixin
+from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
 from bedsheet.events import (
     ThinkingEvent,
     ToolCallEvent,
@@ -91,20 +91,11 @@ async def list_available_skills() -> str:
 
 
 @skill_tools.action(
-    "install_skill",
-    "Install a skill from ClawHub to the local skills directory",
-    parameters={
-        "type": "object",
-        "properties": {
-            "skill_name": {
-                "type": "string",
-                "description": "Skill filename (e.g. weather_lookup.py)",
-            },
-        },
-        "required": ["skill_name"],
-    },
+    "install_skill", "Install a skill from ClawHub to the local skills directory"
 )
-async def install_skill(skill_name: str) -> str:
+async def install_skill(
+    skill_name: Annotated[str, "Skill filename (e.g. weather_lookup.py)"],
+) -> str:
     response = await gateway_request(
         _agent,
         action="install_skill",
