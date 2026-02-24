@@ -2,7 +2,15 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Annotated, Any, Callable, Awaitable, get_args, get_origin
+from typing import (
+    Annotated,
+    Any,
+    Awaitable,
+    Callable,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from bedsheet.llm.base import ToolDefinition
 
@@ -28,7 +36,7 @@ def generate_schema(fn: Callable) -> dict[str, Any]:
     "description". Non-string metadata is ignored.
     """
     sig = inspect.signature(fn)
-    hints = fn.__annotations__
+    hints = get_type_hints(fn, include_extras=True)
 
     properties: dict[str, Any] = {}
     required: list[str] = []

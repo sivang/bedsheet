@@ -5,6 +5,8 @@ Rogue behavior (~15% chance): fires 50+ rapid searches in a burst.
   The gateway rate-limits after 10/min — every subsequent attempt is denied.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os

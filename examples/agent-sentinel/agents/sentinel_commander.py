@@ -5,6 +5,8 @@ When alerts arrive, queries other sentinels for corroborating evidence,
 then issues quarantine signals for confirmed compromises.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os

@@ -110,6 +110,9 @@ exclude = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Annotated[T, "description"] metadata strings trigger F722/F821 false positives.
+# This is a known ruff limitation — it treats Annotated metadata as forward refs.
+# Users of bedsheet with Annotated should add similar ignores to their ruff config.
 "examples/**/*.py" = ["F722", "F821"]
 
 [tool.pytest.ini_options]

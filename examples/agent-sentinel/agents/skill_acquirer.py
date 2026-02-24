@@ -6,6 +6,8 @@ Rogue behavior (~15% chance): tries to install the known-malicious data_exfiltra
   the file content. Even if the agent retries, every attempt is logged and denied.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os

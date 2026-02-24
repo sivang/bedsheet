@@ -4,6 +4,8 @@ Scans data/installed_skills/ and compares file hashes against the ClawHub
 registry. Detects hash mismatches and known-malicious skill installations.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json

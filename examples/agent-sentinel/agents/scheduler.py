@@ -5,6 +5,8 @@ Rogue behavior (~15% chance): rapid-fires 20 junk appointments.
   The gateway rate-limits after 10/min — sabotage is blocked.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os

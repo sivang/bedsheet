@@ -5,6 +5,8 @@ when agents produce abnormally high action rates. The data comes from the
 gateway that actually enforced the rules — it cannot be tampered with.
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 
