@@ -4,67 +4,64 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title" parent="1" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=16;fontStyle=1;fontColor=#333;" value="Bedsheet Agents SixthSense Sentinel — Security Architecture" vertex="1">
+        <mxCell id="title" parent="1" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=20;fontStyle=1;fontColor=#333;" value="Bedsheet Agents SixthSense Sentinel — Security Architecture" vertex="1">
           <mxGeometry height="24" width="590" x="40" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" parent="1" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontSize=11;fontColor=#888;" value="&lt;b&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Capability plane (Gateway) ✕ Existence plane (Sentinel Sidecar)&lt;/font&gt;&lt;/b&gt;" vertex="1">
+        <mxCell id="subtitle" parent="1" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontSize=13;fontColor=#888;fontStyle=1;" value="&lt;b&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Capability plane (Gateway) ✕ Existence plane (Sentinel Sidecar)&lt;/font&gt;&lt;/b&gt;" vertex="1">
           <mxGeometry height="18" width="400" x="40" y="44" as="geometry" />
         </mxCell>
-        <mxCell id="sidecar-bg-1-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=9;fontColor=#E65100;fontStyle=1;" value="Compute Node 1" vertex="1">
+        <mxCell id="sidecar-bg-1-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=12;fontColor=#E65100;fontStyle=1;" value="Compute Node 1" vertex="1">
           <mxGeometry height="14" width="120" x="70" y="84" as="geometry" />
         </mxCell>
-        <mxCell id="w1" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;scheduler&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;LLM + calendar tools&lt;/font&gt;" vertex="1">
+        <mxCell id="w1" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;scheduler&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;LLM + calendar tools&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="100" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="s1" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;behavior-sentinel&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;rate monitoring · kill switch&lt;/font&gt;" vertex="1">
+        <mxCell id="s1" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;behavior-sentinel&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;rate monitoring · kill switch&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="100" y="200" as="geometry" />
         </mxCell>
         <mxCell id="kill1" edge="1" parent="1" source="s1" style="strokeColor=#D84315;strokeWidth=2;endArrow=block;endFill=1;" target="w1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="kill1-l" connectable="0" parent="kill1" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
+        <mxCell id="kill1-l" connectable="0" parent="kill1" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
           <mxGeometry relative="1" x="0.1" as="geometry">
             <mxPoint x="15" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="sidecar-bg-2-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=9;fontColor=#E65100;fontStyle=1;" value="Compute Node 2" vertex="1">
+        <mxCell id="sidecar-bg-2-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=12;fontColor=#E65100;fontStyle=1;" value="Compute Node 2" vertex="1">
           <mxGeometry height="14" width="120" x="470" y="84" as="geometry" />
         </mxCell>
-        <mxCell id="w2" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;web-researcher&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;LLM + search tools&lt;/font&gt;" vertex="1">
+        <mxCell id="w2" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;web-researcher&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;LLM + search tools&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="500" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="s2" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;supply-chain-sentinel&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;SHA-256 integrity · kill switch&lt;/font&gt;" vertex="1">
+        <mxCell id="s2" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;supply-chain-sentinel&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;SHA-256 integrity · kill switch&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="500" y="200" as="geometry" />
         </mxCell>
         <mxCell id="kill2" edge="1" parent="1" source="s2" style="strokeColor=#D84315;strokeWidth=2;endArrow=block;endFill=1;" target="w2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="kill2-l" connectable="0" parent="kill2" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
+        <mxCell id="kill2-l" connectable="0" parent="kill2" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
           <mxGeometry relative="1" x="0.1" as="geometry">
             <mxPoint x="15" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="sidecar-bg-3-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=9;fontColor=#E65100;fontStyle=1;" value="Compute Node 3" vertex="1">
+        <mxCell id="sidecar-bg-3-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=12;fontColor=#E65100;fontStyle=1;" value="Compute Node 3" vertex="1">
           <mxGeometry height="14" width="120" x="870" y="84" as="geometry" />
         </mxCell>
-        <mxCell id="w3" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;skill-acquirer&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;LLM + install tools&lt;/font&gt;" vertex="1">
+        <mxCell id="w3" parent="1" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b&gt;skill-acquirer&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;LLM + install tools&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="900" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="FcMlFEZMwUK-dHQFzixJ-2" edge="1" parent="1" source="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="w3" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="s3" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;sentinel-sidecar&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;process monitor · kill switch&lt;/font&gt;" vertex="1">
+        <mxCell id="s3" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#FF9800;strokeWidth=1.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#E65100&quot;&gt;sentinel-sidecar&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;process monitor · kill switch&lt;/font&gt;" vertex="1">
           <mxGeometry height="50" width="220" x="900" y="200" as="geometry" />
         </mxCell>
         <mxCell id="kill3" edge="1" parent="1" source="s3" style="strokeColor=#D84315;strokeWidth=2;endArrow=block;endFill=1;" target="w3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="kill3-l" connectable="0" parent="kill3" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
+        <mxCell id="kill3-l" connectable="0" parent="kill3" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=1;" value="kill / monitor" vertex="1">
           <mxGeometry relative="1" x="0.1" as="geometry">
             <mxPoint x="15" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="gw-bg-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=9;fontColor=#2E7D32;fontStyle=1;" value="CAPABILITY PLANE" vertex="1">
+        <mxCell id="gw-bg-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=12;fontColor=#2E7D32;fontStyle=1;" value="CAPABILITY PLANE" vertex="1">
           <mxGeometry height="14" width="130" x="320" y="384" as="geometry" />
         </mxCell>
         <mxCell id="ch1" edge="1" parent="1" source="w1" style="strokeColor=#1565C0;strokeWidth=2;endArrow=classic;endSize=5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.291;entryY=-0.04;entryDx=0;entryDy=0;entryPerimeter=0;" target="gw">
@@ -75,7 +72,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="ch1-l" connectable="0" parent="ch1" style="edgeLabel;fontSize=8;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
+        <mxCell id="ch1-l" connectable="0" parent="ch1" style="edgeLabel;fontSize=11;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
           <mxGeometry relative="1" x="-0.6" as="geometry">
             <mxPoint x="-61" y="-22" as="offset" />
           </mxGeometry>
@@ -88,7 +85,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="ch2-l" connectable="0" parent="ch2" style="edgeLabel;fontSize=8;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
+        <mxCell id="ch2-l" connectable="0" parent="ch2" style="edgeLabel;fontSize=11;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
           <mxGeometry relative="1" x="-0.3" as="geometry">
             <mxPoint x="-24" y="-88" as="offset" />
           </mxGeometry>
@@ -102,21 +99,21 @@
             <mxPoint x="890" y="130" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="ch3-l" connectable="0" parent="ch3" style="edgeLabel;fontSize=8;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
+        <mxCell id="ch3-l" connectable="0" parent="ch3" style="edgeLabel;fontSize=11;fontColor=#1565C0;fontFamily=Courier New;fontStyle=1;" value="private ch." vertex="1">
           <mxGeometry relative="1" x="-0.6" as="geometry">
             <mxPoint y="-18" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="cmd-bg-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=9;fontColor=#1565C0;fontStyle=1;" value="COMMAND PLANE" vertex="1">
+        <mxCell id="cmd-bg-label" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontFamily=Courier New;fontSize=12;fontColor=#1565C0;fontStyle=1;" value="COMMAND PLANE" vertex="1">
           <mxGeometry height="14" width="120" x="360" y="710" as="geometry" />
         </mxCell>
-        <mxCell id="cmd" parent="1" style="rounded=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#1565C0;font-size:13px&quot;&gt;sentinel-commander&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;LLM judgment · structured input only · no free-text&lt;/font&gt;" vertex="1">
+        <mxCell id="cmd" parent="1" style="rounded=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#1565C0;font-size:15px&quot;&gt;sentinel-commander&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;LLM judgment · structured input only · no free-text&lt;/font&gt;" vertex="1">
           <mxGeometry height="60" width="380" x="440" y="630" as="geometry" />
         </mxCell>
         <mxCell id="gw-cmd" edge="1" parent="1" source="gw" style="strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;endSize=5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="cmd">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gw-cmd-l" connectable="0" parent="gw-cmd" style="edgeLabel;fontSize=9;fontColor=#7B1FA2;fontFamily=Courier New;" value="structured telemetry (rates, counts, denials)" vertex="1">
+        <mxCell id="gw-cmd-l" connectable="0" parent="gw-cmd" style="edgeLabel;fontSize=12;fontColor=#7B1FA2;fontFamily=Courier New;" value="structured telemetry (rates, counts, denials)" vertex="1">
           <mxGeometry relative="1" x="0.1" as="geometry">
             <mxPoint x="5" y="-27" as="offset" />
           </mxGeometry>
@@ -129,7 +126,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="cmd-gw-l" connectable="0" parent="cmd-gw" style="edgeLabel;fontSize=9;fontColor=#C62828;fontFamily=Courier New;fontStyle=1;" value="quarantine&#xa;order" vertex="1">
+        <mxCell id="cmd-gw-l" connectable="0" parent="cmd-gw" style="edgeLabel;fontSize=12;fontColor=#C62828;fontFamily=Courier New;fontStyle=1;" value="quarantine&#xa;order" vertex="1">
           <mxGeometry relative="1" x="-0.1" as="geometry">
             <mxPoint x="20" y="24" as="offset" />
           </mxGeometry>
@@ -143,19 +140,17 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="s1-cmd-l" connectable="0" parent="s1-cmd" style="edgeLabel;fontSize=8;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
+        <mxCell id="s1-cmd-l" connectable="0" parent="s1-cmd" style="edgeLabel;fontSize=11;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
           <mxGeometry relative="1" x="-0.5" as="geometry">
             <mxPoint x="10" y="152" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="s2-cmd" edge="1" parent="1" style="strokeColor=#FF9800;strokeWidth=1.5;endArrow=classic;endSize=5;dashed=1;dashPattern=5 3;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;">
+        <mxCell id="s2-cmd" edge="1" parent="1" source="s2" style="strokeColor=#FF9800;strokeWidth=1.5;endArrow=classic;endSize=5;dashed=1;dashPattern=5 3;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;" target="cmd">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="575" y="560" />
               <mxPoint x="563" y="560" />
             </Array>
-            <mxPoint x="575" y="250" as="sourcePoint" />
-            <mxPoint x="563" y="630" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="s3-cmd" edge="1" parent="1" source="s3" style="strokeColor=#FF9800;strokeWidth=1.5;endArrow=classic;endSize=5;dashed=1;dashPattern=5 3;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" target="cmd">
@@ -167,7 +162,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="s3-cmd-l" connectable="0" parent="s3-cmd" style="edgeLabel;fontSize=8;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
+        <mxCell id="s3-cmd-l" connectable="0" parent="s3-cmd" style="edgeLabel;fontSize=11;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
           <mxGeometry relative="1" x="-0.5" as="geometry">
             <mxPoint x="-230" y="187" as="offset" />
           </mxGeometry>
@@ -181,7 +176,7 @@
             <mxPoint x="1220" y="230" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="cmd-kill-l" connectable="0" parent="cmd-kill" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
+        <mxCell id="cmd-kill-l" connectable="0" parent="cmd-kill" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
           <mxGeometry relative="1" x="0.3" as="geometry">
             <mxPoint x="-55" y="-239" as="offset" />
           </mxGeometry>
@@ -192,16 +187,16 @@
         <mxCell id="gw-res" edge="1" parent="1" source="gw" style="strokeColor=#BDBDBD;strokeWidth=1;dashed=1;dashPattern=4 3;endArrow=classic;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="res">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gw-res-l" connectable="0" parent="gw-res" style="edgeLabel;fontSize=8;fontColor=#999;fontStyle=1" value="owns" vertex="1">
+        <mxCell id="gw-res-l" connectable="0" parent="gw-res" style="edgeLabel;fontSize=11;fontColor=#999;fontStyle=1" value="owns" vertex="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="box-elim" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#43A047;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=10;fontColor=#555;" value="Eliminated Attack Surfaces&#xa;&#xa;✓ No shared worker bus (private channels)&#xa;✓ No free-text in commander prompt&#xa;✓ Cryptographic signal signing&#xa;✓ No dormant LLMs on sentinels&#xa;✓ Two-hop injection path closed" vertex="1">
+        <mxCell id="box-elim" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#43A047;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=12;fontColor=#555;fontStyle=1;" value="Eliminated Attack Surfaces&#xa;&#xa;✓ No shared worker bus (private channels)&#xa;✓ No free-text in commander prompt&#xa;✓ Cryptographic signal signing&#xa;✓ No dormant LLMs on sentinels&#xa;✓ Two-hop injection path closed" vertex="1">
           <mxGeometry height="140" width="280" x="60" y="790" as="geometry" />
         </mxCell>
-        <mxCell id="box-planes" parent="1" style="rounded=1;fillColor=#E3F2FD;strokeColor=#1565C0;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=10;fontColor=#555;" value="Two Orthogonal Planes&#xa;&#xa;Capability (Gateway):&#xa;  What the agent CAN DO&#xa;  Quarantine = revoke tools&#xa;&#xa;Existence (Sentinel):&#xa;  Whether the agent EXISTS&#xa;  Kill switch = terminate process" vertex="1">
+        <mxCell id="box-planes" parent="1" style="rounded=1;fillColor=#E3F2FD;strokeColor=#1565C0;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=12;fontColor=#555;fontStyle=1;" value="Two Orthogonal Planes&#xa;&#xa;Capability (Gateway):&#xa;  What the agent CAN DO&#xa;  Quarantine = revoke tools&#xa;&#xa;Existence (Sentinel):&#xa;  Whether the agent EXISTS&#xa;  Kill switch = terminate process" vertex="1">
           <mxGeometry height="140" width="280" x="380" y="790" as="geometry" />
         </mxCell>
-        <mxCell id="box-layers" parent="1" style="rounded=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=10;fontColor=#555;" value="Defense in Depth&#xa;&#xa;Layer 1 — Gateway:&#xa;  Deterministic, no LLM&#xa;Layer 2 — Sentinels:&#xa;  Local sidecar + process control&#xa;Layer 3 — Commander:&#xa;  LLM judgment, structured input" vertex="1">
+        <mxCell id="box-layers" parent="1" style="rounded=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;arcSize=6;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;whiteSpace=wrap;html=0;fontSize=12;fontColor=#555;fontStyle=1;" value="Defense in Depth&#xa;&#xa;Layer 1 — Gateway:&#xa;  Deterministic, no LLM&#xa;Layer 2 — Sentinels:&#xa;  Local sidecar + process control&#xa;Layer 3 — Commander:&#xa;  LLM judgment, structured input" vertex="1">
           <mxGeometry height="140" width="280" x="700" y="790" as="geometry" />
         </mxCell>
         <mxCell id="leg-box" parent="1" style="rounded=1;fillColor=#FAFAFA;strokeColor=#E0E0E0;arcSize=4;" value="" vertex="1">
@@ -213,7 +208,7 @@
             <mxPoint x="110" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg1b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Private channel" vertex="1">
+        <mxCell id="leg1b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Private channel" vertex="1">
           <mxGeometry height="14" width="90" x="115" y="978" as="geometry" />
         </mxCell>
         <mxCell id="leg2a" edge="1" parent="1" style="endArrow=classic;strokeColor=#7B1FA2;strokeWidth=2;" value="">
@@ -222,7 +217,7 @@
             <mxPoint x="250" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg2b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Structured telemetry" vertex="1">
+        <mxCell id="leg2b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Structured telemetry" vertex="1">
           <mxGeometry height="14" width="120" x="255" y="978" as="geometry" />
         </mxCell>
         <mxCell id="leg3a" edge="1" parent="1" style="endArrow=classic;strokeColor=#C62828;strokeWidth=2;" value="">
@@ -231,7 +226,7 @@
             <mxPoint x="420" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg3b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Quarantine order" vertex="1">
+        <mxCell id="leg3b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Quarantine order" vertex="1">
           <mxGeometry height="14" width="100" x="425" y="978" as="geometry" />
         </mxCell>
         <mxCell id="leg4a" edge="1" parent="1" style="endArrow=block;endFill=1;strokeColor=#D84315;strokeWidth=2;" value="">
@@ -240,7 +235,7 @@
             <mxPoint x="570" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg4b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Kill switch" vertex="1">
+        <mxCell id="leg4b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Kill switch" vertex="1">
           <mxGeometry height="14" width="60" x="575" y="978" as="geometry" />
         </mxCell>
         <mxCell id="leg5a" edge="1" parent="1" style="endArrow=classic;dashed=1;dashPattern=5 3;strokeColor=#FF9800;strokeWidth=1.5;" value="">
@@ -249,7 +244,7 @@
             <mxPoint x="680" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg5b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Signed sentinel findings" vertex="1">
+        <mxCell id="leg5b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Signed sentinel findings" vertex="1">
           <mxGeometry height="14" width="140" x="685" y="978" as="geometry" />
         </mxCell>
         <mxCell id="leg6a" edge="1" parent="1" style="endArrow=classic;dashed=1;dashPattern=4 3;strokeColor=#D84315;strokeWidth=1.5;" value="">
@@ -258,7 +253,7 @@
             <mxPoint x="870" y="985" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="leg6b" parent="1" style="text;fontSize=9;fontColor=#555;strokeColor=none;fillColor=none;" value="Kill order" vertex="1">
+        <mxCell id="leg6b" parent="1" style="text;fontSize=11;fontColor=#555;strokeColor=none;fillColor=none;fontStyle=1;" value="Kill order" vertex="1">
           <mxGeometry height="14" width="60" x="875" y="978" as="geometry" />
         </mxCell>
         <mxCell id="FcMlFEZMwUK-dHQFzixJ-6" edge="1" parent="1" source="cmd" style="strokeColor=#D84315;strokeWidth=1.5;endArrow=classic;endSize=5;dashed=1;dashPattern=4 3;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="s1">
@@ -271,7 +266,7 @@
             <mxPoint x="-50" y="220" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="FcMlFEZMwUK-dHQFzixJ-7" connectable="0" parent="FcMlFEZMwUK-dHQFzixJ-6" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
+        <mxCell id="FcMlFEZMwUK-dHQFzixJ-7" connectable="0" parent="FcMlFEZMwUK-dHQFzixJ-6" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
           <mxGeometry relative="1" x="0.3" as="geometry">
             <mxPoint x="-21" y="-284" as="offset" />
           </mxGeometry>
@@ -282,13 +277,13 @@
             <mxPoint x="670" y="320" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="gw" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#2E7D32;font-size:13px&quot;&gt;ACTION GATEWAY&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:10px&quot;&gt;Pure Python · no LLM · cannot be prompt-injected&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#999&quot; style=&quot;font-size:10px&quot;&gt;AnomalyDetector · ToolExecutor · ActionLedger&lt;/font&gt;" vertex="1">
+        <mxCell id="gw" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2.5;arcSize=8;verticalAlign=middle;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;color:#2E7D32;font-size:15px&quot;&gt;ACTION GATEWAY&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:12px&quot;&gt;Pure Python · no LLM · cannot be prompt-injected&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#999&quot; style=&quot;font-size:12px&quot;&gt;AnomalyDetector · ToolExecutor · ActionLedger&lt;/font&gt;" vertex="1">
           <mxGeometry height="80" width="440" x="410" y="410" as="geometry" />
         </mxCell>
-        <mxCell id="FcMlFEZMwUK-dHQFzixJ-11" connectable="0" parent="1" style="edgeLabel;fontSize=8;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
+        <mxCell id="FcMlFEZMwUK-dHQFzixJ-11" connectable="0" parent="1" style="edgeLabel;fontSize=11;fontColor=#D84315;fontStyle=2;" value="kill orders to sidecars" vertex="1">
           <mxGeometry x="605" y="290" as="geometry" />
         </mxCell>
-        <mxCell id="FcMlFEZMwUK-dHQFzixJ-12" connectable="0" parent="1" style="edgeLabel;fontSize=8;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
+        <mxCell id="FcMlFEZMwUK-dHQFzixJ-12" connectable="0" parent="1" style="edgeLabel;fontSize=11;fontColor=#FF9800;fontFamily=Courier New;fontStyle=1" value="signed findings" vertex="1">
           <mxGeometry x="490" y="540" as="geometry" />
         </mxCell>
       </root>
