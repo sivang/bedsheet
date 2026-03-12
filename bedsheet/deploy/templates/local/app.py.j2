@@ -68,6 +68,31 @@ agent = _configure_agent(_imported_agent)
 from agents.assistant import assistant as agent
 {% endif %}
 
+# Recording/replay support — controlled via environment variables
+# BEDSHEET_RECORD=recordings/  → record all LLM calls + tool results to JSONL
+# BEDSHEET_REPLAY=recordings/  → replay from recorded JSONL, no API keys needed
+# BEDSHEET_REPLAY_DELAY=0.1    → delay between tokens during replay (seconds)
+_record_dir = os.environ.get("BEDSHEET_RECORD")
+_replay_dir = os.environ.get("BEDSHEET_REPLAY")
+
+if _record_dir and _replay_dir:
+    raise RuntimeError("Cannot set both BEDSHEET_RECORD and BEDSHEET_REPLAY")
+
+if _record_dir:
+    from bedsheet.recording import enable_recording
+    enable_recording(agent, directory=_record_dir)
+    if isinstance(agent, Supervisor):
+        for collab in agent.collaborators:
+            enable_recording(collab, directory=_record_dir)
+
+if _replay_dir:
+    from bedsheet.recording import enable_replay
+    _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+    enable_replay(agent, directory=_replay_dir, delay=_delay)
+    if isinstance(agent, Supervisor):
+        for collab in agent.collaborators:
+            enable_replay(collab, directory=_replay_dir, delay=_delay)
+
 app = FastAPI(title="{{ config.name }}")
 
 # Serve Debug UI if enabled and static files exist

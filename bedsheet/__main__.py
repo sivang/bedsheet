@@ -463,6 +463,29 @@ async def run_demo():
     emit("Waiting for Claude...", end="")
 
     advisor = create_agents()
+
+    # Recording/replay support via environment variables
+    _record_dir = os.environ.get("BEDSHEET_RECORD")
+    _replay_dir = os.environ.get("BEDSHEET_REPLAY")
+    if _record_dir and _replay_dir:
+        emit("ERROR: Cannot set both BEDSHEET_RECORD and BEDSHEET_REPLAY")
+        sys.exit(1)
+    if _record_dir:
+        from bedsheet.recording import enable_recording
+
+        enable_recording(advisor, directory=_record_dir)
+        for collab in advisor.collaborators:
+            enable_recording(collab, directory=_record_dir)
+        emit(f"  Recording mode: writing to {_record_dir}")
+    if _replay_dir:
+        from bedsheet.recording import enable_replay
+
+        _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+        enable_replay(advisor, directory=_replay_dir, delay=_delay)
+        for collab in advisor.collaborators:
+            enable_replay(collab, directory=_replay_dir, delay=_delay)
+        emit(f"  Replay mode: reading from {_replay_dir}")
+
     start_time = time.time()
     parallel_agents = []
     first_event = True
