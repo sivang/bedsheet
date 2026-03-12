@@ -1,4 +1,4 @@
-# LLM Recording & Replay — Design Spec (v2)
+# LLM Recording & Replay — Design Spec (v3)
 
 > Record LLM responses and tool results during live runs, replay them deterministically without API keys or network access.
 
@@ -35,7 +35,7 @@ Each line is a JSON object with a `type` field. A complete agent turn produces p
 Fields:
 - **`seq`** — sequence counter, ties llm_call → llm_response → tool_results together
 - **`messages_hash`** — SHA-256 hash of JSON-serialized message content strings, used during replay to optionally verify conversation is tracking the same path. On mismatch: logs a warning, does not raise.
-- **`system_hash`** — SHA-256 hash of system prompt
+- **`system_hash`** — SHA-256 hash of system prompt. Note: the system prompt includes `$current_datetime$` which changes every call, so this hash is useful only for debugging (detecting template changes), not for replay verification.
 - **`tools`** — list of tool names available (for documentation/debugging, not used in replay)
 - **`tool_calls`** — list of `{id, name, input}` dicts from the LLM response
 - **`thinking`** — thinking/reasoning text from extended thinking mode, if present
@@ -66,10 +66,10 @@ recorder.close()
 Behavior:
 - `chat()` → calls real client's `chat()`, writes `llm_call` + `llm_response` records, returns the real response unchanged
 - `chat_stream()` → proxies the real client's `chat_stream()` iterator, yielding tokens as they arrive. After the final `LLMResponse` is yielded, writes the records. Streaming behavior is preserved — no buffering.
-- `wrap_action_group(group)` → returns a new `ActionGroup` with wrapper functions that call the original tool, record the result as a `tool_result` record, and return the result unchanged. This is how tool results get into the JSONL.
-- `close()` flushes and closes the file handle. Also supports `async with` context manager.
+- `wrap_action_group(group)` → returns a new `ActionGroup` with wrapper functions that call the original tool, record the result as a `tool_result` record, and return the result unchanged. This is how tool results get into the JSONL. Wrapper functions are safe for concurrent execution — each records with the current `seq` and its own `call_id`, so parallel `asyncio.gather` calls produce correctly ordered records.
+- `close()` — sync method that flushes and closes the file handle. Also supports `async with` context manager (`__aenter__`/`__aexit__` call the sync `close()`).
 - Maintains internal `seq` counter, incremented on each `chat()` call.
-- `parsed_output` from structured output responses is serialized as JSON in the `llm_response` record.
+- `parsed_output` from structured output responses is serialized as JSON in the `llm_response` record. Pydantic models are serialized via `.model_dump()` before `json.dumps()`. During replay, `parsed_output` is returned as a plain dict (not re-hydrated to Pydantic).
 
 ### ReplayLLMClient
 
@@ -93,7 +93,7 @@ async for event in agent.invoke("session-1", "Add a standup"):
 Behavior:
 - `chat()` → ignores input messages, returns the next recorded `llm_response` in sequence as an `LLMResponse` object (with `text`, `tool_calls`, `stop_reason`, `thinking`, `parsed_output`)
 - `chat_stream()` → yields recorded text word-by-word as tokens, then the final `LLMResponse`
-- `get_action_groups()` → builds `ActionGroup` objects from the recording's `tool_result` records. Each unique tool name gets an async function that returns the next recorded result for that tool (matched by sequence). The agent calls these exactly as it would call real tools.
+- `get_action_groups()` → builds a single `ActionGroup` from the recording's `tool_result` records. Each unique tool name gets an async function backed by an internal queue that serves recorded results in order. When multiple calls to the same tool occur at the same sequence (parallel execution), results are dequeued in `call_id` order. Tool definitions use empty `{}` input schemas since the replayed LLM never inspects them. When a recorded `error` is not null, the mock function raises `RuntimeError(error)` to reproduce the original error path through `agent.py`'s exception handling.
 - Optionally verifies `messages_hash` — on mismatch, logs a warning (does not raise)
 - **No `_gemini_raw_parts`** — replay responses do not include Gemini-specific raw parts. This is acceptable because replay never sends to a real Gemini API. Noted as a known limitation.
 
@@ -113,11 +113,37 @@ Replay:
                  → CompletionEvent (identical to original)
 ```
 
-### Why This Works for Supervisor Too
+### Multi-Agent Recording (Supervisor + Collaborators)
 
-`Supervisor` extends `Agent` and has its own `invoke()` loop, but it uses the same `LLMClient` protocol for LLM calls and the same `ActionGroup` mechanism for tool execution. Since recording/replay operates entirely through these two interfaces — replacing the LLM client and wrapping/mocking action groups — it works for both `Agent` and `Supervisor` without any changes to either class.
+**Important caveat:** `Supervisor.invoke()` intercepts `delegate` tool calls inline — it does NOT route them through `action.fn()`. This means `wrap_action_group()` on the delegate ActionGroup will NOT capture delegation results. The delegate action's registered `fn` is a no-op that returns `""`.
 
-For multi-agent replay (Supervisor + collaborators), each agent gets its own `ReplayLLMClient` loaded from its own recording file. The Supervisor's delegate tool is also recorded and replayed via the action group wrapper.
+**How multi-agent recording works despite this:**
+
+Each agent in the system (Supervisor + all collaborators) gets its own `RecordingLLMClient` and wrapped action groups. Recording happens at every level:
+
+1. **Supervisor** — `RecordingLLMClient` records the Supervisor's own LLM calls/responses. When the LLM returns a `delegate` tool call, the Supervisor intercepts it and invokes the collaborator.
+2. **Collaborator** — has its own `RecordingLLMClient` + wrapped action groups. Its entire execution (LLM calls, tool calls, tool results) is recorded to its own JSONL file.
+3. **Delegate result** — the collaborator's final response text flows back to the Supervisor and appears in the Supervisor's next `chat()` call messages. It's captured implicitly in the Supervisor's `llm_call` record.
+
+**Multi-agent replay:**
+
+Each agent gets its own `ReplayLLMClient` loaded from its own recording file:
+
+```python
+# Supervisor
+sup_replay = ReplayLLMClient(path="recordings/commander.jsonl")
+supervisor = Supervisor(name="commander", model_client=sup_replay, ...)
+
+# Collaborators — each with their own replay client
+for collab_name in ["scheduler", "web-researcher"]:
+    collab_replay = ReplayLLMClient(path=f"recordings/{collab_name}.jsonl")
+    collab = Agent(name=collab_name, model_client=collab_replay, ...)
+    for group in collab_replay.get_action_groups():
+        collab.add_action_group(group)
+    supervisor.add_collaborator(collab)
+```
+
+When the Supervisor's replayed LLM response says "delegate to scheduler", the Supervisor invokes the real collaborator object — which replays from its own recording. The collaborator returns the same final text as the original run, so the Supervisor's conversation stays on the same path.
 
 ### File Layout
 
@@ -186,6 +212,10 @@ async def test_scheduler_replay():
 - **No `_gemini_raw_parts` in replay** — Gemini-specific thought_signature parts are not serialized. Pure replay does not need them since responses never go back to a real Gemini API.
 - **`stop_reason` values are preserved as-is** — no normalization between Anthropic ("tool_use") and Gemini conventions. The recording captures whatever the original client returned.
 - **Streaming replay is simulated** — `chat_stream()` on `ReplayLLMClient` yields recorded text word-by-word, not at original timing. Sufficient for testing, not for timing-accurate playback.
+- **`system_hash` will never match between recording and replay** — the system prompt includes `$current_datetime$` which changes every run. Kept for debugging only.
+- **`messages_hash` may diverge on non-deterministic tool results** — if a mock tool returns slightly different JSON serialization (e.g., dict ordering, float precision), the hash will differ. This is warning-only, never a hard failure.
+- **`parsed_output` replays as plain dict** — Pydantic model instances are serialized via `.model_dump()` during recording. During replay they come back as dicts, not re-hydrated Pydantic objects. Sufficient for assertions, not for Pydantic method calls.
+- **Supervisor delegate results are implicit** — the delegate tool call result is not captured via `wrap_action_group()` (Supervisor intercepts it inline). Instead, each collaborator records separately, and during replay the collaborator replays from its own file. The delegate result flows back naturally through the Supervisor's invocation of the collaborator.
 
 ## Done Signal — Verification Criteria
 
