@@ -20,6 +20,8 @@ Two new classes in `bedsheet/recording.py`, both implementing the `LLMClient` Pr
 
 **Zero changes to `agent.py` or `supervisor.py`.** The agent loop runs exactly as normal — it gets canned LLM responses from `ReplayLLMClient` and canned tool results from the mock action groups. No `dry_run` parameter, no protocol extensions, no special cases.
 
+**Design invariant: recording/replay is generic infrastructure, not agent-specific.** It operates at the `LLMClient` Protocol + `ActionGroup` boundary — the two interfaces every bedsheet agent uses. Any agent built with bedsheet, now or in the future, gets recording/replay for free. No agent-specific code may exist in `recording.py`. If a future agent architecture introduces new extension points, recording/replay must still work without modification to this module.
+
 ### JSONL Record Format
 
 Each line is a JSON object with a `type` field. A complete agent turn produces paired records:
