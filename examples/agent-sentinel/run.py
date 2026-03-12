@@ -117,6 +117,17 @@ def main():
 
         shutil.rmtree(installed_dir)
 
+    # Recording/replay mode logging
+    record_dir = os.environ.get("BEDSHEET_RECORD")
+    if record_dir:
+        os.makedirs(os.path.join(script_dir, record_dir), exist_ok=True)
+        logger.info(f"  Recording mode: writing to {record_dir}")
+    replay_dir = os.environ.get("BEDSHEET_REPLAY")
+    if replay_dir:
+        logger.info(f"  Replay mode: reading from {replay_dir}")
+        delay = os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0")
+        logger.info(f"  Replay delay: {delay}s per token")
+
     log_section("Agent Sentinel - AI Agent Security Monitoring")
     logger.info("  Inspired by the OpenClaw crisis of 2026")
     logger.info(

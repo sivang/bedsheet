@@ -192,6 +192,19 @@ async def main():
     agent.add_action_group(commander_tools)
     _commander = agent
 
+    # Recording/replay support
+    _record_dir = os.environ.get("BEDSHEET_RECORD")
+    _replay_dir = os.environ.get("BEDSHEET_REPLAY")
+    if _record_dir:
+        from bedsheet.recording import enable_recording
+
+        enable_recording(agent, directory=_record_dir)
+    if _replay_dir:
+        from bedsheet.recording import enable_replay
+
+        _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+        enable_replay(agent, directory=_replay_dir, delay=_delay)
+
     await agent.join_network(transport, "agent-sentinel", ["alerts", "quarantine"])
     print("[sentinel-commander] Online and coordinating...")
 

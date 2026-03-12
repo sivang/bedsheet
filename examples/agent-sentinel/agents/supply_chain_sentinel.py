@@ -176,6 +176,19 @@ async def main():
     )
     agent.add_action_group(supply_chain_tools)
 
+    # Recording/replay support
+    _record_dir = os.environ.get("BEDSHEET_RECORD")
+    _replay_dir = os.environ.get("BEDSHEET_REPLAY")
+    if _record_dir:
+        from bedsheet.recording import enable_recording
+
+        enable_recording(agent, directory=_record_dir)
+    if _replay_dir:
+        from bedsheet.recording import enable_replay
+
+        _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+        enable_replay(agent, directory=_replay_dir, delay=_delay)
+
     await agent.join_network(transport, "agent-sentinel", ["alerts", "quarantine"])
     print("[supply-chain-sentinel] Online and monitoring skill integrity...")
 
