@@ -633,8 +633,9 @@ class ReplayLLMClient:
     to get mock action groups that return recorded tool results.
     """
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, delay: float = 0.0) -> None:
         self._path = Path(path)
+        self._delay = delay
         self._responses: deque[dict[str, Any]] = deque()
         self._tool_results: dict[str, deque[dict[str, Any]]] = {}  # tool_name -> queue
         self._load()
@@ -665,6 +666,10 @@ class ReplayLLMClient:
         if not self._responses:
             raise RuntimeError("ReplayLLMClient: no more recorded responses")
 
+        if self._delay > 0:
+            import asyncio
+            await asyncio.sleep(self._delay)
+
         record = self._responses.popleft()
         tool_calls = [
             ToolCall(id=tc["id"], name=tc["name"], input=tc["input"])
@@ -685,9 +690,13 @@ class ReplayLLMClient:
         tools: list[ToolDefinition] | None = None,
         output_schema: OutputSchema | None = None,
     ) -> AsyncIterator[str | LLMResponse]:
+        import asyncio
+
         response = await self.chat(messages, system, tools, output_schema)
         if response.text:
             for word in response.text.split(" "):
+                if self._delay > 0:
+                    await asyncio.sleep(self._delay)
                 yield word + " "
         yield response
 
@@ -1135,7 +1144,7 @@ def enable_recording(agent: Any, directory: str) -> None:
     agent._action_groups = new_groups
 
 
-def enable_replay(agent: Any, directory: str) -> None:
+def enable_replay(agent: Any, directory: str, delay: float = 0.0) -> None:
     """Enable replay mode on an agent.
 
     Replaces the agent's model_client with ReplayLLMClient and
@@ -1145,9 +1154,11 @@ def enable_replay(agent: Any, directory: str) -> None:
         agent: An Agent or Supervisor instance.
         directory: Directory containing recording files.
                    Reads {agent.name}.jsonl.
+        delay: Seconds between tokens/responses. 0.0 for instant (CI),
+               0.05-0.2 for demo presentations.
     """
     path = str(Path(directory) / f"{agent.name}.jsonl")
-    replay = ReplayLLMClient(path=path)
+    replay = ReplayLLMClient(path=path, delay=delay)
     agent.model_client = replay
 
     # Replace action groups with replay mocks

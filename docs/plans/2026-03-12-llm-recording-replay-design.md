@@ -94,7 +94,8 @@ async for event in agent.invoke("session-1", "Add a standup"):
 
 Behavior:
 - `chat()` → ignores input messages, returns the next recorded `llm_response` in sequence as an `LLMResponse` object (with `text`, `tool_calls`, `stop_reason`, `thinking`, `parsed_output`)
-- `chat_stream()` → yields recorded text word-by-word as tokens, then the final `LLMResponse`
+- `chat_stream()` → yields recorded text word-by-word as tokens, then the final `LLMResponse`. Inserts `asyncio.sleep(delay)` between tokens when `delay > 0`.
+- Constructor accepts `delay: float = 0.0` (seconds). Default 0.0 for instant replay (CI/testing). Set to 0.05–0.2 for demo presentation so viewers can follow the output. Delay is applied per-token in `chat_stream()` and as a pause before returning from `chat()`.
 - `get_action_groups()` → builds a single `ActionGroup` from the recording's `tool_result` records. Each unique tool name gets an async function backed by an internal queue that serves recorded results in order. When multiple calls to the same tool occur at the same sequence (parallel execution), results are dequeued in `call_id` order. Tool definitions use empty `{}` input schemas since the replayed LLM never inspects them. When a recorded `error` is not null, the mock function raises `RuntimeError(error)` to reproduce the original error path through `agent.py`'s exception handling.
 - Optionally verifies `messages_hash` — on mismatch, logs a warning (does not raise)
 - **No `_gemini_raw_parts`** — replay responses do not include Gemini-specific raw parts. This is acceptable because replay never sends to a real Gemini API. Noted as a known limitation.
@@ -213,7 +214,7 @@ async def test_scheduler_replay():
 
 - **No `_gemini_raw_parts` in replay** — Gemini-specific thought_signature parts are not serialized. Pure replay does not need them since responses never go back to a real Gemini API.
 - **`stop_reason` values are preserved as-is** — no normalization between Anthropic ("tool_use") and Gemini conventions. The recording captures whatever the original client returned.
-- **Streaming replay is simulated** — `chat_stream()` on `ReplayLLMClient` yields recorded text word-by-word, not at original timing. Sufficient for testing, not for timing-accurate playback.
+- **Streaming replay is simulated** — `chat_stream()` on `ReplayLLMClient` yields recorded text word-by-word with configurable `delay` between tokens. Default `delay=0.0` for CI. Set `delay=0.05–0.2` for demo presentations.
 - **`system_hash` will never match between recording and replay** — the system prompt includes `$current_datetime$` which changes every run. Kept for debugging only.
 - **`messages_hash` may diverge on non-deterministic tool results** — if a mock tool returns slightly different JSON serialization (e.g., dict ordering, float precision), the hash will differ. This is warning-only, never a hard failure.
 - **`parsed_output` replays as plain dict** — Pydantic model instances are serialized via `.model_dump()` during recording. During replay they come back as dicts, not re-hydrated Pydantic objects. Sufficient for assertions, not for Pydantic method calls.
