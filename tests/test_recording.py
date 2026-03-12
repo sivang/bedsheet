@@ -220,3 +220,229 @@ async def test_recording_wrap_action_group_error(tmp_path: Path):
     tool_result_events = [e for e in events if isinstance(e, ToolResultEvent)]
     assert len(tool_result_events) == 1
     assert tool_result_events[0].error == "Boom!"
+
+
+async def test_replay_chat_returns_recorded_responses(tmp_path: Path):
+    """ReplayLLMClient serves recorded responses in order."""
+    from bedsheet.recording import ReplayLLMClient
+
+    # Write a recording manually
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": [],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": "Hello!",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    replay = ReplayLLMClient(path=str(path))
+    response = await replay.chat(
+        [Message(role="user", content="Hi")], system="Be helpful."
+    )
+
+    assert response.text == "Hello!"
+    assert response.stop_reason == "end_turn"
+    assert response.tool_calls == []
+
+
+async def test_replay_chat_with_tool_calls(tmp_path: Path):
+    """ReplayLLMClient reconstructs ToolCall objects from recording."""
+    from bedsheet.recording import ReplayLLMClient
+
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": ["greet"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": None,
+            "tool_calls": [{"id": "tc-1", "name": "greet", "input": {"name": "Alice"}}],
+            "stop_reason": "tool_use",
+            "thinking": None,
+            "parsed_output": None,
+        },
+        {
+            "type": "tool_result",
+            "seq": 0,
+            "call_id": "tc-1",
+            "name": "greet",
+            "result": "Hello, Alice!",
+            "error": None,
+        },
+        {
+            "type": "llm_call",
+            "seq": 1,
+            "agent": "test",
+            "messages_hash": "x2",
+            "system_hash": "y",
+            "tools": ["greet"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 1,
+            "text": "Done!",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    replay = ReplayLLMClient(path=str(path))
+
+    # First call — should return tool call
+    resp1 = await replay.chat([], system="s")
+    assert len(resp1.tool_calls) == 1
+    assert resp1.tool_calls[0].name == "greet"
+    assert resp1.tool_calls[0].id == "tc-1"
+
+    # Second call — should return text
+    resp2 = await replay.chat([], system="s")
+    assert resp2.text == "Done!"
+
+
+async def test_replay_get_action_groups(tmp_path: Path):
+    """get_action_groups() builds mock tools that return recorded results."""
+    from bedsheet.recording import ReplayLLMClient
+
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": ["greet"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": None,
+            "tool_calls": [{"id": "tc-1", "name": "greet", "input": {"name": "Alice"}}],
+            "stop_reason": "tool_use",
+            "thinking": None,
+            "parsed_output": None,
+        },
+        {
+            "type": "tool_result",
+            "seq": 0,
+            "call_id": "tc-1",
+            "name": "greet",
+            "result": "Hello, Alice!",
+            "error": None,
+        },
+        {
+            "type": "llm_call",
+            "seq": 1,
+            "agent": "test",
+            "messages_hash": "x2",
+            "system_hash": "y",
+            "tools": ["greet"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 1,
+            "text": "Done!",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    replay = ReplayLLMClient(path=str(path))
+    groups = replay.get_action_groups()
+    assert len(groups) == 1
+
+    # Should have a "greet" action
+    action = groups[0].get_action("greet")
+    assert action is not None
+
+    # Calling it should return the recorded result
+    result = await action.fn(name="Alice")
+    assert result == "Hello, Alice!"
+
+
+async def test_replay_action_group_error(tmp_path: Path):
+    """Mock action raises RuntimeError when recording has error."""
+    from bedsheet.recording import ReplayLLMClient
+
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": ["fail"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": None,
+            "tool_calls": [{"id": "tc-1", "name": "fail", "input": {}}],
+            "stop_reason": "tool_use",
+            "thinking": None,
+            "parsed_output": None,
+        },
+        {
+            "type": "tool_result",
+            "seq": 0,
+            "call_id": "tc-1",
+            "name": "fail",
+            "result": None,
+            "error": "Something broke",
+        },
+        {
+            "type": "llm_call",
+            "seq": 1,
+            "agent": "test",
+            "messages_hash": "x2",
+            "system_hash": "y",
+            "tools": ["fail"],
+        },
+        {
+            "type": "llm_response",
+            "seq": 1,
+            "text": "Error handled.",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    replay = ReplayLLMClient(path=str(path))
+    groups = replay.get_action_groups()
+    action = groups[0].get_action("fail")
+
+    import pytest as pt
+
+    with pt.raises(RuntimeError, match="Something broke"):
+        await action.fn()

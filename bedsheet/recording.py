@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+from collections import deque
 from pathlib import Path
 from typing import Any, AsyncIterator
 
@@ -182,3 +183,115 @@ class RecordingLLMClient:
 
     async def __aexit__(self, *args: Any) -> None:
         self.close()
+
+
+class ReplayLLMClient:
+    """LLM client that replays recorded responses from a JSONL file.
+
+    Serves canned LLM responses in sequence. Use get_action_groups()
+    to get mock action groups that return recorded tool results.
+    """
+
+    def __init__(self, path: str, delay: float = 0.0) -> None:
+        self._path = Path(path)
+        self._delay = delay
+        self._responses: deque[dict[str, Any]] = deque()
+        self._tool_results: dict[str, deque[dict[str, Any]]] = {}  # tool_name -> queue
+        self._load()
+
+    def _load(self) -> None:
+        """Parse JSONL and index records by type."""
+        with open(self._path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if record["type"] == "llm_response":
+                    self._responses.append(record)
+                elif record["type"] == "tool_result":
+                    name = record["name"]
+                    if name not in self._tool_results:
+                        self._tool_results[name] = deque()
+                    self._tool_results[name].append(record)
+
+    async def chat(
+        self,
+        messages: list[Message],
+        system: str,
+        tools: list[ToolDefinition] | None = None,
+        output_schema: OutputSchema | None = None,
+    ) -> LLMResponse:
+        if not self._responses:
+            raise RuntimeError("ReplayLLMClient: no more recorded responses")
+
+        if self._delay > 0:
+            import asyncio
+
+            await asyncio.sleep(self._delay)
+
+        record = self._responses.popleft()
+        tool_calls = [
+            ToolCall(id=tc["id"], name=tc["name"], input=tc["input"])
+            for tc in record.get("tool_calls", [])
+        ]
+        return LLMResponse(
+            text=record.get("text"),
+            tool_calls=tool_calls,
+            stop_reason=record.get("stop_reason", "end_turn"),
+            thinking=record.get("thinking"),
+            parsed_output=record.get("parsed_output"),
+        )
+
+    async def chat_stream(
+        self,
+        messages: list[Message],
+        system: str,
+        tools: list[ToolDefinition] | None = None,
+        output_schema: OutputSchema | None = None,
+    ) -> AsyncIterator[str | LLMResponse]:
+        import asyncio
+
+        response = await self.chat(messages, system, tools, output_schema)
+        if response.text:
+            for word in response.text.split(" "):
+                if self._delay > 0:
+                    await asyncio.sleep(self._delay)
+                yield word + " "
+        yield response
+
+    def get_action_groups(self) -> list[ActionGroup]:
+        """Build mock action groups from recorded tool results.
+
+        Each unique tool name gets an async function backed by a queue.
+        Results are served in recording order. Errors raise RuntimeError.
+        """
+        if not self._tool_results:
+            return []
+
+        group = ActionGroup(name="replay-tools", description="Replayed tool results")
+
+        for tool_name, result_queue in self._tool_results.items():
+            queue = result_queue  # capture for closure
+
+            def _build_mock(name: str, q: deque) -> Any:
+                async def mock_fn(**kwargs: Any) -> Any:
+                    if not q:
+                        raise RuntimeError(
+                            f"ReplayLLMClient: no more recorded results for '{name}'"
+                        )
+                    record = q.popleft()
+                    if record.get("error"):
+                        raise RuntimeError(record["error"])
+                    return record["result"]
+
+                return mock_fn
+
+            group._actions[tool_name] = Action(
+                name=tool_name,
+                description=f"Replayed: {tool_name}",
+                fn=_build_mock(tool_name, queue),
+                input_schema={"type": "object", "properties": {}, "required": []},
+            )
+
+        return [group]
