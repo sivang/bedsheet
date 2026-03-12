@@ -1259,3 +1259,235 @@ The `test_record_then_replay_e2e` test proves:
 ```bash
 git push
 ```
+
+---
+
+## Chunk 6: Integration — Local Deploy Template
+
+### Task 11: Add recording/replay env var support to local deploy template
+
+**Files:**
+- Modify: `bedsheet/deploy/templates/local/app.py.j2:53-66` (after `_configure_agent`)
+
+- [ ] **Step 1: Add recording/replay wiring to app.py.j2**
+
+After the `agent = _configure_agent(_imported_agent)` line (line 66), add:
+
+```python
+# Recording/replay support — controlled via environment variables
+# BEDSHEET_RECORD=recordings/  → record all LLM calls + tool results to JSONL
+# BEDSHEET_REPLAY=recordings/  → replay from recorded JSONL, no API keys needed
+# BEDSHEET_REPLAY_DELAY=0.1    → delay between tokens during replay (seconds)
+_record_dir = os.environ.get("BEDSHEET_RECORD")
+_replay_dir = os.environ.get("BEDSHEET_REPLAY")
+
+if _record_dir and _replay_dir:
+    raise RuntimeError("Cannot set both BEDSHEET_RECORD and BEDSHEET_REPLAY")
+
+if _record_dir:
+    from bedsheet.recording import enable_recording
+    enable_recording(agent, directory=_record_dir)
+    # For Supervisors, also enable recording on collaborators
+    if isinstance(agent, Supervisor):
+        for collab in agent.collaborators:
+            enable_recording(collab, directory=_record_dir)
+
+if _replay_dir:
+    from bedsheet.recording import enable_replay
+    _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+    enable_replay(agent, directory=_replay_dir, delay=_delay)
+    if isinstance(agent, Supervisor):
+        for collab in agent.collaborators:
+            enable_replay(collab, directory=_replay_dir, delay=_delay)
+```
+
+- [ ] **Step 2: Add env vars to env.example.j2**
+
+Append to `bedsheet/deploy/templates/local/env.example.j2`:
+
+```
+# --- Recording/Replay (optional) ---
+# BEDSHEET_RECORD=recordings/     # Record LLM + tool interactions to JSONL
+# BEDSHEET_REPLAY=recordings/     # Replay from recorded JSONL (no API keys needed)
+# BEDSHEET_REPLAY_DELAY=0.1       # Delay between tokens during replay (seconds)
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add bedsheet/deploy/templates/local/app.py.j2 bedsheet/deploy/templates/local/env.example.j2
+git commit -m "feat: add recording/replay env var support to local deploy template"
+```
+
+---
+
+## Chunk 7: Integration — Agent Sentinel Demo
+
+### Task 12: Wire recording/replay into sentinel agent scripts
+
+The sentinel demo runs each agent as a separate subprocess via `run.py`. Each agent script (e.g., `scheduler.py`, `web_researcher.py`) creates its own Agent instance. Recording/replay needs to happen inside each script.
+
+**Files:**
+- Modify: `examples/agent-sentinel/agents/scheduler.py`
+- Modify: `examples/agent-sentinel/agents/web_researcher.py`
+- Modify: `examples/agent-sentinel/agents/skill_acquirer.py`
+- Modify: `examples/agent-sentinel/agents/behavior_sentinel.py`
+- Modify: `examples/agent-sentinel/agents/supply_chain_sentinel.py`
+- Modify: `examples/agent-sentinel/agents/sentinel_commander.py`
+
+- [ ] **Step 1: Read each agent script to find where the Agent is created and invoke() is called**
+
+Each sentinel agent script follows a common pattern — it creates an Agent, adds action groups, joins the network, and runs in a loop. We need to find the exact location in each file.
+
+- [ ] **Step 2: Add recording/replay wiring to each agent script**
+
+After the agent is created and action groups are added, but before `invoke()` is called, add:
+
+```python
+# Recording/replay support
+import os
+_record_dir = os.environ.get("BEDSHEET_RECORD")
+_replay_dir = os.environ.get("BEDSHEET_REPLAY")
+if _record_dir:
+    from bedsheet.recording import enable_recording
+    enable_recording(_agent, directory=_record_dir)
+if _replay_dir:
+    from bedsheet.recording import enable_replay
+    _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+    enable_replay(_agent, directory=_replay_dir, delay=_delay)
+```
+
+Note: The variable name `_agent` may differ per script — check each file.
+
+- [ ] **Step 3: Update run.py to pass recording env vars and create recordings directory**
+
+Add to `examples/agent-sentinel/run.py`, after the data directory setup (line 113):
+
+```python
+    # Create recordings directory if recording mode is enabled
+    record_dir = os.environ.get("BEDSHEET_RECORD")
+    if record_dir:
+        os.makedirs(os.path.join(script_dir, record_dir), exist_ok=True)
+        logger.info(f"  Recording mode: writing to {record_dir}")
+    replay_dir = os.environ.get("BEDSHEET_REPLAY")
+    if replay_dir:
+        logger.info(f"  Replay mode: reading from {replay_dir}")
+        delay = os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0")
+        logger.info(f"  Replay delay: {delay}s per token")
+```
+
+The env vars automatically flow to subprocesses via `os.environ.copy()` on line 138.
+
+- [ ] **Step 4: Test recording mode**
+
+Run:
+```bash
+cd examples/agent-sentinel
+export BEDSHEET_RECORD=recordings/
+python run.py
+# Let it run for 1-2 cycles, then Ctrl+C
+ls recordings/
+```
+Expected: One `.jsonl` file per agent in `recordings/`
+
+- [ ] **Step 5: Test replay mode**
+
+Run:
+```bash
+cd examples/agent-sentinel
+unset GEMINI_API_KEY  # prove no API key needed
+export BEDSHEET_REPLAY=recordings/
+export BEDSHEET_REPLAY_DELAY=0.1
+python run.py
+```
+Expected: Demo runs from recorded data, no API errors, visible delay between outputs
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add examples/agent-sentinel/
+git commit -m "feat: add recording/replay support to agent sentinel demo"
+```
+
+---
+
+## Chunk 8: Integration — bedsheet demo (`__main__.py`)
+
+### Task 13: Wire recording/replay into the uvx bedsheet demo
+
+**Files:**
+- Modify: `bedsheet/__main__.py`
+
+- [ ] **Step 1: Add recording/replay wiring**
+
+After the supervisor agent is fully created with all collaborators and action groups, add the env var check:
+
+```python
+# Recording/replay support
+_record_dir = os.environ.get("BEDSHEET_RECORD")
+_replay_dir = os.environ.get("BEDSHEET_REPLAY")
+if _record_dir:
+    from bedsheet.recording import enable_recording
+    enable_recording(advisor, directory=_record_dir)
+    for collab in advisor.collaborators:
+        enable_recording(collab, directory=_record_dir)
+    print(f"📼 Recording to {_record_dir}")
+if _replay_dir:
+    from bedsheet.recording import enable_replay
+    _delay = float(os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0"))
+    enable_replay(advisor, directory=_replay_dir, delay=_delay)
+    for collab in advisor.collaborators:
+        enable_replay(collab, directory=_replay_dir, delay=_delay)
+    print(f"▶️  Replaying from {_replay_dir} (delay={_delay}s)")
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add bedsheet/__main__.py
+git commit -m "feat: add recording/replay support to uvx bedsheet demo"
+```
+
+---
+
+## Chunk 9: Final Verification (Updated Done Signal)
+
+### Task 14: Complete verification
+
+- [ ] **Step 1: Run all recording tests**
+
+Run: `pytest tests/test_recording.py -v`
+Expected: All PASS
+
+- [ ] **Step 2: Run full test suite**
+
+Run: `pytest tests/ -v --ignore=tests/integration`
+Expected: All PASS, no regressions
+
+- [ ] **Step 3: Verify local deploy template generates correct code**
+
+Run:
+```bash
+bedsheet init test-recording && cd test-recording
+bedsheet generate --target local
+grep -n "BEDSHEET_RECORD" deploy/local/app.py
+grep -n "BEDSHEET_REPLAY" deploy/local/app.py
+```
+Expected: Both env var checks appear in generated `app.py`
+
+- [ ] **Step 4: Verify the done signal — all criteria met**
+
+1. ✅ Core module: `bedsheet/recording.py` with `RecordingLLMClient` + `ReplayLLMClient`
+2. ✅ Tests: `tests/test_recording.py` with e2e record-then-replay
+3. ✅ Helpers: `enable_recording()` / `enable_replay()` exported from `bedsheet`
+4. ✅ Local deploy template: `app.py.j2` respects `BEDSHEET_RECORD` / `BEDSHEET_REPLAY`
+5. ✅ Agent Sentinel demo: all agent scripts wired up, `run.py` supports env vars
+6. ✅ `uvx bedsheet demo`: `__main__.py` supports env vars
+7. ✅ Configurable delay: `BEDSHEET_REPLAY_DELAY` for demo presentations
+8. ✅ Generic: works for any bedsheet agent, no agent-specific code in `recording.py`
+
+- [ ] **Step 5: Commit and push**
+
+```bash
+git push
+```
