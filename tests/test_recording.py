@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from bedsheet.action_group import ActionGroup
+from bedsheet.events import CompletionEvent, ToolResultEvent
 from bedsheet.llm.base import ToolCall
 from bedsheet.memory.base import Message
 from bedsheet.testing import MockLLMClient, MockResponse
@@ -115,3 +117,106 @@ async def test_recording_seq_increments(tmp_path: Path):
     lines = path.read_text().strip().split("\n")
     assert json.loads(lines[0])["seq"] == 0
     assert json.loads(lines[2])["seq"] == 1
+
+
+async def test_recording_wrap_action_group(tmp_path: Path):
+    """wrap_action_group records tool results to JSONL."""
+    from bedsheet.recording import RecordingLLMClient
+
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="tc-1", name="greet", input={"name": "Bob"}),
+                ]
+            ),
+            MockResponse(text="Greeted Bob."),
+        ]
+    )
+    path = tmp_path / "test.jsonl"
+    recorder = RecordingLLMClient(mock, path=str(path), agent_name="test-agent")
+
+    # Create and wrap an action group
+    tools = ActionGroup(name="test-tools")
+
+    @tools.action("greet", "Say hello")
+    async def greet(name: str) -> str:
+        return f"Hello, {name}!"
+
+    wrapped = recorder.wrap_action_group(tools)
+
+    # Simulate what the agent does: chat() then execute tool
+    from bedsheet.agent import Agent
+
+    agent = Agent(name="test-agent", instruction="Be helpful.", model_client=recorder)
+    agent.add_action_group(wrapped)
+
+    events = []
+    async for event in agent.invoke("s1", "Greet Bob"):
+        events.append(event)
+
+    recorder.close()
+
+    # Check tool_result was recorded
+    lines = path.read_text().strip().split("\n")
+    records = [json.loads(line) for line in lines]
+    tool_results = [r for r in records if r["type"] == "tool_result"]
+    assert len(tool_results) == 1
+    assert tool_results[0]["name"] == "greet"
+    assert tool_results[0]["result"] == "Hello, Bob!"
+    assert tool_results[0]["error"] is None
+
+    # Check agent produced expected events
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1
+    assert completions[0].response == "Greeted Bob."
+
+
+async def test_recording_wrap_action_group_error(tmp_path: Path):
+    """wrap_action_group records tool errors and re-raises the exception."""
+    from bedsheet.recording import RecordingLLMClient
+
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="tc-1", name="explode", input={}),
+                ]
+            ),
+            MockResponse(text="Handled the error."),
+        ]
+    )
+    path = tmp_path / "test.jsonl"
+    recorder = RecordingLLMClient(mock, path=str(path), agent_name="test-agent")
+
+    tools = ActionGroup(name="test-tools")
+
+    @tools.action("explode", "Always fails")
+    async def explode() -> str:
+        raise ValueError("Boom!")
+
+    wrapped = recorder.wrap_action_group(tools)
+
+    from bedsheet.agent import Agent
+
+    agent = Agent(name="test-agent", instruction="Help.", model_client=recorder)
+    agent.add_action_group(wrapped)
+
+    events = []
+    async for event in agent.invoke("s1", "Do it"):
+        events.append(event)
+
+    recorder.close()
+
+    # Check tool_result error was recorded
+    lines = path.read_text().strip().split("\n")
+    records = [json.loads(line) for line in lines]
+    tool_results = [r for r in records if r["type"] == "tool_result"]
+    assert len(tool_results) == 1
+    assert tool_results[0]["error"] == "Boom!"
+    assert tool_results[0]["result"] is None
+
+    # Agent should still complete (it handles errors)
+    tool_result_events = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_result_events) == 1
+    assert tool_result_events[0].error == "Boom!"
