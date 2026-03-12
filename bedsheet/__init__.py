@@ -6,6 +6,7 @@ from bedsheet.agent import Agent
 from bedsheet.action_group import ActionGroup
 from bedsheet.supervisor import Supervisor
 from bedsheet.sense import SenseMixin, SenseNetwork
+from bedsheet.recording import enable_recording, enable_replay
 
 __all__ = [
     "Agent",
@@ -14,4 +15,6 @@ __all__ = [
     "Supervisor",
     "SenseMixin",
     "SenseNetwork",
+    "enable_recording",
+    "enable_replay",
 ]

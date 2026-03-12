@@ -295,3 +295,46 @@ class ReplayLLMClient:
             )
 
         return [group]
+
+
+def enable_recording(agent: Any, directory: str) -> None:
+    """Enable recording mode on an agent.
+
+    Wraps the agent's model_client with RecordingLLMClient and
+    re-wraps all action groups to record tool results.
+
+    Args:
+        agent: An Agent or Supervisor instance.
+        directory: Directory to write recording files to.
+                   File is named {agent.name}.jsonl.
+    """
+    path = str(Path(directory) / f"{agent.name}.jsonl")
+    recorder = RecordingLLMClient(agent.model_client, path=path, agent_name=agent.name)
+    agent.model_client = recorder
+
+    # Re-wrap existing action groups
+    new_groups = []
+    for group in agent._action_groups:
+        new_groups.append(recorder.wrap_action_group(group))
+    agent._action_groups = new_groups
+
+
+def enable_replay(agent: Any, directory: str, delay: float = 0.0) -> None:
+    """Enable replay mode on an agent.
+
+    Replaces the agent's model_client with ReplayLLMClient and
+    replaces action groups with mock groups from the recording.
+
+    Args:
+        agent: An Agent or Supervisor instance.
+        directory: Directory containing recording files.
+                   Reads {agent.name}.jsonl.
+        delay: Seconds between tokens/responses. 0.0 for instant (CI),
+               0.05-0.2 for demo presentations.
+    """
+    path = str(Path(directory) / f"{agent.name}.jsonl")
+    replay = ReplayLLMClient(path=path, delay=delay)
+    agent.model_client = replay
+
+    # Replace action groups with replay mocks
+    agent._action_groups = replay.get_action_groups()

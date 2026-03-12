@@ -749,3 +749,89 @@ async def test_replay_exhausted_tool_results(tmp_path: Path):
 
     with pt.raises(RuntimeError, match="no more recorded results"):
         await action.fn()
+
+
+async def test_enable_recording(tmp_path: Path):
+    """enable_recording wraps agent's model_client and action groups."""
+    from bedsheet.recording import RecordingLLMClient, enable_recording
+
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(text="Hello!"),
+        ]
+    )
+    from bedsheet.agent import Agent
+
+    tools = ActionGroup(name="test-tools")
+
+    @tools.action("noop", "Do nothing")
+    async def noop() -> str:
+        return "ok"
+
+    agent = Agent(name="test", instruction="Help.", model_client=mock)
+    agent.add_action_group(tools)
+
+    enable_recording(agent, directory=str(tmp_path))
+
+    # model_client should now be RecordingLLMClient
+    assert isinstance(agent.model_client, RecordingLLMClient)
+
+    # Run the agent
+    async for event in agent.invoke("s1", "Hi"):
+        pass
+
+    agent.model_client.close()
+
+    # Should have created a recording file named after the agent
+    recording_path = tmp_path / "test.jsonl"
+    assert recording_path.exists()
+    lines = recording_path.read_text().strip().split("\n")
+    assert len(lines) >= 2  # at least llm_call + llm_response
+
+
+async def test_enable_replay(tmp_path: Path):
+    """enable_replay replaces agent's model_client and action groups."""
+    from bedsheet.recording import ReplayLLMClient, enable_replay
+
+    # Write a recording
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": [],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": "Replayed!",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    from bedsheet.agent import Agent
+
+    agent = Agent(
+        name="test", instruction="Help.", model_client=MockLLMClient(responses=[])
+    )
+
+    enable_replay(agent, directory=str(tmp_path))
+
+    # model_client should now be ReplayLLMClient
+    assert isinstance(agent.model_client, ReplayLLMClient)
+
+    # Run the agent — should get replayed response
+    events = []
+    async for event in agent.invoke("s1", "Hi"):
+        events.append(event)
+
+    completions = [e for e in events if isinstance(e, CompletionEvent)]
+    assert len(completions) == 1
+    assert completions[0].response == "Replayed!"
