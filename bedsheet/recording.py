@@ -254,10 +254,14 @@ class ReplayLLMClient:
 
         response = await self.chat(messages, system, tools, output_schema)
         if response.text:
-            for word in response.text.split(" "):
+            words = response.text.split(" ")
+            for i, word in enumerate(words):
                 if self._delay > 0:
                     await asyncio.sleep(self._delay)
-                yield word + " "
+                if i < len(words) - 1:
+                    yield word + " "
+                else:
+                    yield word
         yield response
 
     def get_action_groups(self) -> list[ActionGroup]:
