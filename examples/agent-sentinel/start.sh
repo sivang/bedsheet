@@ -2,8 +2,13 @@
 # Start Agent Sentinel — all 6 agents + live dashboard
 #
 # Usage:
-#   ./start.sh              Launch agents + dashboard
-#   ./start.sh --no-dash    Launch agents only (no dashboard server)
+#   ./start.sh                Launch agents + dashboard (live mode)
+#   ./start.sh --record       Record all LLM + tool interactions to recordings/
+#   ./start.sh --replay       Replay from recordings/ (no API keys needed)
+#   ./start.sh --replay 0.1   Replay with delay between tokens (seconds)
+#   ./start.sh --no-dash      Launch without dashboard server
+#
+# Flags can be combined: ./start.sh --record --no-dash
 
 set -e
 
@@ -27,11 +32,29 @@ AGENT_NAMES=()
 
 # ── Parse args ──
 NO_DASH=false
-for arg in "$@"; do
-    case $arg in
+RECORD=false
+REPLAY=false
+REPLAY_DELAY="0.0"
+while [ $# -gt 0 ]; do
+    case $1 in
         --no-dash) NO_DASH=true ;;
+        --record)  RECORD=true ;;
+        --replay)
+            REPLAY=true
+            # Check if next arg is a number (delay value)
+            if [ -n "${2:-}" ] && [[ "$2" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+                REPLAY_DELAY="$2"
+                shift
+            fi
+            ;;
     esac
+    shift
 done
+
+if [ "$RECORD" = true ] && [ "$REPLAY" = true ]; then
+    echo -e "${RED}Cannot use --record and --replay together${NC}"
+    exit 1
+fi
 
 # ── Banner ──
 echo ""
@@ -39,6 +62,11 @@ echo -e "${CYAN}  ╔═══════════════════�
 echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel${NC} — AI Agent Security Monitoring   ${CYAN}║${NC}"
 echo -e "${CYAN}  ║${NC}   ${DIM}Powered by Bedsheet + PubNub + Gemini${NC}          ${CYAN}║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════════════════╝${NC}"
+if [ "$RECORD" = true ]; then
+    echo -e "   ${YELLOW}● RECORDING MODE${NC} — saving to recordings/"
+elif [ "$REPLAY" = true ]; then
+    echo -e "   ${GREEN}▶ REPLAY MODE${NC} — reading from recordings/ (delay: ${REPLAY_DELAY}s)"
+fi
 echo ""
 
 # ── Load .env if present ──
@@ -52,30 +80,36 @@ fi
 # ── Check environment ──
 echo -e "${BLUE}Checking environment...${NC}"
 
-MISSING=()
-for var in PUBNUB_SUBSCRIBE_KEY PUBNUB_PUBLISH_KEY GEMINI_API_KEY; do
-    if [ -z "${!var}" ]; then
-        MISSING+=("$var")
-    fi
-done
-
-if [ ${#MISSING[@]} -gt 0 ]; then
-    echo -e "${RED}Missing required environment variables:${NC}"
-    for var in "${MISSING[@]}"; do
-        echo -e "${RED}  $var${NC}"
-    done
+if [ "$REPLAY" = true ]; then
+    # Replay mode — no API keys needed
+    echo -e "${GREEN}  Replay mode — no API keys required${NC}"
     echo ""
-    echo -e "${DIM}Set them before running:${NC}"
-    echo -e "${DIM}  export PUBNUB_SUBSCRIBE_KEY=sub-c-...${NC}"
-    echo -e "${DIM}  export PUBNUB_PUBLISH_KEY=pub-c-...${NC}"
-    echo -e "${DIM}  export GEMINI_API_KEY=AIza...${NC}"
-    exit 1
-fi
+else
+    MISSING=()
+    for var in PUBNUB_SUBSCRIBE_KEY PUBNUB_PUBLISH_KEY GEMINI_API_KEY; do
+        if [ -z "${!var}" ]; then
+            MISSING+=("$var")
+        fi
+    done
 
-echo -e "${GREEN}  PUBNUB_SUBSCRIBE_KEY ${DIM}${PUBNUB_SUBSCRIBE_KEY:0:12}...${NC}"
-echo -e "${GREEN}  PUBNUB_PUBLISH_KEY   ${DIM}${PUBNUB_PUBLISH_KEY:0:12}...${NC}"
-echo -e "${GREEN}  GEMINI_API_KEY       ${DIM}${GEMINI_API_KEY:0:12}...${NC}"
-echo ""
+    if [ ${#MISSING[@]} -gt 0 ]; then
+        echo -e "${RED}Missing required environment variables:${NC}"
+        for var in "${MISSING[@]}"; do
+            echo -e "${RED}  $var${NC}"
+        done
+        echo ""
+        echo -e "${DIM}Set them before running:${NC}"
+        echo -e "${DIM}  export PUBNUB_SUBSCRIBE_KEY=sub-c-...${NC}"
+        echo -e "${DIM}  export PUBNUB_PUBLISH_KEY=pub-c-...${NC}"
+        echo -e "${DIM}  export GEMINI_API_KEY=AIza...${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}  PUBNUB_SUBSCRIBE_KEY ${DIM}${PUBNUB_SUBSCRIBE_KEY:0:12}...${NC}"
+    echo -e "${GREEN}  PUBNUB_PUBLISH_KEY   ${DIM}${PUBNUB_PUBLISH_KEY:0:12}...${NC}"
+    echo -e "${GREEN}  GEMINI_API_KEY       ${DIM}${GEMINI_API_KEY:0:12}...${NC}"
+    echo ""
+fi
 
 # ── Check venv ──
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -181,6 +215,24 @@ AGENTS=(
     "agents/sentinel_commander.py:sentinel-commander:commander"
 )
 
+# ── Set recording/replay env vars (inherited by child processes) ──
+if [ "$RECORD" = true ]; then
+    RECORDING_DIR="$SCRIPT_DIR/recordings"
+    mkdir -p "$RECORDING_DIR"
+    export BEDSHEET_RECORD="$RECORDING_DIR"
+fi
+
+if [ "$REPLAY" = true ]; then
+    RECORDING_DIR="$SCRIPT_DIR/recordings"
+    if [ ! -d "$RECORDING_DIR" ] || [ -z "$(ls -A "$RECORDING_DIR"/*.jsonl 2>/dev/null)" ]; then
+        echo -e "${RED}No recordings found in $RECORDING_DIR${NC}"
+        echo -e "${DIM}Record first with: ./start.sh --record${NC}"
+        exit 1
+    fi
+    export BEDSHEET_REPLAY="$RECORDING_DIR"
+    export BEDSHEET_REPLAY_DELAY="$REPLAY_DELAY"
+fi
+
 echo -e "${CYAN}Launching 7 processes (1 gateway + 3 workers + 2 sentinels + 1 commander)...${NC}"
 echo ""
 
@@ -209,10 +261,17 @@ done
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  All systems online${NC}"
+if [ "$RECORD" = true ]; then
+    echo -e "${YELLOW}  Mode:       RECORDING to recordings/${NC}"
+elif [ "$REPLAY" = true ]; then
+    echo -e "${GREEN}  Mode:       REPLAY from recordings/ (delay: ${REPLAY_DELAY}s)${NC}"
+fi
 if [ "$NO_DASH" = false ]; then
     echo -e "${BLUE}  Dashboard:  http://localhost:${DASHBOARD_PORT}/agent-sentinel-dashboard.html${NC}"
 fi
-echo -e "${BLUE}  PubNub key: ${PUBNUB_SUBSCRIBE_KEY:0:20}...${NC}"
+if [ "$REPLAY" != true ]; then
+    echo -e "${BLUE}  PubNub key: ${PUBNUB_SUBSCRIBE_KEY:0:20}...${NC}"
+fi
 echo -e "${DIM}  Logs:       /tmp/sentinel-<agent>.log${NC}"
 echo -e "${DIM}  Press Ctrl+C to stop all processes${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
