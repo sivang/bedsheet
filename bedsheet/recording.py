@@ -297,11 +297,14 @@ class ReplayLLMClient:
         return [group]
 
 
-def enable_recording(agent: Any, directory: str) -> None:
+def enable_recording(agent: Any, directory: str) -> RecordingLLMClient:
     """Enable recording mode on an agent.
 
     Wraps the agent's model_client with RecordingLLMClient and
     re-wraps all action groups to record tool results.
+
+    Returns the RecordingLLMClient so the caller can close() it when done.
+    Also accessible via agent.model_client after this call.
 
     Args:
         agent: An Agent or Supervisor instance.
@@ -317,6 +320,7 @@ def enable_recording(agent: Any, directory: str) -> None:
     for group in agent._action_groups:
         new_groups.append(recorder.wrap_action_group(group))
     agent._action_groups = new_groups
+    return recorder
 
 
 def enable_replay(agent: Any, directory: str, delay: float = 0.0) -> None:
