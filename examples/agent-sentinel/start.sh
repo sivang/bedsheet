@@ -181,6 +181,9 @@ cleanup() {
         kill "$orphan" 2>/dev/null || true
     fi
 
+    # Clean up generated dashboard config
+    rm -f "$REPO_ROOT/docs/sentinel-config.js"
+
     echo -e "${GREEN}All stopped.${NC}"
     echo ""
 }
@@ -189,6 +192,11 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # ── Start dashboard ──
 if [ "$NO_DASH" = false ]; then
+    # Write config for dashboard auto-connect
+    if [ -n "${PUBNUB_SUBSCRIBE_KEY:-}" ]; then
+        echo "window.SENTINEL_CONFIG = { subscribeKey: '${PUBNUB_SUBSCRIBE_KEY}' };" > "$REPO_ROOT/docs/sentinel-config.js"
+    fi
+
     echo -e "${CYAN}Starting dashboard server on port $DASHBOARD_PORT...${NC}"
     python3 -m http.server "$DASHBOARD_PORT" --directory "$REPO_ROOT/docs" > /tmp/sentinel-dashboard.log 2>&1 &
     DASH_PID=$!

@@ -49,6 +49,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 docs/internal/
+
+# Generated dashboard config (written by start.sh at runtime)
+docs/sentinel-config.js
 .claude/
 firebase-debug.log
 

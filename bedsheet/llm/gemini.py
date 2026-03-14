@@ -27,7 +27,7 @@ class GeminiClient:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gemini-3-flash-preview",
+        model: str = "gemini-3.1-flash-lite-preview",
         max_tokens: int = 4096,
         max_retries: int = 5,
     ) -> None:

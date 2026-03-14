@@ -9,7 +9,7 @@
 - **Version:** 0.4.7 (Released on PyPI), codename "Hermes"
 - **Tests:** 265 passing (`pytest -v`)
 - **Demo:** `uvx bedsheet demo` (requires `GEMINI_API_KEY`, uses REAL DATA from Yahoo Finance + DuckDuckGo)
-- **Default Model:** Gemini (via `make_llm_client()` factory, picks up `GEMINI_API_KEY`)
+- **Default Model:** Gemini 3.1 Flash Lite (via `make_llm_client()` factory, picks up `GEMINI_API_KEY`)
 - **Demo deps:** `pip install bedsheet[demo]` (adds yfinance, ddgs)
 
 ## Key Features

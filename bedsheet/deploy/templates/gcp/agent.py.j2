@@ -59,7 +59,7 @@ from google.adk.tools import {{ gcp.builtin_tools | join(', ') }}
 {% if orchestration == "single" %}
 root_agent = LlmAgent(
     name="{{ agent.name | replace('-', '_') }}",
-    model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
+    model="{{ gcp.model or 'gemini-3.1-flash-lite-preview' }}",
     instruction="""{{ agent.instruction | replace('"""', '\\"\\"\\"') }}""",
     {% if agent.tools or gcp.builtin_tools %}
     tools=[
@@ -74,7 +74,7 @@ root_agent = LlmAgent(
 {% for collab in agent.collaborators %}
 {{ collab.name | replace('-', '_') }}_agent = LlmAgent(
     name="{{ collab.name | replace('-', '_') }}",
-    model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
+    model="{{ gcp.model or 'gemini-3.1-flash-lite-preview' }}",
     instruction="""{{ collab.instruction | replace('"""', '\\"\\"\\"') }}""",
     {% if collab.tools or gcp.builtin_tools %}
     tools=[
@@ -97,7 +97,7 @@ _sequential_sweep = SequentialAgent(
 # Supervisor (orchestrates sweep then acts on results)
 root_agent = LlmAgent(
     name="{{ agent.name | replace('-', '_') }}",
-    model="{{ gcp.model or 'gemini-2.0-flash-001' }}",
+    model="{{ gcp.model or 'gemini-3.1-flash-lite-preview' }}",
     instruction="""{{ agent.instruction | replace('"""', '\\"\\"\\"') }}""",
     tools=[{% for tool in agent.tools %}{{ tool.name }}, {% endfor %}],
     sub_agents=[_sequential_sweep],

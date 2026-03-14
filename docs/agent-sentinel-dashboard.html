@@ -987,6 +987,7 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
     </style>
+    <script src="sentinel-config.js"></script>
 </head>
 <body>
     <!-- Connection Overlay -->
@@ -998,7 +999,7 @@
                 Agent Sentinel network and observe signals in real time.
             </p>
             <div class="input-group">
-                <input type="text" id="subscribeKeyInput" placeholder="sub-c-your-subscribe-key" spellcheck="false" value="sub-c-92eb2e12-455f-474e-8b45-cb767cc3ccfa">
+                <input type="text" id="subscribeKeyInput" placeholder="sub-c-your-subscribe-key" spellcheck="false" value="">
                 <button class="btn-connect" id="connectBtn" onclick="connectToPubNub()">Connect</button>
             </div>
             <div class="connection-error" id="connectionError"></div>
@@ -1283,11 +1284,17 @@
         if (e.key === 'Enter') connectToPubNub();
     });
 
-    // Auto-connect if key is pre-filled
+    // Auto-connect from config or pre-filled value
     (function() {
         var input = document.getElementById('subscribeKeyInput');
+        var cfg = window.SENTINEL_CONFIG;
+        if (cfg && cfg.subscribeKey) {
+            input.value = cfg.subscribeKey;
+        }
         if (input.value && input.value.startsWith('sub-c-')) {
             connectToPubNub();
+        } else {
+            document.getElementById('connectionOverlay').classList.remove('hidden');
         }
     })();
 
