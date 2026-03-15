@@ -223,7 +223,8 @@ class ReplayLLMClient:
         output_schema: OutputSchema | None = None,
     ) -> LLMResponse:
         if not self._responses:
-            raise RuntimeError("ReplayLLMClient: no more recorded responses")
+            _log.info("Replay complete — no more recorded responses")
+            return LLMResponse(text=None, tool_calls=[], stop_reason="end_turn")
 
         if self._delay > 0:
             import asyncio

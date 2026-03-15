@@ -675,7 +675,6 @@ async def test_recording_context_manager(tmp_path: Path):
 async def test_replay_exhausted_responses(tmp_path: Path):
     """ReplayLLMClient raises RuntimeError when recordings are exhausted."""
     from bedsheet.recording import ReplayLLMClient
-    import pytest as pt
 
     path = tmp_path / "test.jsonl"
     records = [
@@ -702,8 +701,11 @@ async def test_replay_exhausted_responses(tmp_path: Path):
     replay = ReplayLLMClient(path=str(path))
     await replay.chat([], system="s")  # consumes the one response
 
-    with pt.raises(RuntimeError, match="no more recorded responses"):
-        await replay.chat([], system="s")
+    # Exhausted replay returns end_turn with no tool calls (graceful stop)
+    result = await replay.chat([], system="s")
+    assert result.stop_reason == "end_turn"
+    assert result.tool_calls == []
+    assert result.text is None
 
 
 async def test_replay_exhausted_tool_results(tmp_path: Path):

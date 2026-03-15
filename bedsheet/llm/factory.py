@@ -1,7 +1,7 @@
 """Factory for creating LLM clients from environment variables.
 
 Priority:
-  GEMINI_API_KEY  → GeminiClient  (model: GEMINI_MODEL or gemini-3.1-flash-lite-preview)
+  GEMINI_API_KEY  → GeminiClient  (model: GEMINI_MODEL or gemini-3-flash-preview)
   ANTHROPIC_API_KEY → AnthropicClient  (model: ANTHROPIC_MODEL or claude-sonnet-4-5-20250929)
 """
 
@@ -16,7 +16,7 @@ def make_llm_client() -> LLMClient:
     if gemini_key:
         from bedsheet.llm.gemini import GeminiClient
 
-        model = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
+        model = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
         return GeminiClient(api_key=gemini_key, model=model)
 
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
