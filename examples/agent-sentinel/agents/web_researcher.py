@@ -26,6 +26,7 @@ from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
 from gateway_client import gateway_request
+from bedsheet.events import print_event
 
 
 class WebResearcher(SenseMixin, Agent):
@@ -184,6 +185,7 @@ async def main():
                     session_id,
                     "Search for something interesting about AI or cloud computing.",
                 ):
+                    print_event(agent.name, event)
                     await _publish_llm_event(agent, session_id, event)
             await asyncio.sleep(15)
     except KeyboardInterrupt:

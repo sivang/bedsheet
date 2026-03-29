@@ -26,6 +26,7 @@ from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
 from gateway_client import gateway_request
+from bedsheet.events import print_event
 
 
 class Scheduler(SenseMixin, Agent):
@@ -188,6 +189,7 @@ async def main():
                     session_id,
                     "Check the calendar and manage appointments as needed.",
                 ):
+                    print_event(agent.name, event)
                     await _publish_llm_event(agent, session_id, event)
             await asyncio.sleep(20)
     except KeyboardInterrupt:

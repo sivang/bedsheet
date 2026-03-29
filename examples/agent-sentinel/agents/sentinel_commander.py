@@ -24,6 +24,8 @@ from bedsheet.llm import make_llm_client
 from bedsheet.sense import Signal
 from bedsheet.sense.pubnub_transport import PubNubTransport
 
+from bedsheet.events import print_event
+
 
 class SentinelCommander(SenseMixin, Agent):
     pass
@@ -254,6 +256,7 @@ async def main():
                 "Provide a threat assessment report."
             )
             async for event in agent.invoke(session_id, prompt):
+                print_event(agent.name, event)
                 await _publish_llm_event(agent, session_id, event)
                 if isinstance(event, ToolCallEvent):
                     print(

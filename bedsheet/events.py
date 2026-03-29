@@ -1,5 +1,7 @@
 """Event types for streaming agent execution."""
 
+import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Literal, Union
 
@@ -176,3 +178,54 @@ Event = Union[
     RemoteDelegationEvent,
     RemoteResultEvent,
 ]
+
+
+def _truncate(text: str, limit: int = 300) -> str:
+    return text[:limit] + "..." if len(text) > limit else text
+
+
+def print_event(agent_name: str, event: Event, verbose: bool | None = None) -> None:
+    """Print a formatted LLM event to stdout with agent name prefix.
+
+    When verbose is None (default), checks the BEDSHEET_VERBOSE env var.
+    Pass verbose=True/False to override the env var per-call.
+    """
+    if verbose is None:
+        verbose = os.environ.get("BEDSHEET_VERBOSE", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+    if not verbose:
+        return
+
+    prefix = f"[{agent_name}]"
+
+    if isinstance(event, ThinkingEvent):
+        print(f"{prefix} THINK: {_truncate(event.content)}", flush=True)
+    elif isinstance(event, ToolCallEvent):
+        args = json.dumps(event.tool_input, default=str)
+        print(f"{prefix} CALL: {event.tool_name}({_truncate(args, 200)})", flush=True)
+    elif isinstance(event, ToolResultEvent):
+        if event.error:
+            print(f"{prefix} TOOL ERROR: {_truncate(event.error)}", flush=True)
+        else:
+            result_str = str(event.result) if event.result else ""
+            print(f"{prefix} RESULT: {_truncate(result_str, 200)}", flush=True)
+    elif isinstance(event, CompletionEvent):
+        print(f"{prefix} DONE: {_truncate(event.response)}", flush=True)
+    elif isinstance(event, ErrorEvent):
+        print(f"{prefix} ERROR: {_truncate(event.error)}", flush=True)
+    elif isinstance(event, DelegationEvent):
+        agents = ", ".join(d.get("agent", "?") for d in event.delegations)
+        print(f"{prefix} DELEGATE: {agents}", flush=True)
+    elif isinstance(event, CollaboratorStartEvent):
+        print(
+            f"{prefix} COLLABORATOR START: {event.agent_name} -> {_truncate(event.task)}",
+            flush=True,
+        )
+    elif isinstance(event, CollaboratorCompleteEvent):
+        print(
+            f"{prefix} COLLABORATOR DONE: {event.agent_name} -> {_truncate(event.response)}",
+            flush=True,
+        )

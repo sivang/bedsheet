@@ -7,8 +7,9 @@
 #   ./start.sh --replay       Replay from recordings/ (no API keys needed)
 #   ./start.sh --replay 0.1   Replay with delay between tokens (seconds)
 #   ./start.sh --no-dash      Launch without dashboard server
+#   ./start.sh --quiet        Suppress LLM event output (only show key events)
 #
-# Flags can be combined: ./start.sh --record --no-dash
+# Flags can be combined: ./start.sh --record --no-dash --quiet
 
 set -e
 
@@ -35,9 +36,11 @@ NO_DASH=false
 RECORD=false
 REPLAY=false
 REPLAY_DELAY="0.0"
+QUIET=false
 while [ $# -gt 0 ]; do
     case $1 in
         --no-dash) NO_DASH=true ;;
+        --quiet)   QUIET=true ;;
         --record)  RECORD=true ;;
         --replay)
             REPLAY=true
@@ -223,7 +226,11 @@ AGENTS=(
     "agents/sentinel_commander.py:sentinel-commander:commander"
 )
 
-# ── Set recording/replay env vars (inherited by child processes) ──
+# ── Set verbose/recording/replay env vars (inherited by child processes) ──
+if [ "$QUIET" = false ]; then
+    export BEDSHEET_VERBOSE=1
+fi
+
 if [ "$RECORD" = true ]; then
     RECORDING_DIR="$SCRIPT_DIR/recordings"
     mkdir -p "$RECORDING_DIR"
