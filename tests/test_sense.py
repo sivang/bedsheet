@@ -4,6 +4,7 @@ import asyncio
 import pytest
 
 from bedsheet import Agent, SenseMixin, SenseNetwork
+from bedsheet.llm.base import LLMResponse
 from bedsheet.events import (
     SignalReceivedEvent,
     AgentConnectedEvent,
@@ -451,6 +452,89 @@ class TestClaimProtocol:
         assert "incident-001" not in agent._claimed_incidents
 
         await agent.leave_network()
+
+    async def test_inflight_request_tasks_tracked_during_execution(self):
+        """REGRESSION TEST for B2: _signal_loop used to do
+        `asyncio.create_task(self._handle_request(signal))` without saving the
+        returned task. CPython's event loop only holds weak references to such
+        tasks, so under GC pressure the handler could vanish mid-execution and
+        the requesting agent would see only a TimeoutError.
+
+        This test blocks the handler mid-flight on an asyncio.Event and
+        verifies that during that window the task is retained in a strong
+        reference (`_inflight_request_tasks`), then that the set empties after
+        the handler completes.
+        """
+        hub = _MockSenseHub()
+        t_worker = MockSenseTransport(hub)
+        t_commander = MockSenseTransport(hub)
+
+        gate = asyncio.Event()
+
+        class BlockingLLMClient:
+            async def chat(self, messages, system, tools=None, output_schema=None):
+                await gate.wait()
+                return LLMResponse(text="done", tool_calls=[], stop_reason="end_turn")
+
+            async def chat_stream(
+                self, messages, system, tools=None, output_schema=None
+            ):
+                response = await self.chat(messages, system, tools, output_schema)
+                yield response
+
+        worker = SenseAgent(
+            name="slow-worker",
+            instruction="Slow worker",
+            model_client=BlockingLLMClient(),
+        )
+        commander = SenseAgent(
+            name="commander",
+            instruction="Commander",
+            model_client=MockLLMClient([MockResponse(text="ack")]),
+        )
+
+        await worker.join_network(t_worker, "test-ns")
+        await commander.join_network(t_commander, "test-ns")
+
+        # Attribute must exist and start empty (fix is applied)
+        assert hasattr(
+            worker, "_inflight_request_tasks"
+        ), "SenseMixin.__init__ must initialize _inflight_request_tasks"
+        assert len(worker._inflight_request_tasks) == 0
+
+        # Fire the request without awaiting it (commander.request() would block
+        # until BlockingLLMClient.chat returns, defeating the test).
+        request_task = asyncio.create_task(
+            commander.request("slow-worker", "do it", timeout=5.0)
+        )
+
+        # Give the signal loop a chance to dispatch _handle_request
+        for _ in range(20):
+            await asyncio.sleep(0.02)
+            if len(worker._inflight_request_tasks) > 0:
+                break
+
+        # While the handler is blocked on `gate`, the task must be tracked.
+        assert len(worker._inflight_request_tasks) == 1, (
+            "In-flight request handler task was not retained — this is the B2 "
+            "task-GC bug: create_task() without saving the reference lets the "
+            "event loop drop the task under GC pressure."
+        )
+
+        # Release the handler, let it complete
+        gate.set()
+        result = await request_task
+        assert result == "done"
+
+        # After completion, the done_callback must have cleared the set
+        for _ in range(20):
+            if len(worker._inflight_request_tasks) == 0:
+                break
+            await asyncio.sleep(0.02)
+        assert len(worker._inflight_request_tasks) == 0
+
+        await worker.leave_network()
+        await commander.leave_network()
 
 
 # ---------- SenseNetwork tests ----------

@@ -35,6 +35,12 @@ class SenseMixin:
         self._pending_requests: dict[str, asyncio.Future[Signal]] = {}
         self._claimed_incidents: set[str] = set()
         self._heartbeat_task: asyncio.Task[None] | None = None
+        # Strong references to in-flight `_handle_request` tasks. Without
+        # this, asyncio.create_task() returns a task that the event loop only
+        # weakly references — under GC pressure the task can disappear
+        # mid-execution and the requesting agent sees only a TimeoutError.
+        # See: https://docs.python.org/3/library/asyncio-task.html#creating-tasks
+        self._inflight_request_tasks: set[asyncio.Task[None]] = set()
 
     async def join_network(
         self,
@@ -67,6 +73,13 @@ class SenseMixin:
 
     async def leave_network(self) -> None:
         """Disconnect from the sense network."""
+        # Cancel any in-flight request handler tasks before tearing down the
+        # transport — otherwise they may try to broadcast a response on a
+        # disconnected transport.
+        for task in list(self._inflight_request_tasks):
+            task.cancel()
+        self._inflight_request_tasks.clear()
+
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
             self._heartbeat_task = None
@@ -203,9 +216,14 @@ class SenseMixin:
                         future.set_result(signal)
                     continue
 
-                # Handle incoming requests by invoking the agent
+                # Handle incoming requests by invoking the agent. We hold a
+                # strong reference to the task so the event loop's weak
+                # bookkeeping can't drop it mid-execution; the done callback
+                # removes the task once it completes.
                 if signal.kind == "request":
-                    asyncio.create_task(self._handle_request(signal))
+                    handler_task = asyncio.create_task(self._handle_request(signal))
+                    self._inflight_request_tasks.add(handler_task)
+                    handler_task.add_done_callback(self._inflight_request_tasks.discard)
                     continue
 
                 # Handle claim conflict resolution
