@@ -93,16 +93,25 @@ class GeminiClient:
 
         contents = self._convert_messages(messages)
         config = self._build_config(system, tools=None)
+        accumulated: list[str] = []
         async for chunk in await self._client.aio.models.generate_content_stream(
             model=self.model,
             contents=contents,
             config=config,
         ):
             if chunk.text:
+                accumulated.append(chunk.text)
                 yield chunk.text
 
-        final = await self.chat(messages, system, tools=None)
-        yield final
+        # Synthesize the final LLMResponse from the accumulated stream. Calling
+        # self.chat() here would issue a second API request, double the cost,
+        # and the persisted text in memory could diverge from what was streamed.
+        full_text = "".join(accumulated)
+        yield LLMResponse(
+            text=full_text if full_text else None,
+            tool_calls=[],
+            stop_reason="end_turn",
+        )
 
     def _build_config(
         self, system: str, tools: list[ToolDefinition] | None
