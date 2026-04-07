@@ -210,3 +210,32 @@ def test_generate_schema_annotated_picks_first_string():
 
     schema = generate_schema(fn)
     assert schema["properties"]["value"]["description"] == "First desc"
+
+
+def test_generate_schema_annotated_under_pep_563_future_annotations():
+    """REGRESSION TEST: when a tool function is defined in a module that uses
+    `from __future__ import annotations` (PEP 563), all annotations are
+    stored as strings. Naive `fn.__annotations__` returns the literal string
+    `'Annotated[str, "..."]'` and the description is lost.
+
+    `generate_schema()` must use `typing.get_type_hints(fn, include_extras=True)`
+    to resolve the strings back into real `Annotated` types. Without that,
+    the entire Annotated parameter description feature breaks for any user
+    who opts into PEP 563.
+
+    The fixture lives in `tests/fixtures/future_annotated_action.py` because
+    the `from __future__` import must be in scope at module import time.
+    """
+    from tests.fixtures.future_annotated_action import add_appointment
+
+    schema = generate_schema(add_appointment)
+    assert schema["properties"]["title"] == {
+        "type": "string",
+        "description": "Appointment title",
+    }
+    assert schema["properties"]["minutes"] == {
+        "type": "integer",
+        "description": "Duration in minutes",
+        "default": 30,
+    }
+    assert schema["required"] == ["title"]
