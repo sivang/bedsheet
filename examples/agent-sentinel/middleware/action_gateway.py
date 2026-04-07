@@ -42,7 +42,7 @@ class ActionRecord:
     agent: str
     action: str
     params: dict
-    verdict: str  # "approved", "denied", "rate_limited"
+    verdict: str  # "approved", "denied", "rate_limited", "error"
     reason: str = ""
     result_summary: str = ""
 
@@ -150,13 +150,17 @@ class ToolExecutor:
         self._search_count = 0
 
     async def execute(self, action: str, params: dict) -> str:
+        """Execute an action handler. Raises on unknown action or handler error.
+
+        IMPORTANT: this used to catch all exceptions and return them as result
+        strings, which made the audit ledger log failed executions as
+        verdict='approved'. Errors must propagate so the caller can record an
+        explicit 'error' verdict.
+        """
         handler = getattr(self, f"_do_{action}", None)
         if handler is None:
-            return f"Unknown action: {action}"
-        try:
-            return await handler(params)
-        except Exception as e:
-            return f"Execution error: {e}"
+            raise ValueError(f"Unknown action: {action}")
+        return await handler(params)
 
     # ── Web search ──
 
@@ -396,7 +400,17 @@ class ActionGateway:
 
         result = ""
         if verdict == "approved":
-            result = await self._executor.execute(action, params)
+            try:
+                result = await self._executor.execute(action, params)
+            except Exception as exc:
+                # Execution failed AFTER passing the security gate. The audit
+                # ledger must reflect that this action did NOT successfully
+                # complete — recording it as "approved" would mean the audit
+                # log lies about what actually happened in the system.
+                logger.exception("Execution failed for %s/%s", agent, action)
+                verdict = "error"
+                reason = f"Execution error: {exc}"
+                result = ""
 
         # Log to ledger
         record = ActionRecord(
