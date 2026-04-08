@@ -22,6 +22,10 @@ from pathlib import Path
 import pytest
 
 # Make `examples/agent-sentinel/middleware/action_gateway.py` importable.
+# The gateway is example code under examples/agent-sentinel/, but the
+# Ledger/Detector/Executor classes are pure-Python and have no transport
+# dependencies — they can be unit-tested without pubnub installed because the
+# gateway now imports its transport via make_sense_transport() (lazy).
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _GATEWAY_DIR = _REPO_ROOT / "examples" / "agent-sentinel"
 sys.path.insert(0, str(_GATEWAY_DIR))

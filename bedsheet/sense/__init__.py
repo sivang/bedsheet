@@ -1,5 +1,6 @@
 """Sense - distributed agent communication for Bedsheet."""
 
+from bedsheet.sense.factory import make_sense_transport
 from bedsheet.sense.signals import Signal, SignalKind
 from bedsheet.sense.protocol import SenseTransport, AgentPresence
 from bedsheet.sense.serialization import serialize, deserialize
@@ -13,6 +14,7 @@ __all__ = [
     "AgentPresence",
     "SenseMixin",
     "SenseNetwork",
+    "make_sense_transport",
     "serialize",
     "deserialize",
 ]

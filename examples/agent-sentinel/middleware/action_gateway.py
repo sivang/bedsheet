@@ -18,8 +18,7 @@ import uuid
 from collections import deque
 from dataclasses import dataclass
 
-from bedsheet.sense import Signal
-from bedsheet.sense.pubnub_transport import PubNubTransport
+from bedsheet.sense import Signal, SenseTransport, make_sense_transport
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +315,7 @@ class ActionGateway:
 
     GATEWAY_NAME = "action-gateway"
 
-    def __init__(self, transport: PubNubTransport) -> None:
+    def __init__(self, transport: SenseTransport) -> None:
         self._transport = transport
         self._ledger = ActionLedger()
         self._detector = AnomalyDetector()
@@ -524,10 +523,10 @@ class ActionGateway:
 
 
 async def main():
-    transport = PubNubTransport(
-        subscribe_key=os.environ["PUBNUB_SUBSCRIBE_KEY"],
-        publish_key=os.environ["PUBNUB_PUBLISH_KEY"],
-    )
+    # Transport selection happens at the framework layer, not here. Set
+    # BEDSHEET_TRANSPORT (and PUBNUB_* keys, if applicable) in the
+    # environment to choose. Defaults to MockSenseTransport for local dev.
+    transport = make_sense_transport()
     gateway = ActionGateway(transport)
     try:
         await gateway.start()
