@@ -94,9 +94,11 @@ class GeminiClient:
         contents = self._convert_messages(messages)
         config = self._build_config(system, tools=None)
         accumulated: list[str] = []
+        # list[Content] is valid at runtime; the SDK's overly-broad arg type
+        # triggers mypy's list invariance check. Cast is not worth the noise.
         async for chunk in await self._client.aio.models.generate_content_stream(
             model=self.model,
-            contents=contents,
+            contents=contents,  # type: ignore[arg-type]
             config=config,
         ):
             if chunk.text:
@@ -127,7 +129,9 @@ class GeminiClient:
                         gtypes.FunctionDeclaration(
                             name=t.name,
                             description=t.description,
-                            parameters=t.input_schema,
+                            # SDK types `parameters` as `Schema | None` but
+                            # accepts a JSON-schema dict at runtime.
+                            parameters=t.input_schema,  # type: ignore[arg-type]
                         )
                         for t in tools
                     ]
@@ -144,9 +148,14 @@ class GeminiClient:
         result: list[gtypes.Content] = []
         for msg in messages:
             if msg.role == "user":
+                # User messages in Bedsheet always carry text, but the shared
+                # Message dataclass declares content as str | None. Guard
+                # explicitly so a caller passing None doesn't crash
+                # from_text at runtime.
                 result.append(
                     gtypes.Content(
-                        role="user", parts=[gtypes.Part.from_text(text=msg.content)]
+                        role="user",
+                        parts=[gtypes.Part.from_text(text=msg.content or "")],
                     )
                 )
             elif msg.role == "assistant":
