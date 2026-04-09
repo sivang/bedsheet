@@ -1,4 +1,5 @@
 """AWS deployment target generator - generates CDK + Bedrock artifacts."""
+
 from dataclasses import replace
 from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -24,10 +25,7 @@ class AWSTarget(DeploymentTarget):
         return "aws"
 
     def generate(
-        self,
-        config: BedsheetConfig,
-        agent_metadata: AgentMetadata,
-        output_dir: Path
+        self, config: BedsheetConfig, agent_metadata: AgentMetadata, output_dir: Path
     ) -> list[GeneratedFile]:
         """Generate AWS deployment files."""
         files = []
@@ -48,8 +46,7 @@ class AWSTarget(DeploymentTarget):
             if not aws_config.enable_delegate_for_supervisors:
                 # Filter out delegate - use native collaboration only
                 filtered_tools = [
-                    tool for tool in agent_metadata.tools
-                    if tool.name != "delegate"
+                    tool for tool in agent_metadata.tools if tool.name != "delegate"
                 ]
                 filtered_agent = replace(agent_metadata, tools=filtered_tools)
             # else: keep delegate action for improved trace visibility
@@ -74,59 +71,73 @@ class AWSTarget(DeploymentTarget):
         for template_name, output_name, executable in common_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Generate CDK stack
         stack_template = self.env.get_template("cdk_stack.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "stacks" / "agent_stack.py",
-            content=stack_template.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "stacks" / "agent_stack.py",
+                content=stack_template.render(**context),
+                executable=False,
+            )
+        )
 
         # Generate stacks/__init__.py
         stacks_init = self.env.get_template("stacks_init.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "stacks" / "__init__.py",
-            content=stacks_init.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "stacks" / "__init__.py",
+                content=stacks_init.render(**context),
+                executable=False,
+            )
+        )
 
         # Generate Lambda handlers for action groups (if tools exist after filtering)
         if filtered_agent.tools:
             handler_template = self.env.get_template("lambda_handler.py.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "handler.py",
-                content=handler_template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "handler.py",
+                    content=handler_template.render(**context),
+                    executable=False,
+                )
+            )
 
             # Lambda __init__.py
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "__init__.py",
-                content="",
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "__init__.py",
+                    content="",
+                    executable=False,
+                )
+            )
 
             # Lambda requirements
             lambda_req = self.env.get_template("lambda_requirements.txt.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "requirements.txt",
-                content=lambda_req.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "requirements.txt",
+                    content=lambda_req.render(**context),
+                    executable=False,
+                )
+            )
 
         # Generate OpenAPI schema (uses filtered_agent from context)
         openapi_template = self.env.get_template("openapi.yaml.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "schemas" / "openapi.yaml",
-            content=openapi_template.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "schemas" / "openapi.yaml",
+                content=openapi_template.render(**context),
+                executable=False,
+            )
+        )
 
         # Generate GitHub Actions CI/CD workflows
         github_templates = [
@@ -135,11 +146,13 @@ class AWSTarget(DeploymentTarget):
         ]
         for template_name, output_name in github_templates:
             template = self.env.get_template(template_name)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=template.render(**context),
+                    executable=False,
+                )
+            )
 
         # Generate Debug UI server for local testing against deployed Bedrock agent
         debug_ui_context = {
@@ -148,11 +161,13 @@ class AWSTarget(DeploymentTarget):
             "agent_alias_id": "TSTALIASID",  # Default to draft alias
         }
         debug_ui_template = self.env.get_template("debug-ui/server.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "debug-ui" / "server.py",
-            content=debug_ui_template.render(**debug_ui_context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "debug-ui" / "server.py",
+                content=debug_ui_template.render(**debug_ui_context),
+                executable=False,
+            )
+        )
 
         return files
 
@@ -166,11 +181,17 @@ class AWSTarget(DeploymentTarget):
                 # but we can add additional checks here if needed
 
                 # Validate Lambda memory
-                if aws.lambda_memory and (aws.lambda_memory < 128 or aws.lambda_memory > 10240):
-                    errors.append(f"Lambda memory must be between 128-10240 MB: {aws.lambda_memory}")
+                if aws.lambda_memory and (
+                    aws.lambda_memory < 128 or aws.lambda_memory > 10240
+                ):
+                    errors.append(
+                        f"Lambda memory must be between 128-10240 MB: {aws.lambda_memory}"
+                    )
 
                 # Validate style (already validated by Pydantic enum, but double check)
                 valid_styles = {"bedrock_native", "serverless", "containers"}
                 if aws.style and aws.style.value not in valid_styles:
-                    errors.append(f"Invalid AWS style: {aws.style.value}. Must be one of: {valid_styles}")
+                    errors.append(
+                        f"Invalid AWS style: {aws.style.value}. Must be one of: {valid_styles}"
+                    )
         return errors

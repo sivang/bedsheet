@@ -6,6 +6,7 @@ This module transforms extracted source code for different target platforms
 - Preserving imports
 - Handling edge cases (async for, async with, await expressions)
 """
+
 import ast
 from typing import Literal
 
@@ -37,7 +38,7 @@ class AsyncToSyncTransformer(ast.NodeTransformer):
             "type_comment": node.type_comment,
         }
         # Add type_params if available (Python 3.12+)
-        if hasattr(node, 'type_params'):
+        if hasattr(node, "type_params"):
             kwargs["type_params"] = node.type_params
 
         return ast.FunctionDef(**kwargs)  # type: ignore[arg-type]
@@ -87,7 +88,9 @@ class AsyncToSyncTransformer(ast.NodeTransformer):
         for item in node.items:
             new_item = ast.withitem(
                 context_expr=self.visit(item.context_expr),
-                optional_vars=self.visit(item.optional_vars) if item.optional_vars else None,
+                optional_vars=self.visit(item.optional_vars)
+                if item.optional_vars
+                else None,
             )
             new_items.append(new_item)
 
@@ -133,7 +136,9 @@ class CodeTransformer:
             target: The deployment target ("local", "gcp", or "aws")
         """
         if target not in ("local", "gcp", "aws"):
-            raise ValueError(f"Invalid target: {target}. Must be 'local', 'gcp', or 'aws'")
+            raise ValueError(
+                f"Invalid target: {target}. Must be 'local', 'gcp', or 'aws'"
+            )
         self.target = target
 
     def transform(self, source_info: SourceInfo) -> SourceInfo:

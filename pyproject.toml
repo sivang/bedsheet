@@ -66,6 +66,9 @@ aws = [
     "pydantic>=2.0.0",
     # aws-cdk-lib will be added for AWS target
 ]
+sense = [
+    "pubnub>=7.0.0",
+]
 demo = [
     "yfinance>=0.2.40",
     "ddgs>=6.0.0",
@@ -80,6 +83,12 @@ dev = [
     "pydantic>=2.0.0",
     "yfinance>=0.2.40",
     "ddgs>=6.0.0",
+    # Optional runtime deps that are required by the full test suite. These
+    # are intentionally also in the `sense`/LLM extras so end users installing
+    # only what they need stay lean, but `dev` pulls them in so maintainers
+    # running `pip install -e ".[dev]"` can execute every test.
+    "google-genai>=1.0.0",
+    "pubnub>=7.0.0",
 ]
 
 [project.urls]
@@ -105,6 +114,12 @@ exclude = [
     "**/.git/**",
     "**/__pycache__/**",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Annotated[T, "description"] metadata strings trigger F722/F821 false positives.
+# This is a known ruff limitation — it treats Annotated metadata as forward refs.
+# Users of bedsheet with Annotated should add similar ignores to their ruff config.
+"examples/**/*.py" = ["F722", "F821"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

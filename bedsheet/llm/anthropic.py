@@ -1,4 +1,5 @@
 """Anthropic Claude LLM client implementation."""
+
 import json
 from typing import Any, AsyncIterator
 
@@ -99,7 +100,11 @@ class AnthropicClient:
         anthropic_tools = None
         if tools:
             anthropic_tools = [
-                {"name": tool.name, "description": tool.description, "input_schema": tool.input_schema}
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.input_schema,
+                }
                 for tool in tools
             ]
 
@@ -139,27 +144,31 @@ class AnthropicClient:
                     # Assistant message with tool use
                     content = []
                     for tc in msg.tool_calls:
-                        content.append({
-                            "type": "tool_use",
-                            "id": tc["id"],
-                            "name": tc["name"],
-                            "input": tc["input"],
-                        })
+                        content.append(
+                            {
+                                "type": "tool_use",
+                                "id": tc["id"],
+                                "name": tc["name"],
+                                "input": tc["input"],
+                            }
+                        )
                     result.append({"role": "assistant", "content": content})
                 else:
                     result.append({"role": "assistant", "content": msg.content})
 
             elif msg.role == "tool_result":
-                result.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": msg.tool_call_id,
-                            "content": msg.content,
-                        }
-                    ],
-                })
+                result.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": msg.tool_call_id,
+                                "content": msg.content,
+                            }
+                        ],
+                    }
+                )
 
         return result
 
@@ -189,7 +198,9 @@ class AnthropicClient:
                 parsed_data = json.loads(text)
                 # If we have a Pydantic model, validate and instantiate
                 if output_schema._pydantic_model:
-                    parsed_output = output_schema._pydantic_model.model_validate(parsed_data)
+                    parsed_output = output_schema._pydantic_model.model_validate(
+                        parsed_data
+                    )
                 else:
                     parsed_output = parsed_data
             except (json.JSONDecodeError, Exception):

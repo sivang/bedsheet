@@ -1,108 +1,133 @@
-# Session Handoff - 2026-01-23 (Final)
+# Session Handoff - 2026-02-23
 
 ## Session Summary
 
-This session focused on **replacing all mock/simulated data** with **real data**, publishing the v0.4.7 "Hermes" GitHub Release, cleaning up GCP resources, and a comprehensive documentation update wave.
+This session focused on **getting the Agent Sentinel demo running locally** with Gemini. Multiple issues were fixed but the **dashboard still needs debugging** — it connects to PubNub but doesn't display signals.
 
 ## What Was Accomplished
 
-### 1. Real Data Implementation (NO MORE MOCKS)
+### 1. Gemini Client Fixes
 
-All demo locations now use real APIs with no API keys required for data:
+| Fix | File | Detail |
+|-----|------|--------|
+| Model name | `gemini.py`, `factory.py` | Changed from retired `gemini-2.0-flash-exp` → `gemini-3-flash-preview` |
+| thought_signature | `gemini.py`, `agent.py` | Gemini 3 Flash requires thought_signature echoed back on function call parts. Stash raw parts on `LLMResponse._gemini_raw_parts`, transfer to `Message._gemini_parts`, use in `_convert_messages()` |
+| Retry/backoff | `gemini.py` | New `_call_with_retry()` with exponential backoff (15s→22s→34s→51s→76s) for 429 RESOURCE_EXHAUSTED |
+| ddgs import | `web_researcher.py`, `pyproject.toml` | `duckduckgo_search` renamed to `ddgs` — fixed import and dependency |
 
-| Tool | Data Source | Key Metrics |
-|------|-------------|-------------|
-| `get_stock_data` | Yahoo Finance (yfinance) | Price, PE, market cap, 52-week range |
-| `get_technical_analysis` | Calculated from yfinance history | RSI-14, MACD, SMA-20/50, trend |
-| `search_news` | DuckDuckGo (ddgs) | Headlines, sources, dates |
-| `analyze_sentiment` | Keyword-based on real headlines | Bullish/bearish/neutral |
-| `analyze_volatility` | Calculated from 1-year history vs SPY | Beta, volatility, max drawdown, Sharpe |
-| `get_position_recommendation` | Based on real volatility data | Position sizing, risk rating |
+### 2. PubNub Transport Fix
 
-### 2. GitHub Release Published
+- `pubnub_transport.py:104`: Changed `config.uuid` → `config.user_id` (PubNub SDK v10 deprecation)
 
-- **Tag**: v0.4.7
-- **Codename**: "Hermes" (swift messenger god = deploy anywhere)
-- **URL**: https://github.com/sivang/bedsheet/releases/tag/v0.4.7
+### 3. API Key Migration
 
-### 3. GCP Cleanup (Project Deleted)
+- **Old free-tier key** (`REDACTED`): Daily quota exhausted
+- **New billed key** (`REDACTED`): Works with no rate limits on `gemini-3-flash-preview`
+- Note: `gemini-2.0-flash` is blocked for new projects ("no longer available to new users")
 
-- Deleted all Cloud Run services (4)
-- Deleted all Artifact Registry repos (6)
-- Deleted all service accounts (4)
-- Deleted all storage buckets (5)
-- **Deleted entire `bedsheet-e2e-test` GCP project**
-- Killed lingering local proxy on port 8080
-- Recovery available for 30 days: `gcloud projects undelete bedsheet-e2e-test`
+### 4. Dashboard CSS
 
-### 4. Documentation Update Wave
+- Brightened backgrounds (#0a0e17 → #141c2b), text (#e0e6f0 → #f0f4fa), borders
+- Increased all font sizes by +3px (13→16, 12→15, 11→14, 10→13)
+- Added more PubNub channels (heartbeat + all agent direct channels)
 
-| Change | Scope |
-|--------|-------|
-| CLAUDE.md | Version 0.4.7, 265 tests, real data demo |
-| Template versions | All `0.4.0`/`0.4.1rc1` → `0.4.7` across all targets |
-| GCP docs | `bedsheet-e2e-test` → `my-gcp-project` (generic placeholder) |
-| PROJECT_STATUS.md | Deleted Cloud Run URLs marked "(since deleted)" |
-| Example deploy/ | Entire generated directory removed (-7,400 lines of cruft) |
-| README.md | Demo output shows REAL DATA EDITION |
-| Multi-agent guide | Real yfinance/ddgs code examples (md + html) |
+## What Is NOT Working / Needs Fixing
 
-### 5. Dependencies
+### Dashboard Signal Display — RESOLVED (2026-02-23 session 2)
+- **Was not a JS bug** — dashboard code is correct and works perfectly
+- Problem was: no agents were running when testing the dashboard
+- Verified with Chrome MCP: published test signals from Python → dashboard received and displayed them (heartbeats, alerts, map animations, agent status all working)
+- Then ran full 6-agent demo — 35 signals, 10 alerts, all 6 agents online, signal log flowing
+- Zero JS console errors on clean run
 
-- `yfinance>=0.2.40` - Yahoo Finance (no API key required)
-- `ddgs>=6.0.0` - DuckDuckGo search (no API key required)
-- Available via: `pip install bedsheet[demo]`
+### PubNub "Handshake failed" Noise — NEEDS INVESTIGATION
+- Cosmetic warning from PubNub SDK v10 EventEngine on Python backend
+- Could not capture backend stderr this session (run.py spawns subprocesses with Popen, stdout/stderr go to terminal not pipe)
+- `pubnub_transport.py:118`: `self._pubnub.stop()` needs `await` (unclosed coroutine warning)
+- **Next step**: Modify run.py to redirect subprocess output to a log file, or run a single agent with logging to capture the exact errors
 
-## Commits Pushed (This Session)
+### DuckDuckGo Flaky
+- `ddgs` package works but many queries return "No results"
+- Agent hits max_iterations (10) searching for topics that return nothing
+- Not blocking but makes demos less impressive
 
-| Commit | Description |
-|--------|-------------|
-| `2057b07` | feat: replace all mock data with real APIs (yfinance + ddgs) |
-| `bcebaa0` | docs: update guides and README to reflect real data tools |
-| `efaae7b` | docs: update session handoff with final state |
-| `26eb876` | chore: docs update wave - remove stale refs and build cruft |
+## Verified Working (with proof)
 
-## Current State
+1. **Gemini 3 Flash + billed key**: Instant responses, no rate limits
+2. **Agent ReAct loop**: Tool calls, thought_signature preservation, completion events
+3. **PubNub publish+subscribe**: Verified end-to-end with Python (publish 200, message received)
+4. **307 unit tests passing**: `pytest tests/ -v --ignore=tests/integration`
 
-- **Branch**: `main`, clean working tree, up to date with origin
-- **Tests**: 265 passing (unit), 2 expected failures (integration/API credits)
-- **GCP**: No resources, project deleted
-- **PyPI**: v0.4.7 published
-- **GitHub Release**: v0.4.7 "Hermes" live
+## Files Modified
 
-## Key Technical Notes
+| File | Change |
+|------|--------|
+| `bedsheet/llm/gemini.py` | Retry/backoff, thought_signature stashing, model default |
+| `bedsheet/llm/factory.py` | Model default `gemini-3-flash-preview` |
+| `bedsheet/agent.py` | Transfer `_gemini_raw_parts` to Message |
+| `bedsheet/sense/pubnub_transport.py` | `config.uuid` → `config.user_id` |
+| `examples/agent-sentinel/agents/web_researcher.py` | `from ddgs import DDGS` |
+| `examples/agent-sentinel/pyproject.toml` | `ddgs>=7.0.0` |
+| `examples/agent-sentinel/run.py` | `GEMINI_API_KEY` check |
+| `docs/agent-sentinel-dashboard.html` | CSS brightness, font sizes, more channels |
+| `CLAUDE.md` | Gemini references |
+| `.claude/rules/dont.md` | Model rules, no Anthropic for demos |
 
-- **Import pattern**: Libraries imported inside function bodies for code transformer compatibility
-- **ddgs vs duckduckgo-search**: Package was renamed. Use `from ddgs import DDGS`
-- **yfinance fast_info**: Use `ticker.fast_info` first, fallback to `ticker.info` for price
-- **Beta calculation**: Covariance of stock returns vs SPY / SPY variance
-- **Optional deps**: `pip install bedsheet[demo]` installs yfinance and ddgs
-- **Example project**: Only source files remain (agents.py, bedsheet.yaml, pyproject.toml). Users run `bedsheet generate --target gcp` to create deploy artifacts.
+## API Keys
 
-## Pending/Roadmap Items
+- **GEMINI_API_KEY** (billed): `REDACTED`
+- **PUBNUB_PUBLISH_KEY**: `REDACTED`
+- **PUBNUB_SUBSCRIBE_KEY**: `REDACTED`
+- **PUBNUB_SECRET_KEY**: `REDACTED`
 
-1. **v0.5 "Athena"** - Knowledge bases, RAG integration, custom UI examples
-2. **v0.6** - Guardrails and safety layers
-3. **v0.7** - GCP Agent Engine (managed), A2A protocol
-4. **Next E2E test** - Will need new GCP project when testing deployment again
+## GCP Projects
 
-## Quick Resume Commands
+- `gen-lang-client-0477134703` ("sentinel"): AI Studio auto-created, under Google's org — cannot enable billing
+- `vertex-claude-api`: User's project, Vertex AI enabled, billing NOT linked yet
+- Vertex AI path requires billing — not yet available
+
+## Pending Tasks (Priority Order)
+
+1. ~~**Fix dashboard signal display**~~ — DONE, was not broken
+2. **Fix PubNub backend noise** — Capture stderr from agents, fix `self._pubnub.stop()` await issue
+3. **GCP deploy end-to-end** — `bedsheet generate --target gcp` + test
+4. **Session stickiness / Redis** — Saved for later
+
+## Quick Resume
 
 ```bash
 cd /Users/sivan/VitakkaProjects/BedsheetAgents
+source .venv/bin/activate
 
-# Run the demo with REAL DATA
-pip install bedsheet[demo]
-export ANTHROPIC_API_KEY=sk-ant-...
-uvx bedsheet demo
+# Set keys
+export GEMINI_API_KEY="REDACTED"
+export PUBNUB_PUBLISH_KEY="REDACTED"
+export PUBNUB_SUBSCRIBE_KEY="REDACTED"
+
+# Run single agent test
+python -c "
+import sys; sys.path.insert(0, 'examples/agent-sentinel'); sys.path.insert(0, '.')
+import asyncio, os
+from agents.web_researcher import WebResearcher, research_tools
+from bedsheet.llm import make_llm_client
+from bedsheet.sense.pubnub_transport import PubNubTransport
+async def test():
+    transport = PubNubTransport(subscribe_key=os.environ['PUBNUB_SUBSCRIBE_KEY'], publish_key=os.environ['PUBNUB_PUBLISH_KEY'])
+    agent = WebResearcher(name='web-researcher', instruction='Search for one AI topic.', model_client=make_llm_client())
+    agent.add_action_group(research_tools)
+    await agent.join_network(transport, 'agent-sentinel', ['alerts', 'quarantine'])
+    async for event in agent.invoke('test-1', 'Search for AI agents news'):
+        print(type(event).__name__, flush=True)
+    await agent.leave_network()
+asyncio.run(test())
+"
 
 # Run tests
-pytest -v
+pytest tests/ -v --ignore=tests/integration
 
-# Generate deployment (creates deploy/ directory)
-cd examples/investment-advisor
-bedsheet generate --target gcp
+# Open dashboard
+open docs/agent-sentinel-dashboard.html
 ```
 
 ---
-*Session ended: 2026-01-23*
+*Session ended: 2026-02-23*

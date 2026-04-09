@@ -1,4 +1,5 @@
 """Tests for agent introspection module."""
+
 import pytest
 
 from bedsheet import Agent, ActionGroup, Supervisor

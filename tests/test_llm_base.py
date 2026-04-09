@@ -1,4 +1,5 @@
 """Tests for LLM base protocol and response types."""
+
 from bedsheet.llm.base import LLMClient, LLMResponse, ToolCall
 from typing import runtime_checkable
 
@@ -21,7 +22,7 @@ def test_llm_response_with_tool_calls():
     resp = LLMResponse(
         text=None,
         tool_calls=[ToolCall(id="call_1", name="get_weather", input={"city": "SF"})],
-        stop_reason="tool_use"
+        stop_reason="tool_use",
     )
     assert resp.text is None
     assert len(resp.tool_calls) == 1

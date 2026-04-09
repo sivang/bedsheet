@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.7 (released)
 
-**Last Session:** 2026-01-22
+**Last Session:** 2026-03-29
 
 ### Release Status
 
@@ -22,7 +22,7 @@
 | Artifact | Status |
 |----------|--------|
 | Source Code | ✅ Complete |
-| Test Suite | ✅ 265 tests passing |
+| Test Suite | ✅ 326 tests passing |
 | README.md | ✅ Comprehensive with examples |
 | CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
@@ -55,6 +55,49 @@
 - AWS Bedrock target improvements
 - Azure OpenAI target
 - Local LLM support (Ollama)
+
+---
+
+## Session Summary (2026-03-29) - Verbose Agent Logging + Session Resurrection
+
+### What Was Done
+
+1. **Framework-level `print_event()` for verbose agent stdout**
+   - Added `print_event(agent_name, event, verbose=None)` to `bedsheet/events.py`
+   - Prints LLM events to stdout with `[agent-name]` prefixes (Docker Compose-style)
+   - Gated by `BEDSHEET_VERBOSE` env var or per-call `verbose=True/False` override
+   - Handles all event types: ThinkingEvent, ToolCallEvent, ToolResultEvent, CompletionEvent, ErrorEvent, DelegationEvent, CollaboratorStartEvent, CollaboratorCompleteEvent
+   - Exported from `bedsheet/__init__` for convenience
+
+2. **All 4 LLM sentinel agents wired up**
+   - scheduler, web_researcher, skill_acquirer, sentinel_commander
+   - Each calls `print_event(agent.name, event)` in their invoke loop
+   - Existing output preserved (commander arrows, threat assessments, rogue mode prints)
+
+3. **start.sh updated**
+   - Sets `BEDSHEET_VERBOSE=1` by default
+   - Added `--quiet` flag to disable verbose output
+   - No regression to existing `--record`, `--replay`, `--no-dash` flags
+
+4. **Session resurrection from 6 handoff documents**
+   - Read all SESSION_HANDOFF files, MEMORY.md, design docs, plans
+   - Reconstructed full project context across feature/sixth-sense branch
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `bedsheet/events.py` | Added `print_event()`, `_truncate()` |
+| `bedsheet/__init__.py` | Export `print_event` |
+| `examples/agent-sentinel/agents/scheduler.py` | Import + call `print_event` |
+| `examples/agent-sentinel/agents/web_researcher.py` | Import + call `print_event` |
+| `examples/agent-sentinel/agents/skill_acquirer.py` | Import + call `print_event` |
+| `examples/agent-sentinel/agents/sentinel_commander.py` | Import + call `print_event` |
+| `examples/agent-sentinel/start.sh` | `--quiet` flag, `BEDSHEET_VERBOSE=1` default |
+
+### Test Status
+
+- 326 passed, 1 pre-existing failure (`test_memory_exports` — missing `redis` module)
 
 ---
 
@@ -811,6 +854,25 @@ bedsheet/
 | Prompt injection detection | 🔮 Planned | Medium |
 
 **Approach:** Use lightweight classification models (not full LLMs) for input/output validation. Fast inference for real-time safety checks.
+
+**Sentinel Architecture (from Agent Sentinel security analysis):**
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Private worker-gateway channels | 🔮 Planned | High |
+| Commander receives structured telemetry only (no free-text) | 🔮 Planned | High |
+| Sentinel as local sidecar (process supervisor) | 🔮 Planned | High |
+| All agent I/O routed through gateway (fs, network, tools) | 🔮 Planned | Medium |
+| Cryptographic signal signing | 🔮 Planned | Medium |
+| Sentinel process kill switch (stop runaway LLM loops) | 🔮 Planned | Medium |
+
+**Layered security model (two orthogonal enforcement planes):**
+
+*Key insight:* Gateway controls what the agent *can do* (capability plane — tool access, rate limits, keyword blocks). Sentinel controls whether the agent *exists* (existence plane — process lifecycle, kill switch). These are orthogonal: gateway restricts actions, sentinel restricts the process itself. Together they provide defense-in-depth where neither alone is sufficient.
+
+- **Gateway (Layer 1 — Capability Plane):** Deterministic enforcement — rate limits, keyword blocks, quarantine. Owns all tool execution. Not an LLM, cannot be prompt-injected. Cutting gateway access = full quarantine of the agent's capabilities.
+- **Sentinels (Layer 2 — Existence Plane):** LLM-based local sidecars — deep pattern recognition on gateway telemetry + local process monitoring (CPU, memory, token burn, runaway loops). One per worker/compute node. OS-level kill switch to terminate the agent process entirely.
+- **Commander (Layer 3):** LLM-based judgment — correlates structured findings from sentinels, decides quarantine for ambiguous cases the gateway's rules didn't catch. Receives only structured data, no free-text signal payloads.
 
 ### v0.7: GCP Agent Engine, A2A Protocol (Planned)
 

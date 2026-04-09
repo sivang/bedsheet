@@ -1,0 +1,9 @@
+{"type":"llm_call","seq":0,"agent":"scheduler","messages_hash":"24e4e7f94944","system_hash":"e152cc3a5756","tools":["list_appointments","add_appointment","delete_appointment"]}
+{"type":"llm_response","seq":0,"text":null,"tool_calls":[{"id":"bb067d2f-40fb-46b0-bf1b-384c3578698e","name":"list_appointments","input":{}}],"stop_reason":"tool_use","thinking":null,"parsed_output":null}
+{"type":"tool_result","seq":0,"call_id":"","name":"list_appointments","result":"Action denied: Rate exceeded: 20 actions in last 1min (limit 10)","error":null}
+{"type":"llm_call","seq":1,"agent":"scheduler","messages_hash":"67c63500339a","system_hash":"9473120ea3bf","tools":["list_appointments","add_appointment","delete_appointment"]}
+{"type":"llm_response","seq":1,"text":null,"tool_calls":[{"id":"6e9b10e7-5744-459a-8b04-8cf46abdad68","name":"list_appointments","input":{}}],"stop_reason":"tool_use","thinking":null,"parsed_output":null}
+{"type":"tool_result","seq":1,"call_id":"","name":"list_appointments","result":"Action denied: Rate exceeded: 21 actions in last 1min (limit 10)","error":null}
+{"type":"llm_call","seq":2,"agent":"scheduler","messages_hash":"0e9e9d47b359","system_hash":"9fdd7d85de35","tools":["list_appointments","add_appointment","delete_appointment"]}
+{"type":"llm_response","seq":2,"text":"I attempted to review the calendar, but I've encountered a rate limit on the system's actions. I'll need to wait a moment before I can access the full list of appointments and make any necessary adjustments. \n\nWould you like me to try again in a minute, or do you have a specific appointment you'd like me to add or remove in the meantime?","tool_calls":[],"stop_reason":"end_turn","thinking":null,"parsed_output":null}
+{"type":"llm_call","seq":3,"agent":"scheduler","messages_hash":"24e4e7f94944","system_hash":"9faf990e6895","tools":["list_appointments","add_appointment","delete_appointment"]}

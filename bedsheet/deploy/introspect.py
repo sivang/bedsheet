@@ -1,4 +1,5 @@
 """Agent introspection module for extracting metadata from agents."""
+
 from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
@@ -10,6 +11,7 @@ from bedsheet.deploy.source_extractor import SourceExtractor, ParameterInfo
 @dataclass
 class ToolMetadata:
     """Metadata for a single tool/action."""
+
     # Original fields (backward compatible)
     name: str
     description: str
@@ -20,11 +22,13 @@ class ToolMetadata:
     is_async: bool = False
     imports: list[str] = field(default_factory=list)
     return_type: str = "Any"
+    module_constants: list[str] = field(default_factory=list)
 
 
 @dataclass
 class AgentMetadata:
     """Metadata extracted from an agent."""
+
     name: str
     instruction: str
     tools: list[ToolMetadata]
@@ -32,7 +36,9 @@ class AgentMetadata:
     is_supervisor: bool
 
 
-def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] = "local") -> AgentMetadata:
+def extract_agent_metadata(
+    agent: Agent, target: Literal["local", "gcp", "aws"] = "local"
+) -> AgentMetadata:
     """Extract metadata from an agent.
 
     Args:
@@ -59,6 +65,7 @@ def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] 
             is_async = False
             imports: list[str] = []
             return_type = "Any"
+            module_constants: list[str] = []
 
             try:
                 extractor = SourceExtractor(action.fn)
@@ -69,10 +76,12 @@ def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] 
                 is_async = source_info.is_async
                 imports = source_info.imports
                 return_type = source_info.return_type
+                module_constants = source_info.module_constants
 
                 # Transform source code for target if CodeTransformer is available
                 try:
                     from bedsheet.deploy.code_transformer import CodeTransformer
+
                     transformer = CodeTransformer(target=target)
                     transformed_info = transformer.transform(source_info)
                     source_code = transformed_info.source_code
@@ -94,6 +103,7 @@ def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] 
                 is_async=is_async,
                 imports=imports,
                 return_type=return_type,
+                module_constants=module_constants,
             )
             tools.append(tool)
 
@@ -104,7 +114,9 @@ def extract_agent_metadata(agent: Agent, target: Literal["local", "gcp", "aws"] 
         supervisor = cast(Supervisor, agent)
         for collaborator_agent in supervisor.collaborators.values():
             # Recursively extract metadata from each collaborator
-            collaborator_metadata = extract_agent_metadata(collaborator_agent, target=target)
+            collaborator_metadata = extract_agent_metadata(
+                collaborator_agent, target=target
+            )
             collaborators.append(collaborator_metadata)
 
     return AgentMetadata(

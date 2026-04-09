@@ -1,4 +1,5 @@
 """AWS Terraform deployment target generator - generates Terraform + Bedrock artifacts."""
+
 from dataclasses import replace
 from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -24,10 +25,7 @@ class AWSTerraformTarget(DeploymentTarget):
         return "aws-terraform"
 
     def generate(
-        self,
-        config: BedsheetConfig,
-        agent_metadata: AgentMetadata,
-        output_dir: Path
+        self, config: BedsheetConfig, agent_metadata: AgentMetadata, output_dir: Path
     ) -> list[GeneratedFile]:
         """Generate AWS Terraform deployment files."""
         files = []
@@ -45,8 +43,7 @@ class AWSTerraformTarget(DeploymentTarget):
             if not aws_config.enable_delegate_for_supervisors:
                 # Filter out delegate - use native collaboration only
                 filtered_tools = [
-                    tool for tool in agent_metadata.tools
-                    if tool.name != "delegate"
+                    tool for tool in agent_metadata.tools if tool.name != "delegate"
                 ]
                 filtered_agent = replace(agent_metadata, tools=filtered_tools)
             # else: keep delegate action for improved trace visibility
@@ -69,11 +66,13 @@ class AWSTerraformTarget(DeploymentTarget):
         for template_name, output_name, executable in terraform_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Common files
         common_templates = [
@@ -85,43 +84,53 @@ class AWSTerraformTarget(DeploymentTarget):
         for template_name, output_name, executable in common_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Generate Lambda handlers for action groups (if tools exist after filtering)
         if filtered_agent.tools:
             handler_template = self.env.get_template("lambda_handler.py.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "handler.py",
-                content=handler_template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "handler.py",
+                    content=handler_template.render(**context),
+                    executable=False,
+                )
+            )
 
             # Lambda __init__.py
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "__init__.py",
-                content="",
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "__init__.py",
+                    content="",
+                    executable=False,
+                )
+            )
 
             # Lambda requirements
             lambda_req = self.env.get_template("lambda_requirements.txt.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "requirements.txt",
-                content=lambda_req.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "requirements.txt",
+                    content=lambda_req.render(**context),
+                    executable=False,
+                )
+            )
 
         # Generate OpenAPI schema (uses filtered_agent from context)
         openapi_template = self.env.get_template("openapi.yaml.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "schemas" / "openapi.yaml",
-            content=openapi_template.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "schemas" / "openapi.yaml",
+                content=openapi_template.render(**context),
+                executable=False,
+            )
+        )
 
         # Generate GitHub Actions CI/CD workflows
         github_templates = [
@@ -130,19 +139,23 @@ class AWSTerraformTarget(DeploymentTarget):
         ]
         for template_name, output_name in github_templates:
             template = self.env.get_template(template_name)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=template.render(**context),
+                    executable=False,
+                )
+            )
 
         # Generate Debug UI server
         debug_ui_template = self.env.get_template("debug-ui/server.py.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "debug-ui" / "server.py",
-            content=debug_ui_template.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "debug-ui" / "server.py",
+                content=debug_ui_template.render(**context),
+                executable=False,
+            )
+        )
 
         return files
 
@@ -153,6 +166,10 @@ class AWSTerraformTarget(DeploymentTarget):
             aws = config.targets["aws-terraform"]
             if isinstance(aws, AWSTargetConfig):
                 # Validate Lambda memory
-                if aws.lambda_memory and (aws.lambda_memory < 128 or aws.lambda_memory > 10240):
-                    errors.append(f"Lambda memory must be between 128-10240 MB: {aws.lambda_memory}")
+                if aws.lambda_memory and (
+                    aws.lambda_memory < 128 or aws.lambda_memory > 10240
+                ):
+                    errors.append(
+                        f"Lambda memory must be between 128-10240 MB: {aws.lambda_memory}"
+                    )
         return errors

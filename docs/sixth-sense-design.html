@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Sixth Sense Design &amp; Implementation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1b26;
+            --bg-secondary: #1f2133;
+            --bg-tertiary: #262840;
+            --text-primary: #c0caf5;
+            --text-secondary: #9aa5ce;
+            --text-muted: #565f89;
+            --accent-blue: #7aa2f7;
+            --accent-green: #9ece6a;
+            --accent-purple: #bb9af7;
+            --accent-orange: #e0af68;
+            --accent-red: #f7768e;
+            --border-color: #3b3d57;
+            --code-bg: #1f2133;
+            --sidebar-width: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-width); height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto; padding: 24px 0; z-index: 100;
+            display: flex; flex-direction: column;
+        }
+
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .sidebar-header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--accent-blue); }
+        .sidebar-header .subtitle { font-size: 12px; color: var(--text-secondary); }
+        .nav-section { padding: 8px 20px; }
+        .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .nav-link { display: flex; align-items: center; padding: 6px 0; color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+        .nav-link:hover { color: var(--accent-blue); }
+        .nav-link .step { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--border-color); border-radius: 50%; font-size: 11px; font-weight: 600; margin-right: 8px; color: var(--text-muted); }
+        .nav-link:hover .step { background: var(--accent-blue); color: white; }
+
+        .main-content { margin-left: var(--sidebar-width); max-width: 1000px; padding: 48px 64px; }
+        .hero { margin-bottom: 48px; }
+        .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 16px; }
+        .hero .lead { font-size: 20px; color: var(--text-secondary); margin-bottom: 24px; }
+        .hero .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .badge-blue { background: rgba(122, 162, 247, 0.15); color: var(--accent-blue); }
+        .badge-green { background: rgba(158, 206, 106, 0.15); color: var(--accent-green); }
+        .badge-purple { background: rgba(187, 154, 247, 0.15); color: var(--accent-purple); }
+        .badge-orange { background: rgba(224, 175, 104, 0.15); color: var(--accent-orange); }
+        .badge-red { background: rgba(247, 118, 142, 0.15); color: var(--accent-red); }
+
+        h2 { font-size: 28px; font-weight: 600; margin-top: 64px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; color: var(--text-primary); }
+        h2 .step-number { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--accent-blue); color: var(--bg-primary); border-radius: 50%; font-size: 18px; font-weight: 700; }
+        h3 { font-size: 20px; font-weight: 600; margin-top: 40px; margin-bottom: 16px; }
+        h4 { font-size: 16px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; color: var(--text-secondary); }
+        p { margin-bottom: 16px; }
+
+        pre { background: var(--code-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; overflow-x: auto; margin: 16px 0 24px 0; font-size: 14px; white-space: pre; }
+        code { font-family: 'JetBrains Mono', monospace; }
+        p code, li code, td code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--accent-purple); }
+
+        .info-box { border-radius: 8px; padding: 16px 20px; margin: 20px 0; border-left: 4px solid; }
+        .info-box.tip { background: rgba(158, 206, 106, 0.08); border-color: var(--accent-green); }
+        .info-box.note { background: rgba(122, 162, 247, 0.08); border-color: var(--accent-blue); }
+        .info-box.warning { background: rgba(224, 175, 104, 0.08); border-color: var(--accent-orange); }
+        .info-box.danger { background: rgba(247, 118, 142, 0.08); border-color: var(--accent-red); }
+        .info-box-title { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .danger .info-box-title { color: var(--accent-red); }
+        .info-box p:last-child { margin-bottom: 0; }
+
+        .output { background: #0d1117; color: #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; }
+        .whats-happening { background: var(--bg-tertiary); border-radius: 8px; padding: 20px; margin: 20px 0; border: 1px solid var(--border-color); }
+        .whats-happening h4 { margin-top: 0; color: var(--accent-purple); }
+        .whats-happening ol, .whats-happening ul { margin-left: 24px; margin-bottom: 0; }
+        .whats-happening li { margin-bottom: 8px; }
+        ul, ol { margin-left: 24px; margin-bottom: 16px; }
+        li { margin-bottom: 8px; }
+        .architecture { background: var(--bg-tertiary); border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; border: 1px solid var(--border-color); }
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 24px 0; }
+        .feature-card { background: var(--bg-tertiary); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color); border-left: 4px solid var(--accent-blue); }
+        .feature-card h4 { margin-top: 0; color: var(--accent-blue); }
+        .feature-card p { margin-bottom: 0; font-size: 14px; }
+        .decision-box { background: var(--bg-tertiary); border-radius: 8px; padding: 20px; margin: 20px 0; border: 1px solid var(--border-color); border-left: 4px solid var(--accent-purple); }
+        .decision-box h4 { margin-top: 0; color: var(--accent-purple); }
+        .decision-box p:last-child { margin-bottom: 0; }
+
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 10px 14px; border: 1px solid var(--border-color); text-align: left; font-size: 14px; }
+        th { background: var(--bg-secondary); font-weight: 600; color: var(--accent-blue); }
+
+        h3 { color: var(--accent-green); }
+
+        a { color: var(--accent-blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        footer { margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--border-color); color: var(--text-muted); text-align: center; }
+        footer a { color: var(--accent-blue); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h1>Sixth Sense Design</h1>
+        <div class="subtitle">Architecture &amp; Implementation</div>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Architecture</div>
+        <a href="#motivation" class="nav-link"><span class="step">1</span> Motivation</a>
+        <a href="#architecture" class="nav-link"><span class="step">2</span> Architecture Overview</a>
+        <a href="#signal-design" class="nav-link"><span class="step">3</span> Signal Design</a>
+        <a href="#transport-protocol" class="nav-link"><span class="step">4</span> Transport Protocol</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">PubNub Integration</div>
+        <a href="#why-pubnub" class="nav-link"><span class="step">5</span> Why PubNub</a>
+        <a href="#thread-bridge" class="nav-link"><span class="step">6</span> Thread-Asyncio Bridge</a>
+        <a href="#channel-naming" class="nav-link"><span class="step">7</span> Channel Naming</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Implementation</div>
+        <a href="#mixin-pattern" class="nav-link"><span class="step">8</span> The Mixin Pattern</a>
+        <a href="#request-response" class="nav-link"><span class="step">9</span> Request/Response</a>
+        <a href="#claim-protocol" class="nav-link"><span class="step">10</span> Claim Protocol</a>
+        <a href="#testing" class="nav-link"><span class="step">11</span> Testing Strategy</a>
+        <a href="#tradeoffs" class="nav-link"><span class="step">12</span> Trade-offs</a>
+    </div>
+</nav>
+
+<main class="main-content">
+    <div class="hero">
+        <h1>The Sixth Sense: Design &amp; Implementation</h1>
+        <p class="lead">A deep dive into the architecture, design choices, and PubNub integration behind Bedsheet's distributed agent communication module.</p>
+        <div class="badge-row">
+            <span class="badge badge-blue">PubNub</span>
+            <span class="badge badge-green">Protocol-based</span>
+            <span class="badge badge-purple">Mixin Architecture</span>
+            <span class="badge badge-orange">Async-first</span>
+        </div>
+    </div>
+
+    <!-- Section 1: Motivation -->
+    <h2 id="motivation"><span class="step-number">1</span> Motivation</h2>
+
+    <p>Before the Sixth Sense, Bedsheet agents were limited to single-process execution. A Supervisor could coordinate multiple agents, but they all lived in the same Python process. This created three problems:</p>
+
+    <ol>
+        <li><strong>Scalability:</strong> A single process can only run so many agents before resource contention kills performance. CPU-intensive agents block the event loop for others.</li>
+        <li><strong>Isolation:</strong> One crashing agent can take down the whole system. No way to restart a single agent without restarting everything.</li>
+        <li><strong>Distribution:</strong> No way to run agents across machines or cloud providers. A monitoring agent on AWS can't talk to an analyzer on GCP.</li>
+    </ol>
+
+    <p>The Sixth Sense solves this by giving agents distributed communication over PubNub. Each agent runs in its own process (or container, or cloud function) and communicates through publish/subscribe messaging. They find each other by subscribing to shared channels.</p>
+
+    <div class="decision-box">
+        <h4>Design Goal</h4>
+        <p>Add distributed communication <strong>without changing how single agents work</strong>. A regular <code>Agent</code> stays exactly the same. You opt in to networking by adding <code>SenseMixin</code> to your class hierarchy &mdash; zero changes to existing code.</p>
+    </div>
+
+    <!-- Section 2: Architecture Overview -->
+    <h2 id="architecture"><span class="step-number">2</span> Architecture Overview</h2>
+
+    <p>The Sixth Sense is organized as a layered module inside <code>bedsheet/sense/</code>:</p>
+
+    <div class="architecture">bedsheet/sense/
+├── __init__.py           # Public API exports
+├── signals.py            # Signal dataclass &amp; SignalKind type
+├── serialization.py      # Compact JSON serialization (30KB limit)
+├── protocol.py           # SenseTransport Protocol &amp; AgentPresence
+├── mixin.py              # SenseMixin (the main integration point)
+├── network.py            # SenseNetwork (multi-agent convenience)
+└── pubnub_transport.py   # PubNub implementation</div>
+
+    <p>Each layer has a clear responsibility:</p>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h4>signals.py</h4>
+            <p>The <code>Signal</code> dataclass &mdash; the atomic unit of inter-agent communication. Seven signal kinds cover all interaction patterns.</p>
+        </div>
+        <div class="feature-card">
+            <h4>serialization.py</h4>
+            <p>Compact JSON encoding with short keys (<code>k</code>, <code>s</code>, <code>p</code>) to stay under PubNub's 32KB message limit. Auto-truncates large payloads.</p>
+        </div>
+        <div class="feature-card">
+            <h4>protocol.py</h4>
+            <p>The <code>SenseTransport</code> Protocol defines the transport contract. Any class implementing these 7 methods can serve as a transport.</p>
+        </div>
+        <div class="feature-card">
+            <h4>mixin.py</h4>
+            <p><code>SenseMixin</code> adds network capabilities to any Agent via Python's multiple inheritance. This is the primary integration point.</p>
+        </div>
+    </div>
+
+    <div class="info-box note">
+        <div class="info-box-title">Key Insight: The Dependency Direction</div>
+        <p>Dependencies flow inward: <code>mixin.py</code> depends on <code>protocol.py</code> (not on <code>pubnub_transport.py</code>). The PubNub transport is the outermost layer and is completely swappable. You could write a Redis, NATS, or MQTT transport without touching any other file.</p>
+    </div>
+
+    <!-- Section 3: Signal Design -->
+    <h2 id="signal-design"><span class="step-number">3</span> Signal Design</h2>
+
+    <h3>The Signal Dataclass</h3>
+
+    <pre><code class="language-python">@dataclass
+class Signal:
+    kind: SignalKind          # What type of signal
+    sender: str               # Who sent it (agent name)
+    payload: dict[str, Any]   # Arbitrary data
+    correlation_id: str       # Links requests to responses
+    target: str | None        # Intended recipient (None = broadcast)
+    timestamp: float          # Unix timestamp (auto-set)
+    source_channel: str | None  # Which channel it arrived on</code></pre>
+
+    <div class="decision-box">
+        <h4>Why a Dataclass, Not a Pydantic Model?</h4>
+        <p>Bedsheet uses <code>@dataclass</code> for all data structures (events, signals, messages). Pydantic adds validation overhead that's unnecessary for internal data structures where the framework controls construction. Dataclasses give us type hints, <code>__eq__</code>, and <code>__repr__</code> for free with zero runtime cost. The same reasoning applies to the existing <code>Event</code> types in <code>bedsheet/events.py</code>.</p>
+    </div>
+
+    <h3>The Seven Signal Kinds</h3>
+
+    <p>We use a <code>Literal</code> type (not an <code>Enum</code>) for signal kinds. This gives us type-checking without the overhead of enum instances:</p>
+
+    <pre><code class="language-python">SignalKind = Literal[
+    "request",    # Ask another agent to do something
+    "response",   # Reply to a request
+    "alert",      # Broadcast an alert to all listeners
+    "heartbeat",  # Periodic "I'm alive" signal
+    "claim",      # Attempt to claim ownership of an incident
+    "release",    # Release a claimed incident
+    "event",      # General-purpose notification
+]</code></pre>
+
+    <table>
+        <tr><th>Kind</th><th>Direction</th><th>Purpose</th></tr>
+        <tr><td><code>request</code></td><td>Targeted (one agent)</td><td>Delegate a task to a specific agent via <code>request()</code></td></tr>
+        <tr><td><code>response</code></td><td>Targeted (requester)</td><td>Return the result of a request, matched by <code>correlation_id</code></td></tr>
+        <tr><td><code>alert</code></td><td>Broadcast (all)</td><td>Notify all subscribers of a condition (CPU high, breach detected)</td></tr>
+        <tr><td><code>heartbeat</code></td><td>Broadcast (all)</td><td>Periodic signal with agent capabilities for presence detection</td></tr>
+        <tr><td><code>claim</code></td><td>Broadcast (all)</td><td>Attempt to own an incident (for conflict-free coordination)</td></tr>
+        <tr><td><code>release</code></td><td>Broadcast (all)</td><td>Release ownership so another agent can claim it</td></tr>
+        <tr><td><code>event</code></td><td>Broadcast or targeted</td><td>General-purpose notification for extensibility</td></tr>
+    </table>
+
+    <div class="decision-box">
+        <h4>Why Exactly Seven Kinds?</h4>
+        <p><strong>request + response</strong> cover RPC-style delegation. <strong>alert + event</strong> cover pub/sub notifications. <strong>claim + release</strong> cover distributed coordination. <strong>heartbeat</strong> covers presence. This set is minimal but sufficient &mdash; every agent interaction pattern we've encountered maps to one of these seven. We chose not to make it extensible (e.g., custom kinds) because a fixed set enables optimized routing in the signal loop.</p>
+    </div>
+
+    <h3>Correlation IDs</h3>
+
+    <p>Every signal gets a <code>correlation_id</code> &mdash; a 12-character hex string from <code>uuid4()</code>. This is how request/response pairs are matched:</p>
+
+    <pre><code class="language-python"># Commander sends a request with correlation_id="a1b2c3d4e5f6"
+signal = Signal(kind="request", sender="commander",
+                payload={"task": "check CPU"}, target="cpu-watcher")
+
+# cpu-watcher responds with the SAME correlation_id
+response = Signal(kind="response", sender="cpu-watcher",
+                  payload={"result": "CPU at 45%"},
+                  correlation_id="a1b2c3d4e5f6",  # same ID
+                  target="commander")</code></pre>
+
+    <p>The mixin's signal loop checks <code>self._pending_requests[signal.correlation_id]</code> to resolve the correct <code>asyncio.Future</code>. This means an agent can have multiple concurrent requests in flight without confusion.</p>
+
+    <!-- Section 4: Transport Protocol -->
+    <h2 id="transport-protocol"><span class="step-number">4</span> Transport Protocol</h2>
+
+    <pre><code class="language-python">@runtime_checkable
+class SenseTransport(Protocol):
+    async def connect(self, agent_id: str, namespace: str) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def broadcast(self, channel: str, signal: Signal) -> None: ...
+    async def subscribe(self, channel: str) -> None: ...
+    async def unsubscribe(self, channel: str) -> None: ...
+    def signals(self) -> AsyncIterator[Signal]: ...
+    async def get_online_agents(self, channel: str) -> list[AgentPresence]: ...</code></pre>
+
+    <div class="decision-box">
+        <h4>Why Protocol, Not ABC?</h4>
+        <p>Bedsheet uses <code>Protocol</code> (structural subtyping) throughout the codebase &mdash; <code>LLMClient</code>, <code>Memory</code>, and now <code>SenseTransport</code>. The philosophy: <strong>if it walks like a duck and quacks like a duck, it's a duck.</strong> A class satisfies <code>SenseTransport</code> by implementing the right methods, without explicitly inheriting from it. This means you can write a transport in a separate package that doesn't import <code>bedsheet</code> at all &mdash; it just needs the right method signatures. The <code>@runtime_checkable</code> decorator lets us use <code>isinstance()</code> checks when needed.</p>
+    </div>
+
+    <h3>The Seven Methods</h3>
+
+    <p>The protocol is intentionally minimal. Every method maps to a fundamental pub/sub operation:</p>
+
+    <table>
+        <tr><th>Method</th><th>What It Does</th><th>PubNub Equivalent</th></tr>
+        <tr><td><code>connect()</code></td><td>Establish connection with identity</td><td>Create <code>PubNubAsyncio</code> instance</td></tr>
+        <tr><td><code>disconnect()</code></td><td>Clean up and close</td><td><code>pubnub.stop()</code></td></tr>
+        <tr><td><code>broadcast()</code></td><td>Publish a signal to a channel</td><td><code>pubnub.publish()</code></td></tr>
+        <tr><td><code>subscribe()</code></td><td>Listen to a channel</td><td><code>pubnub.subscribe()</code></td></tr>
+        <tr><td><code>unsubscribe()</code></td><td>Stop listening</td><td><code>pubnub.unsubscribe()</code></td></tr>
+        <tr><td><code>signals()</code></td><td>Async iterator of incoming signals</td><td>Read from <code>asyncio.Queue</code></td></tr>
+        <tr><td><code>get_online_agents()</code></td><td>Who's on a channel right now?</td><td><code>pubnub.here_now()</code></td></tr>
+    </table>
+
+    <h3>AgentPresence</h3>
+
+    <p><code>AgentPresence</code> is a simple dataclass representing a remote agent's identity on the network:</p>
+
+    <pre><code class="language-python">@dataclass
+class AgentPresence:
+    agent_id: str
+    agent_name: str
+    namespace: str
+    capabilities: list[str] = field(default_factory=list)
+    status: str = "online"
+    metadata: dict[str, Any] = field(default_factory=dict)</code></pre>
+
+    <p>This is returned by <code>get_online_agents()</code> and populated from PubNub's <code>here_now()</code> API (or from heartbeat signals in the mock transport).</p>
+
+    <!-- Section 5: Why PubNub -->
+    <h2 id="why-pubnub"><span class="step-number">5</span> Why PubNub</h2>
+
+    <p>We evaluated several messaging backends before choosing PubNub:</p>
+
+    <table>
+        <tr><th>Option</th><th>Pros</th><th>Cons</th></tr>
+        <tr><td><strong>PubNub</strong></td><td>Zero infrastructure, built-in presence, global CDN, generous free tier</td><td>32KB message limit, vendor lock-in</td></tr>
+        <tr><td>Redis Pub/Sub</td><td>Fast, familiar, no message limits</td><td>Requires Redis server, no built-in presence, no cross-cloud</td></tr>
+        <tr><td>NATS</td><td>Very fast, cloud-native</td><td>Requires NATS server, complex JetStream setup for persistence</td></tr>
+        <tr><td>WebSocket server</td><td>Full control, no vendor</td><td>Must build everything: routing, presence, reconnection, scaling</td></tr>
+        <tr><td>AWS SNS/SQS</td><td>Native AWS, highly reliable</td><td>AWS-only, complex setup, not real-time (polling)</td></tr>
+    </table>
+
+    <div class="decision-box">
+        <h4>The Decision</h4>
+        <p>PubNub won because of <strong>zero infrastructure</strong>. A demo user signs up, gets keys, and has global real-time messaging in 5 minutes. No Docker containers, no cloud setup, no servers to manage. The 32KB limit is handled by compact serialization (short keys, auto-truncation). The vendor lock-in is mitigated by the <code>SenseTransport</code> Protocol &mdash; you can swap to Redis or NATS by implementing 7 methods.</p>
+    </div>
+
+    <h3>PubNub's Key Features We Use</h3>
+
+    <ul>
+        <li><strong>Publish/Subscribe:</strong> Core messaging. Each channel is a topic agents subscribe to.</li>
+        <li><strong>Presence:</strong> PubNub tracks who's on each channel via <code>here_now()</code>. We get agent discovery for free.</li>
+        <li><strong>UUID identity:</strong> Each PubNub connection has a UUID. We set this to the agent's name for presence identification.</li>
+        <li><strong>Auto-reconnection:</strong> <code>PNReconnectionPolicy.EXPONENTIAL</code> handles network flaps automatically.</li>
+        <li><strong>Global CDN:</strong> Messages route through PubNub's edge network, so agents in different regions get low latency.</li>
+    </ul>
+
+    <!-- Section 6: Thread-Asyncio Bridge -->
+    <h2 id="thread-bridge"><span class="step-number">6</span> The Thread-to-Asyncio Bridge</h2>
+
+    <p>This is the trickiest piece of the PubNub integration. PubNub's Python SDK uses <strong>threaded callbacks</strong> for incoming messages, but Bedsheet is <strong>fully async</strong>. We need to safely cross the thread boundary.</p>
+
+    <h3>The Problem</h3>
+
+    <pre><code class="language-python"># PubNub calls this from a BACKGROUND THREAD:
+class _SignalListener(SubscribeCallback):
+    def message(self, pubnub, message):
+        # We're on PubNub's thread, NOT the asyncio event loop!
+        # Cannot await anything, cannot use asyncio directly
+        signal = deserialize(message.message)
+        # How do we get this signal to the async signal_loop?</code></pre>
+
+    <h3>The Solution: <code>call_soon_threadsafe</code></h3>
+
+    <pre><code class="language-python">class _SignalListener(SubscribeCallback):
+    def __init__(self, queue: asyncio.Queue[Signal], loop: asyncio.AbstractEventLoop):
+        self._queue = queue
+        self._loop = loop
+
+    def message(self, pubnub, message):
+        signal = deserialize(message.message, source_channel=message.channel)
+        # Thread-safe way to put into the asyncio queue:
+        self._loop.call_soon_threadsafe(self._queue.put_nowait, signal)</code></pre>
+
+    <div class="whats-happening">
+        <h4>What's Happening Here</h4>
+        <ol>
+            <li>We capture the asyncio event loop reference at connection time (<code>asyncio.get_running_loop()</code>)</li>
+            <li>We pass the loop and an <code>asyncio.Queue</code> to the PubNub callback listener</li>
+            <li>When PubNub's thread delivers a message, we call <code>loop.call_soon_threadsafe()</code></li>
+            <li>This schedules <code>queue.put_nowait(signal)</code> to run on the event loop's thread</li>
+            <li>The mixin's <code>_signal_loop()</code> awaits <code>queue.get()</code> on the async side</li>
+        </ol>
+    </div>
+
+    <p><code>call_soon_threadsafe</code> is the standard Python mechanism for thread-to-asyncio communication. It's safe to call from any thread and guarantees the callback runs on the event loop's thread during the next iteration.</p>
+
+    <div class="info-box warning">
+        <div class="info-box-title">Why Not <code>asyncio.run_coroutine_threadsafe</code>?</div>
+        <p>We use <code>call_soon_threadsafe</code> with <code>put_nowait</code> instead of <code>run_coroutine_threadsafe</code> with <code>put</code> because <code>put_nowait</code> is synchronous and never blocks. The queue has no max size, so it won't raise <code>QueueFull</code>. This is simpler and avoids creating unnecessary futures on the PubNub callback thread.</p>
+    </div>
+
+    <!-- Section 7: Channel Naming -->
+    <h2 id="channel-naming"><span class="step-number">7</span> Channel Naming Convention</h2>
+
+    <p>PubNub channels are just strings. We use a namespaced convention to prevent collisions:</p>
+
+    <pre><code class="language-python">def _full_channel(self, channel: str) -> str:
+    """Expand short channel name to full namespaced channel."""
+    if channel.startswith("bedsheet."):
+        return channel
+    return f"bedsheet.{self._namespace}.{channel}"
+
+# Examples:
+# "alerts"  → "bedsheet.cloud-ops.alerts"
+# "tasks"   → "bedsheet.cloud-ops.tasks"
+# "agent-1" → "bedsheet.cloud-ops.agent-1"  (direct channel)</code></pre>
+
+    <p>Every agent also subscribes to its own <strong>direct channel</strong> (<code>bedsheet.{namespace}.{agent_name}</code>). This enables targeted messaging &mdash; when you call <code>send_to("cpu-watcher", signal)</code>, it publishes to <code>bedsheet.cloud-ops.cpu-watcher</code>.</p>
+
+    <div class="decision-box">
+        <h4>Why Namespace Channels?</h4>
+        <p>Namespacing prevents cross-contamination between different deployments sharing the same PubNub keys. A staging environment using namespace <code>"staging"</code> won't interfere with production using <code>"prod"</code>, even on the same PubNub app.</p>
+    </div>
+
+    <!-- Section 8: The Mixin Pattern -->
+    <h2 id="mixin-pattern"><span class="step-number">8</span> The Mixin Pattern</h2>
+
+    <p><code>SenseMixin</code> is the heart of the Sixth Sense. It adds distributed capabilities to any Agent without modifying the Agent class itself:</p>
+
+    <pre><code class="language-python">class SenseMixin:
+    """Mixin that adds distributed sensing to any Agent."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # Calls Agent.__init__()
+        self._transport: SenseTransport | None = None
+        self._namespace: str = ""
+        self._signal_handlers: dict[SignalKind, list[SignalHandler]] = {}
+        self._signal_task: asyncio.Task | None = None
+        self._pending_requests: dict[str, asyncio.Future[Signal]] = {}
+        self._claimed_incidents: set[str] = set()
+        self._heartbeat_task: asyncio.Task | None = None</code></pre>
+
+    <h3>How Python MRO Makes This Work</h3>
+
+    <pre><code class="language-python">class MyAgent(SenseMixin, Agent):
+    pass
+
+# Method Resolution Order (MRO):
+# MyAgent → SenseMixin → Agent → object
+
+# When you call MyAgent(name="x", instruction="y", model_client=client):
+# 1. MyAgent.__init__ → not defined, goes to next
+# 2. SenseMixin.__init__(self, name="x", ...)
+#    → super().__init__(name="x", ...) → Agent.__init__
+# 3. Agent.__init__ sets up name, instruction, model_client
+# 4. Back in SenseMixin.__init__, adds _transport, _signal_handlers, etc.</code></pre>
+
+    <div class="decision-box">
+        <h4>Why a Mixin, Not Inheritance or Composition?</h4>
+        <p><strong>Option A: Inheritance</strong> (<code>class SenseAgent(Agent)</code>) &mdash; Forces users to subclass a specific class. Can't add sensing to a Supervisor, or to user's custom Agent subclass.</p>
+        <p><strong>Option B: Composition</strong> (<code>agent.sense = SenseAdapter(agent)</code>) &mdash; Cleaner separation, but awkward API. Users would write <code>agent.sense.broadcast()</code> instead of <code>agent.broadcast()</code>. The adapter would need to reach into the agent's internals for <code>invoke()</code>.</p>
+        <p><strong>Option C: Mixin</strong> (<code>class MyAgent(SenseMixin, Agent)</code>) &mdash; Best of both worlds. The agent IS-A SenseMixin and IS-A Agent. <code>broadcast()</code>, <code>request()</code>, <code>on_signal()</code> feel like native agent methods. Works with both <code>Agent</code> and <code>Supervisor</code>.</p>
+    </div>
+
+    <h3>The <code>type: ignore[attr-defined]</code> Pattern</h3>
+
+    <p>You'll notice <code># type: ignore[attr-defined]</code> comments throughout the mixin. This is because <code>SenseMixin</code> accesses <code>self.name</code> and <code>self.invoke()</code>, which are defined on <code>Agent</code>, not on the mixin itself:</p>
+
+    <pre><code class="language-python">await transport.connect(self.name, namespace)  # type: ignore[attr-defined]</code></pre>
+
+    <p>Mypy can't know that <code>SenseMixin</code> will always be combined with <code>Agent</code>. The type ignores acknowledge this limitation. An alternative would be a generic <code>Protocol</code> for the host class, but that adds complexity for no runtime benefit.</p>
+
+    <!-- Section 9: Request/Response -->
+    <h2 id="request-response"><span class="step-number">9</span> Request/Response Over PubNub</h2>
+
+    <p>The most complex pattern is request/response &mdash; asking a remote agent to do something and waiting for the answer. This implements an RPC-like pattern over pub/sub messaging.</p>
+
+    <h3>The Flow</h3>
+
+    <div class="whats-happening">
+        <h4>Commander requests CPU check from cpu-watcher</h4>
+        <ol>
+            <li><strong>Commander calls <code>request("cpu-watcher", "check CPU")</code></strong></li>
+            <li>Creates a <code>correlation_id</code> and an <code>asyncio.Future</code></li>
+            <li>Stores the future in <code>self._pending_requests[correlation_id]</code></li>
+            <li>Sends a <code>request</code> signal to cpu-watcher's direct channel</li>
+            <li>Awaits the future with a timeout</li>
+        </ol>
+        <ol start="6">
+            <li><strong>cpu-watcher's signal loop receives the request</strong></li>
+            <li>Calls <code>_handle_request()</code> which runs <code>self.invoke(session_id, task)</code></li>
+            <li>The agent's LLM processes the task, calls tools, generates a response</li>
+            <li>Sends a <code>response</code> signal back with the same <code>correlation_id</code></li>
+        </ol>
+        <ol start="10">
+            <li><strong>Commander's signal loop receives the response</strong></li>
+            <li>Matches <code>correlation_id</code> to the pending future</li>
+            <li>Resolves the future with the response signal</li>
+            <li>Commander's <code>request()</code> returns the result string</li>
+        </ol>
+    </div>
+
+    <h3>Key Implementation Detail: <code>_handle_request</code></h3>
+
+    <pre><code class="language-python">async def _handle_request(self, signal: Signal) -> None:
+    task = signal.payload.get("task", "")
+    session_id = f"sense-{signal.correlation_id}"
+
+    # Run the full agent loop (LLM + tools)
+    result = ""
+    async for event in self.invoke(session_id, task):
+        if isinstance(event, CompletionEvent):
+            result = event.response
+
+    # Send response back to requester
+    response_signal = Signal(
+        kind="response",
+        sender=self.name,
+        payload={"result": result},
+        correlation_id=signal.correlation_id,
+        target=signal.sender,
+    )
+    await self.send_to(signal.sender, response_signal)</code></pre>
+
+    <p>This is where the Sixth Sense connects to Bedsheet's core: the request handler calls <code>self.invoke()</code>, which runs the agent's full ReAct loop (LLM reasoning &rarr; tool calls &rarr; final response). The remote agent isn't just a message router &mdash; it's a full AI agent that thinks about the request and uses its tools to answer it.</p>
+
+    <div class="info-box tip">
+        <div class="info-box-title">Concurrency</div>
+        <p>Requests are handled with <code>asyncio.create_task(self._handle_request(signal))</code>, so multiple requests can be processed concurrently. An agent can handle several incoming requests while also sending its own requests to others.</p>
+    </div>
+
+    <!-- Section 10: Claim Protocol -->
+    <h2 id="claim-protocol"><span class="step-number">10</span> Claim Protocol</h2>
+
+    <p>When multiple agents see the same alert, we need exactly one to handle it. The claim protocol provides <strong>leaderless conflict resolution</strong> &mdash; no central coordinator required.</p>
+
+    <h3>How It Works</h3>
+
+    <pre><code class="language-python">async def claim_incident(self, incident_id: str, channel: str) -> bool:
+    # 1. Broadcast our claim
+    signal = Signal(kind="claim", sender=self.name,
+                    payload={"incident_id": incident_id})
+    await self.broadcast(channel, signal)
+
+    # 2. Wait 500ms for competing claims
+    await asyncio.sleep(0.5)
+
+    # 3. If still in our claimed set, we won
+    return incident_id in self._claimed_incidents</code></pre>
+
+    <p>The conflict resolution happens in <code>_handle_claim()</code>:</p>
+
+    <pre><code class="language-python">def _handle_claim(self, signal: Signal) -> None:
+    incident_id = signal.payload.get("incident_id")
+    if incident_id in self._claimed_incidents:
+        # Tie-breaking: lower sender name wins
+        if signal.sender < self.name:
+            self._claimed_incidents.discard(incident_id)</code></pre>
+
+    <div class="decision-box">
+        <h4>Why Not a Distributed Lock?</h4>
+        <p>A proper distributed lock (Redlock, ZooKeeper, etcd) would guarantee exactly-once processing. But it would also require additional infrastructure, add latency, and create failure modes. The claim protocol is <strong>probabilistic but practical</strong>: the 500ms window and deterministic tie-breaking (alphabetical agent name) give us conflict-free coordination 99%+ of the time. For a monitoring system where occasional duplicate handling is harmless, this is the right trade-off.</p>
+    </div>
+
+    <!-- Section 11: Testing Strategy -->
+    <h2 id="testing"><span class="step-number">11</span> Testing Strategy</h2>
+
+    <h3>The MockSenseTransport</h3>
+
+    <p>The key testing challenge: how to test distributed agent communication without PubNub? The answer is <code>MockSenseTransport</code>, which follows the same pattern as <code>MockLLMClient</code>.</p>
+
+    <h4>The Hub Pattern</h4>
+
+    <pre><code class="language-python">class _MockSenseHub:
+    """Shared state for mock transports. Routes signals between agents."""
+
+    def __init__(self):
+        self.queues: dict[str, asyncio.Queue[Signal]] = {}
+        self.subscriptions: dict[str, set[str]] = {}
+        self.presences: dict[str, AgentPresence] = {}
+
+class MockSenseTransport:
+    def __init__(self, hub: _MockSenseHub | None = None):
+        self.hub = hub or _MockSenseHub()
+
+    def create_peer(self) -> "MockSenseTransport":
+        """Create a sibling transport sharing the same hub."""
+        return MockSenseTransport(self.hub)</code></pre>
+
+    <div class="decision-box">
+        <h4>Why the Hub Pattern?</h4>
+        <p>The first implementation used a single transport for all agents. This failed because <code>connect(agent_id)</code> overwrites the agent's identity &mdash; the second agent's connect would overwrite the first agent's ID. The hub pattern gives each agent its own transport instance (with its own identity and queue) while sharing the routing infrastructure. <code>create_peer()</code> returns a new transport connected to the same hub.</p>
+    </div>
+
+    <h3>Test Design Lessons</h3>
+
+    <div class="info-box warning">
+        <div class="info-box-title">Don't Read From the Queue Directly</div>
+        <p>The signal loop is a background task that continuously reads from the transport's queue. If a test tries to read from the queue directly (e.g., <code>await queue.get()</code>), it races with the signal loop. Use <code>on_signal</code> handlers in tests instead, and <code>await asyncio.sleep()</code> to give the loop time to process.</p>
+    </div>
+
+    <p>Test coverage (31 tests in <code>tests/test_sense.py</code>):</p>
+
+    <table>
+        <tr><th>Test Group</th><th>Count</th><th>What's Covered</th></tr>
+        <tr><td>Signal creation</td><td>3</td><td>Dataclass defaults, payload, all 7 kinds</td></tr>
+        <tr><td>Serialization</td><td>5</td><td>Compact encoding, roundtrip, truncation, minimal deserialization</td></tr>
+        <tr><td>Protocol</td><td>2</td><td>Mock satisfies protocol, AgentPresence creation</td></tr>
+        <tr><td>MockSenseTransport</td><td>4</td><td>Connect/disconnect, subscribe/broadcast, online agents, create_peer</td></tr>
+        <tr><td>SenseMixin</td><td>7</td><td>Join/leave, broadcast, request/response, timeout, handlers, self-skip, targeting</td></tr>
+        <tr><td>Claim protocol</td><td>2</td><td>Claim win, release</td></tr>
+        <tr><td>SenseNetwork</td><td>3</td><td>Add agent, reject non-sense agent, stop disconnects all</td></tr>
+        <tr><td>Events</td><td>5</td><td>All 5 new event dataclasses</td></tr>
+    </table>
+
+    <!-- Section 12: Trade-offs -->
+    <h2 id="tradeoffs"><span class="step-number">12</span> Trade-offs &amp; Future Work</h2>
+
+    <h3>What We Chose</h3>
+
+    <table>
+        <tr><th>Decision</th><th>Benefit</th><th>Cost</th></tr>
+        <tr><td>PubNub over self-hosted</td><td>Zero infrastructure</td><td>32KB limit, vendor dependency</td></tr>
+        <tr><td>Mixin over composition</td><td>Natural API (<code>agent.request()</code>)</td><td><code>type: ignore</code> comments</td></tr>
+        <tr><td>Protocol over ABC</td><td>Structural subtyping</td><td>No enforced implementation</td></tr>
+        <tr><td>Probabilistic claims</td><td>No infrastructure needed</td><td>Rare duplicate handling</td></tr>
+        <tr><td>Short-key serialization</td><td>Stays under 32KB</td><td>Less readable wire format</td></tr>
+        <tr><td>Hub pattern for testing</td><td>True multi-agent tests</td><td>More complex mock</td></tr>
+    </table>
+
+    <h3>Known Limitations</h3>
+
+    <ul>
+        <li><strong>No message persistence:</strong> PubNub messages are ephemeral (unless you enable PubNub Storage, a paid feature). If an agent is offline when a signal is sent, it misses it.</li>
+        <li><strong>No message ordering guarantee:</strong> PubNub guarantees per-channel ordering, but cross-channel ordering is not guaranteed.</li>
+        <li><strong>Claim protocol is probabilistic:</strong> Under very high load or network partitions, two agents might both win a claim. Acceptable for monitoring; not suitable for financial transactions.</li>
+        <li><strong>32KB message limit:</strong> The auto-truncation handles this, but very large payloads lose data. If you need to send large data, send a reference (URL, S3 key) instead.</li>
+    </ul>
+
+    <h3>Future Directions</h3>
+
+    <ul>
+        <li><strong>Redis transport:</strong> For teams with existing Redis infrastructure</li>
+        <li><strong>NATS transport:</strong> For high-throughput scenarios</li>
+        <li><strong>Message persistence:</strong> Store signals for replay and audit trails</li>
+        <li><strong>Encryption:</strong> End-to-end encryption for signal payloads</li>
+        <li><strong>Agent discovery:</strong> Automatic capability-based routing (find the agent that can handle this request)</li>
+    </ul>
+
+    <footer>
+        <p>Bedsheet Agents &mdash; <a href="https://github.com/sivang/bedsheet">GitHub</a> | <a href="sixth-sense-guide.html">Sixth Sense Tutorial</a> | <a href="agent-sentinel-guide.html">Agent Sentinel Guide</a></p>
+    </footer>
+</main>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

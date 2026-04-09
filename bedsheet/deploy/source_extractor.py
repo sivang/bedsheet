@@ -4,6 +4,7 @@ This module extracts the actual Python source code from user-defined
 @action functions, enabling "Build Once, Deploy Everywhere" - the ability
 to compile Bedsheet agents to any target platform (AWS, GCP, Local).
 """
+
 import ast
 import asyncio
 import inspect
@@ -28,23 +29,28 @@ PYTHON_TO_JSON_TYPE: dict[str, str] = {
 @dataclass
 class ParameterInfo:
     """Metadata for a single function parameter."""
+
     name: str
-    type_hint: str              # Python type as string: "str", "int", "list[str]"
-    json_type: str              # JSON Schema type: "string", "integer", "array"
-    description: str | None     # From docstring parsing (future)
-    required: bool              # True if no default value
-    default: Any | None         # Default value if any
+    type_hint: str  # Python type as string: "str", "int", "list[str]"
+    json_type: str  # JSON Schema type: "string", "integer", "array"
+    description: str | None  # From docstring parsing (future)
+    required: bool  # True if no default value
+    default: Any | None  # Default value if any
 
 
 @dataclass
 class SourceInfo:
     """Extracted source code and metadata from an @action function."""
-    source_code: str                    # Complete function source (without decorator)
-    function_body: str                  # Just the function body (statements inside)
-    is_async: bool                      # True if async def
-    parameters: list[ParameterInfo]     # Parsed parameter metadata
-    return_type: str                    # Return type annotation as string
+
+    source_code: str  # Complete function source (without decorator)
+    function_body: str  # Just the function body (statements inside)
+    is_async: bool  # True if async def
+    parameters: list[ParameterInfo]  # Parsed parameter metadata
+    return_type: str  # Return type annotation as string
     imports: list[str] = field(default_factory=list)  # Required imports
+    module_constants: list[str] = field(
+        default_factory=list
+    )  # Module-level constants used
 
 
 class SourceExtractor:
@@ -113,6 +119,9 @@ class SourceExtractor:
         # Extract imports from function body
         imports = self._extract_imports(func_node)
 
+        # Extract module-level constants referenced by this function
+        module_constants = self._extract_module_constants(func_node)
+
         return SourceInfo(
             source_code=clean_source,
             function_body=function_body,
@@ -120,9 +129,12 @@ class SourceExtractor:
             parameters=parameters,
             return_type=return_type,
             imports=imports,
+            module_constants=module_constants,
         )
 
-    def _find_function_node(self, tree: ast.Module) -> ast.FunctionDef | ast.AsyncFunctionDef:
+    def _find_function_node(
+        self, tree: ast.Module
+    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
         """Find the function definition node in the AST.
 
         Handles both regular functions and async functions.
@@ -134,9 +146,7 @@ class SourceExtractor:
         raise ValueError(f"Could not find function {self.fn.__name__} in source")
 
     def _extract_clean_source(
-        self,
-        func_node: ast.FunctionDef | ast.AsyncFunctionDef,
-        full_source: str
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef, full_source: str
     ) -> str:
         """Extract function source without decorators.
 
@@ -150,9 +160,7 @@ class SourceExtractor:
         return ast.unparse(func_node)
 
     def _extract_function_body(
-        self,
-        func_node: ast.FunctionDef | ast.AsyncFunctionDef,
-        full_source: str
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef, full_source: str
     ) -> str:
         """Extract just the function body (statements inside the function)."""
         # Create a module with just the body statements
@@ -187,14 +195,16 @@ class SourceExtractor:
             # Get default value
             default = None if required else param.default
 
-            parameters.append(ParameterInfo(
-                name=param_name,
-                type_hint=type_hint,
-                json_type=json_type,
-                description=None,  # TODO: Parse from docstring
-                required=required,
-                default=default,
-            ))
+            parameters.append(
+                ParameterInfo(
+                    name=param_name,
+                    type_hint=type_hint,
+                    json_type=json_type,
+                    description=None,  # TODO: Parse from docstring
+                    required=required,
+                    default=default,
+                )
+            )
 
         return parameters
 
@@ -205,35 +215,157 @@ class SourceExtractor:
             return self._type_to_string(annotations["return"])
         return "Any"
 
-    def _extract_imports(self, func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    # Standard library modules that may appear as attribute access (e.g. os.path.join)
+    _STDLIB_MODULES = frozenset(
+        {
+            "datetime",
+            "json",
+            "os",
+            "sys",
+            "re",
+            "math",
+            "random",
+            "time",
+            "uuid",
+            "collections",
+            "itertools",
+            "functools",
+            "hashlib",
+            "pathlib",
+            "typing",
+            "dataclasses",
+            "enum",
+            "copy",
+            "io",
+            "struct",
+            "base64",
+            "urllib",
+            "http",
+            "logging",
+            "threading",
+            "asyncio",
+            "contextlib",
+            "abc",
+            "inspect",
+            "ast",
+            "textwrap",
+            "string",
+            "shutil",
+            "tempfile",
+        }
+    )
+
+    def _extract_imports(
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> list[str]:
         """Extract import statements used within the function body.
 
-        This analyzes the function body to find module references
-        and generates appropriate import statements.
-
-        Note: This is a heuristic - complex import patterns may need manual handling.
+        Looks for module attribute access (e.g. os.path.join, hashlib.sha256)
+        and inline import statements inside the function body.
         """
         imports: list[str] = []
+        seen: set[str] = set()
 
-        # Walk the function body looking for module attribute access
+        def _add(stmt: str) -> None:
+            if stmt not in seen:
+                seen.add(stmt)
+                imports.append(stmt)
+
         for node in ast.walk(func_node):
-            # Look for calls like datetime.now(), json.dumps(), etc.
-            if isinstance(node, ast.Attribute):
-                if isinstance(node.value, ast.Name):
-                    module_name = node.value.id
-                    # Common standard library modules
-                    if module_name in ('datetime', 'json', 'os', 'sys', 're',
-                                       'math', 'random', 'time', 'uuid',
-                                       'collections', 'itertools', 'functools'):
-                        import_stmt = f"from {module_name} import {module_name}"
-                        if module_name == 'datetime':
-                            import_stmt = "from datetime import datetime"
-                        elif module_name not in [i.split()[-1] for i in imports]:
-                            import_stmt = f"import {module_name}"
-                        if import_stmt not in imports:
-                            imports.append(import_stmt)
+            # Inline imports inside the function (e.g. `import random`)
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    _add(f"import {alias.name}")
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names = ", ".join(
+                    alias.asname if alias.asname else alias.name for alias in node.names
+                )
+                _add(f"from {node.module} import {names}")
+            # Attribute access on a bare name: os.path, hashlib.sha256, etc.
+            elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+                module_name = node.value.id
+                if module_name in self._STDLIB_MODULES:
+                    if module_name == "datetime":
+                        _add("from datetime import datetime")
+                    else:
+                        _add(f"import {module_name}")
 
         return imports
+
+    def _extract_module_constants(
+        self, func_node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> list[str]:
+        """Extract module-level constants referenced by this function.
+
+        Walks the function body to find free names (not local, not params),
+        then looks them up in the enclosing module's top-level assignments.
+        """
+        # Collect locally-defined names (params + local assignments)
+        local_names: set[str] = set()
+        for arg in func_node.args.args:
+            local_names.add(arg.arg)
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        local_names.add(target.id)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                local_names.add(node.target.id)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                # Names brought in by inline imports are also local
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        local_names.add(alias.asname or alias.name.split(".")[0])
+                else:
+                    for alias in node.names:
+                        local_names.add(alias.asname or alias.name)
+
+        # Names loaded (referenced) but not defined locally
+        referenced: set[str] = set()
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                if node.id not in local_names and not node.id.startswith("_"):
+                    referenced.add(node.id)
+
+        # Skip Python builtins and common names that don't need capturing
+        builtins = frozenset(
+            dir(__builtins__) if isinstance(__builtins__, dict) else dir(__builtins__)
+        )
+        referenced -= builtins
+        referenced -= self._STDLIB_MODULES
+
+        if not referenced:
+            return []
+
+        # Get the source module and parse its top-level assignments
+        module = inspect.getmodule(self.fn)
+        if module is None:
+            return []
+        try:
+            module_source = inspect.getsource(module)
+        except OSError:
+            return []
+
+        module_tree = ast.parse(module_source)
+        constants: list[str] = []
+        seen: set[str] = set()
+
+        for node in module_tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in referenced:
+                        stmt = ast.unparse(node)
+                        if stmt not in seen:
+                            seen.add(stmt)
+                            constants.append(stmt)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if node.target.id in referenced:
+                    stmt = ast.unparse(node)
+                    if stmt not in seen:
+                        seen.add(stmt)
+                        constants.append(stmt)
+
+        return constants
 
     def _type_to_string(self, type_annotation: Any) -> str:
         """Convert a type annotation to its string representation."""

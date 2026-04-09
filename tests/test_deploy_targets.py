@@ -1,4 +1,5 @@
 """Tests for bedsheet.deploy.targets module."""
+
 import tempfile
 from pathlib import Path
 
@@ -135,7 +136,9 @@ def test_local_target_validate_no_local_config():
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_creates_all_files(mock_config, mock_agent_metadata):
+async def test_local_target_generate_creates_all_files(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates all expected files."""
     target = LocalTarget()
 
@@ -163,7 +166,9 @@ async def test_local_target_generate_creates_all_files(mock_config, mock_agent_m
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_dockerfile_content(mock_config, mock_agent_metadata):
+async def test_local_target_generate_dockerfile_content(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates Dockerfile with correct content."""
     target = LocalTarget()
 
@@ -186,7 +191,9 @@ async def test_local_target_generate_dockerfile_content(mock_config, mock_agent_
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_docker_compose_content(mock_config, mock_agent_metadata):
+async def test_local_target_generate_docker_compose_content(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates docker-compose.yaml with correct content."""
     target = LocalTarget()
 
@@ -235,7 +242,9 @@ async def test_local_target_generate_app_py_content(mock_config, mock_agent_meta
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_app_py_sse_endpoint(mock_config, mock_agent_metadata):
+async def test_local_target_generate_app_py_sse_endpoint(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates app.py with SSE streaming endpoint."""
     target = LocalTarget()
 
@@ -254,12 +263,14 @@ async def test_local_target_generate_app_py_sse_endpoint(mock_config, mock_agent
         assert "serialize_event" in content
         assert "CollaboratorEvent" in content
         # Check for proper SSE format
-        assert 'data:' in content
+        assert "data:" in content
         assert '"type": "done"' in content or "'type': 'done'" in content
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_env_example_content(mock_config, mock_agent_metadata):
+async def test_local_target_generate_env_example_content(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates .env.example with correct content."""
     target = LocalTarget()
 
@@ -276,7 +287,9 @@ async def test_local_target_generate_env_example_content(mock_config, mock_agent
 
 
 @pytest.mark.asyncio
-async def test_local_target_generate_pyproject_toml_content(mock_config, mock_agent_metadata):
+async def test_local_target_generate_pyproject_toml_content(
+    mock_config, mock_agent_metadata
+):
     """Test LocalTarget.generate creates pyproject.toml with correct content."""
     target = LocalTarget()
 

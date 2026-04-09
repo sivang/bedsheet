@@ -148,34 +148,48 @@ async def test_supervisor_delegates_to_collaborator():
     collaborator = Agent(
         name="FinanceAgent",
         instruction="You analyze financial data.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(text="Revenue is $2.3M"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(text="Revenue is $2.3M"),
+            ]
+        ),
     )
 
     # Supervisor calls delegate, then synthesizes
     supervisor = Supervisor(
         name="Manager",
         instruction="Coordinate tasks.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "agent_name": "FinanceAgent",
-                    "task": "Get Q3 revenue"
-                })
-            ]),
-            MockResponse(text="Based on the finance team: Revenue is $2.3M"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={
+                                "agent_name": "FinanceAgent",
+                                "task": "Get Q3 revenue",
+                            },
+                        )
+                    ]
+                ),
+                MockResponse(text="Based on the finance team: Revenue is $2.3M"),
+            ]
+        ),
         collaborators=[collaborator],
     )
 
     events = []
-    async for event in supervisor.invoke(session_id="test", input_text="What's our revenue?"):
+    async for event in supervisor.invoke(
+        session_id="test", input_text="What's our revenue?"
+    ):
         events.append(event)
 
     # Should have delegation events
     from bedsheet.events import (
-        CollaboratorStartEvent, CollaboratorCompleteEvent, CompletionEvent
+        CollaboratorStartEvent,
+        CollaboratorCompleteEvent,
+        CompletionEvent,
     )
 
     collab_starts = [e for e in events if isinstance(e, CollaboratorStartEvent)]
@@ -207,27 +221,34 @@ async def test_supervisor_streams_collaborator_events():
     collaborator = Agent(
         name="DataAgent",
         instruction="You fetch data.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="collab_call_1", name="get_data", input={})
-            ]),
-            MockResponse(text="The value is 123"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[ToolCall(id="collab_call_1", name="get_data", input={})]
+                ),
+                MockResponse(text="The value is 123"),
+            ]
+        ),
     )
     collaborator.add_action_group(collab_group)
 
     supervisor = Supervisor(
         name="Manager",
         instruction="Coordinate.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "agent_name": "DataAgent",
-                    "task": "Get the value"
-                })
-            ]),
-            MockResponse(text="Got it: 123"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={"agent_name": "DataAgent", "task": "Get the value"},
+                        )
+                    ]
+                ),
+                MockResponse(text="Got it: 123"),
+            ]
+        ),
         collaborators=[collaborator],
     )
 
@@ -241,8 +262,12 @@ async def test_supervisor_streams_collaborator_events():
     collab_events = [e for e in events if isinstance(e, CollaboratorEvent)]
 
     # Should have wrapped ToolCallEvent and ToolResultEvent from collaborator
-    inner_tool_calls = [e for e in collab_events if isinstance(e.inner_event, ToolCallEvent)]
-    inner_tool_results = [e for e in collab_events if isinstance(e.inner_event, ToolResultEvent)]
+    inner_tool_calls = [
+        e for e in collab_events if isinstance(e.inner_event, ToolCallEvent)
+    ]
+    inner_tool_results = [
+        e for e in collab_events if isinstance(e.inner_event, ToolResultEvent)
+    ]
 
     assert len(inner_tool_calls) >= 1
     assert inner_tool_calls[0].agent_name == "DataAgent"
@@ -258,15 +283,23 @@ async def test_supervisor_handles_unknown_agent():
     supervisor = Supervisor(
         name="Manager",
         instruction="Coordinate.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "agent_name": "NonexistentAgent",
-                    "task": "Do something"
-                })
-            ]),
-            MockResponse(text="Sorry, that agent doesn't exist."),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={
+                                "agent_name": "NonexistentAgent",
+                                "task": "Do something",
+                            },
+                        )
+                    ]
+                ),
+                MockResponse(text="Sorry, that agent doesn't exist."),
+            ]
+        ),
         collaborators=[],  # No collaborators
     )
 
@@ -292,10 +325,12 @@ async def test_supervisor_handles_collaborator_error():
     collaborator = Agent(
         name="BrokenAgent",
         instruction="You are broken.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[ToolCall(id=f"c_{i}", name="loop", input={})])
-            for i in range(10)
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(tool_calls=[ToolCall(id=f"c_{i}", name="loop", input={})])
+                for i in range(10)
+            ]
+        ),
         max_iterations=2,
     )
 
@@ -310,15 +345,20 @@ async def test_supervisor_handles_collaborator_error():
     supervisor = Supervisor(
         name="Manager",
         instruction="Coordinate.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "agent_name": "BrokenAgent",
-                    "task": "Do something"
-                })
-            ]),
-            MockResponse(text="The agent had an error."),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={"agent_name": "BrokenAgent", "task": "Do something"},
+                        )
+                    ]
+                ),
+                MockResponse(text="The agent had an error."),
+            ]
+        ),
         collaborators=[collaborator],
     )
 
@@ -331,7 +371,10 @@ async def test_supervisor_handles_collaborator_error():
     # Collaborator should complete with error
     collab_completes = [e for e in events if isinstance(e, CollaboratorCompleteEvent)]
     assert len(collab_completes) == 1
-    assert "Error" in collab_completes[0].response or "Max iterations" in collab_completes[0].response
+    assert (
+        "Error" in collab_completes[0].response
+        or "Max iterations" in collab_completes[0].response
+    )
 
     # Supervisor should still complete
     completions = [e for e in events if isinstance(e, CompletionEvent)]
@@ -345,33 +388,51 @@ async def test_supervisor_parallel_delegation():
     finance = Agent(
         name="FinanceAgent",
         instruction="Finance.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(text="Revenue: $2M"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(text="Revenue: $2M"),
+            ]
+        ),
     )
 
     research = Agent(
         name="ResearchAgent",
         instruction="Research.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(text="Competitor: $1.5M"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(text="Competitor: $1.5M"),
+            ]
+        ),
     )
 
     supervisor = Supervisor(
         name="Manager",
         instruction="Coordinate.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "delegations": [
-                        {"agent_name": "FinanceAgent", "task": "Get revenue"},
-                        {"agent_name": "ResearchAgent", "task": "Get competitor data"},
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={
+                                "delegations": [
+                                    {
+                                        "agent_name": "FinanceAgent",
+                                        "task": "Get revenue",
+                                    },
+                                    {
+                                        "agent_name": "ResearchAgent",
+                                        "task": "Get competitor data",
+                                    },
+                                ]
+                            },
+                        )
                     ]
-                })
-            ]),
-            MockResponse(text="We have $2M vs competitor $1.5M"),
-        ]),
+                ),
+                MockResponse(text="We have $2M vs competitor $1.5M"),
+            ]
+        ),
         collaborators=[finance, research],
     )
 
@@ -379,7 +440,11 @@ async def test_supervisor_parallel_delegation():
     async for event in supervisor.invoke(session_id="test", input_text="Compare"):
         events.append(event)
 
-    from bedsheet.events import CollaboratorStartEvent, CollaboratorCompleteEvent, DelegationEvent
+    from bedsheet.events import (
+        CollaboratorStartEvent,
+        CollaboratorCompleteEvent,
+        DelegationEvent,
+    )
 
     # Should have DelegationEvent
     delegation_events = [e for e in events if isinstance(e, DelegationEvent)]
@@ -404,24 +469,34 @@ async def test_router_mode_direct_handoff():
     technical = Agent(
         name="TechnicalSupport",
         instruction="Handle technical issues.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(text="Have you tried turning it off and on again?"),
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(text="Have you tried turning it off and on again?"),
+            ]
+        ),
     )
 
     router = Supervisor(
         name="Router",
         instruction="Route requests.",
-        model_client=MockLLMClient(responses=[
-            MockResponse(tool_calls=[
-                ToolCall(id="call_1", name="delegate", input={
-                    "agent_name": "TechnicalSupport",
-                    "task": "User can't log in"
-                })
-            ]),
-            # In router mode, after delegation the router should just pass through
-            # the collaborator's response without synthesis
-        ]),
+        model_client=MockLLMClient(
+            responses=[
+                MockResponse(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="delegate",
+                            input={
+                                "agent_name": "TechnicalSupport",
+                                "task": "User can't log in",
+                            },
+                        )
+                    ]
+                ),
+                # In router mode, after delegation the router should just pass through
+                # the collaborator's response without synthesis
+            ]
+        ),
         collaborators=[technical],
         collaboration_mode="router",
     )

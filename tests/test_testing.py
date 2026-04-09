@@ -1,4 +1,5 @@
 """Test MockLLMClient and MockResponse."""
+
 import pytest
 from bedsheet.testing import MockLLMClient, MockResponse
 from bedsheet.llm.base import LLMClient, ToolCall
@@ -12,9 +13,7 @@ def test_mock_llm_client_implements_protocol():
 
 @pytest.mark.asyncio
 async def test_mock_llm_client_text_response():
-    mock = MockLLMClient(responses=[
-        MockResponse(text="Hello!")
-    ])
+    mock = MockLLMClient(responses=[MockResponse(text="Hello!")])
 
     response = await mock.chat(
         messages=[Message(role="user", content="Hi")],
@@ -27,11 +26,15 @@ async def test_mock_llm_client_text_response():
 
 @pytest.mark.asyncio
 async def test_mock_llm_client_tool_call_response():
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
-        ])
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
+                ]
+            )
+        ]
+    )
 
     response = await mock.chat(
         messages=[Message(role="user", content="Weather?")],
@@ -46,12 +49,16 @@ async def test_mock_llm_client_tool_call_response():
 
 @pytest.mark.asyncio
 async def test_mock_llm_client_sequence():
-    mock = MockLLMClient(responses=[
-        MockResponse(tool_calls=[
-            ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
-        ]),
-        MockResponse(text="The weather is sunny."),
-    ])
+    mock = MockLLMClient(
+        responses=[
+            MockResponse(
+                tool_calls=[
+                    ToolCall(id="call_1", name="get_weather", input={"city": "SF"})
+                ]
+            ),
+            MockResponse(text="The weather is sunny."),
+        ]
+    )
 
     # First call - tool use
     resp1 = await mock.chat([], "system")
@@ -64,9 +71,7 @@ async def test_mock_llm_client_sequence():
 
 @pytest.mark.asyncio
 async def test_mock_llm_client_exhausted():
-    mock = MockLLMClient(responses=[
-        MockResponse(text="Only one")
-    ])
+    mock = MockLLMClient(responses=[MockResponse(text="Only one")])
 
     await mock.chat([], "system")
 

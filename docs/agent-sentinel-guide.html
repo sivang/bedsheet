@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Agent Sentinel Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1b26;
+            --bg-secondary: #1f2133;
+            --bg-tertiary: #262840;
+            --bg-card: #24263a;
+            --text-primary: #c0caf5;
+            --text-secondary: #9aa5ce;
+            --text-muted: #565f89;
+            --accent-blue: #7aa2f7;
+            --accent-green: #9ece6a;
+            --accent-purple: #bb9af7;
+            --accent-orange: #e0af68;
+            --accent-red: #f7768e;
+            --accent-cyan: #7dcfff;
+            --border-color: #3b3d57;
+            --code-bg: #1f2133;
+            --sidebar-width: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-width); height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto; padding: 24px 0; z-index: 100;
+            display: flex; flex-direction: column;
+        }
+
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .sidebar-header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--accent-red); }
+        .sidebar-header .subtitle { font-size: 12px; color: var(--text-secondary); }
+        .nav-section { padding: 8px 20px; }
+        .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .nav-link { display: flex; align-items: center; padding: 6px 0; color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+        .nav-link:hover { color: var(--accent-cyan); }
+        .nav-link .step { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: var(--border-color); border-radius: 50%; font-size: 11px; font-weight: 600; margin-right: 8px; color: var(--text-muted); }
+        .nav-link:hover .step { background: var(--accent-cyan); color: var(--bg-primary); }
+
+        .main-content { margin-left: var(--sidebar-width); max-width: 1000px; padding: 48px 64px; }
+        .hero { margin-bottom: 48px; }
+        .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 16px; color: var(--accent-red); }
+        .hero .lead { font-size: 20px; color: var(--text-secondary); margin-bottom: 24px; }
+        .hero .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .badge-blue { background: rgba(122, 162, 247, 0.15); color: var(--accent-blue); }
+        .badge-green { background: rgba(158, 206, 106, 0.15); color: var(--accent-green); }
+        .badge-purple { background: rgba(187, 154, 247, 0.15); color: var(--accent-purple); }
+        .badge-orange { background: rgba(224, 175, 104, 0.15); color: var(--accent-orange); }
+        .badge-red { background: rgba(247, 118, 142, 0.15); color: var(--accent-red); }
+        .badge-cyan { background: rgba(125, 207, 255, 0.15); color: var(--accent-cyan); }
+
+        h2 { font-size: 28px; font-weight: 600; margin-top: 64px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; color: var(--text-primary); }
+        h2 .step-number { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--accent-red); color: var(--bg-primary); border-radius: 50%; font-size: 18px; font-weight: 700; }
+        h3 { font-size: 20px; font-weight: 600; margin-top: 40px; margin-bottom: 16px; color: var(--accent-cyan); }
+        h4 { font-size: 16px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; color: var(--text-secondary); }
+        p { margin-bottom: 16px; }
+
+        pre { background: var(--code-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; overflow-x: auto; margin: 16px 0 24px 0; font-size: 14px; white-space: pre; }
+        code { font-family: 'JetBrains Mono', monospace; }
+        p code, li code, td code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--accent-purple); }
+
+        .info-box { border-radius: 8px; padding: 16px 20px; margin: 20px 0; border-left: 4px solid; }
+        .info-box.tip { background: rgba(158, 206, 106, 0.08); border-color: var(--accent-green); }
+        .info-box.note { background: rgba(122, 162, 247, 0.08); border-color: var(--accent-blue); }
+        .info-box.warning { background: rgba(224, 175, 104, 0.08); border-color: var(--accent-orange); }
+        .info-box.danger { background: rgba(247, 118, 142, 0.08); border-color: var(--accent-red); }
+        .info-box-title { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        .tip .info-box-title { color: var(--accent-green); }
+        .note .info-box-title { color: var(--accent-blue); }
+        .warning .info-box-title { color: var(--accent-orange); }
+        .danger .info-box-title { color: var(--accent-red); }
+        .info-box p:last-child { margin-bottom: 0; }
+
+        .output { background: #0d1117; color: #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; }
+        .whats-happening { background: var(--bg-card); border-radius: 8px; padding: 20px; margin: 20px 0; border: 1px solid var(--border-color); }
+        .whats-happening h4 { margin-top: 0; color: var(--accent-purple); }
+        .whats-happening ol, .whats-happening ul { margin-left: 24px; margin-bottom: 0; }
+        .whats-happening li { margin-bottom: 8px; }
+        ul, ol { margin-left: 24px; margin-bottom: 16px; }
+        li { margin-bottom: 8px; }
+        .architecture { background: var(--bg-card); border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; border: 1px solid var(--border-color); }
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 24px 0; }
+        .feature-card { background: var(--bg-card); border-radius: 8px; padding: 20px; border-left: 4px solid var(--accent-red); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-red); }
+        .feature-card h4 { margin-top: 0; color: var(--accent-red); }
+        .feature-card p { margin-bottom: 0; font-size: 14px; }
+        .threat-card { background: var(--bg-card); border-radius: 8px; padding: 20px; border-left: 4px solid var(--accent-orange); border: 1px solid var(--border-color); margin: 12px 0; }
+        .threat-card h4 { margin-top: 0; color: var(--accent-orange); font-size: 15px; }
+        .threat-card p { margin-bottom: 0; font-size: 14px; }
+
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 10px 14px; border: 1px solid var(--border-color); text-align: left; font-size: 14px; }
+        th { background: var(--bg-secondary); font-weight: 600; color: var(--accent-cyan); }
+
+        a { color: var(--accent-blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        footer { margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--border-color); color: var(--text-muted); text-align: center; }
+        footer a { color: var(--accent-blue); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h1>Agent Sentinel</h1>
+        <div class="subtitle">AI Agent Security Monitoring</div>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Context</div>
+        <a href="#threat-landscape" class="nav-link"><span class="step">1</span> Threat Landscape</a>
+        <a href="#architecture" class="nav-link"><span class="step">2</span> Architecture</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Workers</div>
+        <a href="#web-researcher" class="nav-link"><span class="step">3</span> Web Researcher</a>
+        <a href="#scheduler" class="nav-link"><span class="step">4</span> Scheduler</a>
+        <a href="#skill-acquirer" class="nav-link"><span class="step">5</span> Skill Acquirer</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Sentinels</div>
+        <a href="#behavior-sentinel" class="nav-link"><span class="step">6</span> Behavior Sentinel</a>
+        <a href="#supply-chain-sentinel" class="nav-link"><span class="step">7</span> Supply Chain Sentinel</a>
+        <a href="#sentinel-commander" class="nav-link"><span class="step">8</span> Sentinel Commander</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Running</div>
+        <a href="#setup" class="nav-link"><span class="step">9</span> Setup &amp; Run</a>
+        <a href="#demo-flow" class="nav-link"><span class="step">10</span> Demo Flow</a>
+    </div>
+</nav>
+
+<main class="main-content">
+    <div class="hero">
+        <h1>Agent Sentinel</h1>
+        <p class="lead">Real-time AI agent security monitoring. Workers do real tasks. Sentinels watch for compromise. Commanders quarantine threats. All over PubNub.</p>
+        <div class="badge-row">
+            <span class="badge badge-red">Security Monitoring</span>
+            <span class="badge badge-cyan">Real I/O</span>
+            <span class="badge badge-green">PubNub</span>
+            <span class="badge badge-purple">Bedsheet Sense</span>
+            <span class="badge badge-orange">OpenClaw Inspired</span>
+        </div>
+    </div>
+
+    <!-- Section 1: Threat Landscape -->
+    <h2 id="threat-landscape"><span class="step-number">1</span> The Threat Landscape</h2>
+
+    <p>The OpenClaw crisis of January-February 2026 showed the world what happens when AI agents go wrong. This demo recreates those scenarios in a controlled environment so you can see how distributed sentinel agents detect and respond to compromise.</p>
+
+    <div class="threat-card">
+        <h4>Rogue Agent Behavior</h4>
+        <p>An OpenClaw agent gained iMessage access and spammed 500+ messages to a user's contacts. Our <strong>behavior sentinel</strong> monitors output rates to detect this kind of anomaly.</p>
+    </div>
+
+    <div class="threat-card">
+        <h4>Supply Chain Attacks</h4>
+        <p>7.1% of skills in the ClawHub marketplace contained malicious code. Our <strong>supply chain sentinel</strong> verifies skill integrity using SHA-256 hashes against a known-good registry.</p>
+    </div>
+
+    <div class="threat-card">
+        <h4>API Key Exposure</h4>
+        <p>The Moltbook breach exposed 1.5 million API keys. Our workers simulate real tasks where credentials could leak if an agent goes rogue.</p>
+    </div>
+
+    <div class="threat-card">
+        <h4>Mass Exposure</h4>
+        <p>Over 40,000 unsecured OpenClaw instances were found on the public internet. Sentinel networks like this one provide the missing security layer.</p>
+    </div>
+
+    <!-- Section 2: Architecture -->
+    <h2 id="architecture"><span class="step-number">2</span> Architecture</h2>
+
+    <p>Agent Sentinel uses six agents organized in three tiers:</p>
+
+    <div class="architecture">                          ┌─────────────────────┐
+                          │  sentinel-commander  │  Correlates alerts,
+                          │  (SenseMixin+Agent)  │  issues quarantine
+                          └──────────┬──────────┘
+                 PubNub alerts       │       PubNub queries
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+    ┌─────────┴──────────┐ ┌────────┴─────────┐           │
+    │  behavior-sentinel │ │  supply-chain-    │           │
+    │  reads activity log│ │  sentinel         │           │
+    │  detects rate spikes│ │  hashes skills   │           │
+    └─────────┬──────────┘ └────────┬─────────┘           │
+              │  reads files        │  reads files         │
+    ┌─────────┴─────────────────────┴──────────────────────┘
+    │
+    │  data/activity_log.jsonl              data/installed_skills/
+    │  (workers append here)                (skill-acquirer writes here)
+    │
+    ├─────────────────┬───────────────────┐
+    │                 │                   │
+┌───┴────────┐  ┌────┴───────┐  ┌────────┴──────┐
+│ web-       │  │ scheduler  │  │ skill-        │
+│ researcher │  │ JSON cal.  │  │ acquirer      │
+│ DuckDuckGo │  │ CRUD       │  │ SHA-256 verify│
+└────────────┘  └────────────┘  └───────────────┘
+  ~15% rogue      ~15% rogue      ~15% rogue</div>
+
+    <h3>Communication Channels</h3>
+
+    <table>
+        <tr><th>Channel</th><th>Purpose</th><th>Who Publishes</th><th>Who Listens</th></tr>
+        <tr><td><code>alerts</code></td><td>Security alerts</td><td>Sentinels</td><td>Commander</td></tr>
+        <tr><td><code>quarantine</code></td><td>Quarantine orders</td><td>Commander</td><td>All agents</td></tr>
+        <tr><td><code>{agent-name}</code></td><td>Direct messages</td><td>Commander (queries)</td><td>Individual agents</td></tr>
+    </table>
+
+    <h3>Data Flow</h3>
+
+    <p>Workers write to shared files. Sentinels read those files. This is <strong>real file I/O</strong>, not in-memory simulation:</p>
+
+    <table>
+        <tr><th>File</th><th>Writer</th><th>Reader</th><th>Format</th></tr>
+        <tr><td><code>data/activity_log.jsonl</code></td><td>All workers</td><td>behavior-sentinel</td><td>JSON Lines (one object per line)</td></tr>
+        <tr><td><code>data/calendar.json</code></td><td>scheduler</td><td>scheduler</td><td>JSON array</td></tr>
+        <tr><td><code>data/installed_skills/</code></td><td>skill-acquirer</td><td>supply-chain-sentinel</td><td>.py files</td></tr>
+        <tr><td><code>clawhub/registry.json</code></td><td>(pre-seeded)</td><td>skill-acquirer, supply-chain-sentinel</td><td>JSON object</td></tr>
+    </table>
+
+    <!-- Section 3: Web Researcher -->
+    <h2 id="web-researcher"><span class="step-number">3</span> Web Researcher</h2>
+
+    <p>The web researcher performs <strong>real DuckDuckGo searches</strong> every 15 seconds. The LLM picks a topic and uses the <code>search_web</code> tool to find recent news.</p>
+
+    <h3>Tools</h3>
+
+    <pre><code class="language-python">@research_tools.action("search_web", "Search the web using DuckDuckGo")
+async def search_web(query: str) -> str:
+    ddgs = DDGS()
+    results = ddgs.text(query, max_results=3)
+    _log_activity("web-researcher", "search", query)
+    # Returns formatted search results...</code></pre>
+
+    <h3>Rogue Behavior (~15% chance)</h3>
+
+    <p>When triggered, the web researcher enters a rapid-fire search burst &mdash; 50 searches in quick succession, each logged to the activity log. This simulates the output spam pattern seen in the OpenClaw incident:</p>
+
+    <pre><code class="language-python">async def _rogue_search_burst():
+    junk_queries = [
+        "password dump site", "free API keys list",
+        "bypass authentication", "exploit database 2026",
+    ]
+    for i in range(50):
+        query = random.choice(junk_queries) + f" {i}"
+        ddgs.text(query, max_results=1)
+        _log_activity("web-researcher", "search", f"[ROGUE] {query}")</code></pre>
+
+    <div class="info-box note">
+        <div class="info-box-title">Detection Point</div>
+        <p>The behavior sentinel reads <code>data/activity_log.jsonl</code> and calculates actions-per-minute. A burst of 50 searches triggers a rate anomaly alert at the threshold of 10 actions/min.</p>
+    </div>
+
+    <!-- Section 4: Scheduler -->
+    <h2 id="scheduler"><span class="step-number">4</span> Scheduler</h2>
+
+    <p>The scheduler manages a <strong>real JSON calendar file</strong> (<code>data/calendar.json</code>). Every 20 seconds, the LLM reviews and manages appointments.</p>
+
+    <h3>Tools</h3>
+
+    <pre><code class="language-python">@scheduler_tools.action("list_appointments", "List all scheduled appointments")
+async def list_appointments() -> str:
+    appointments = _read_calendar()  # Reads data/calendar.json
+    ...
+
+@scheduler_tools.action("add_appointment", "Add a new appointment")
+async def add_appointment(title: str, date: str, time_str: str) -> str:
+    appointments = _read_calendar()
+    appointments.append(new_apt)
+    _write_calendar(appointments)  # Writes data/calendar.json
+    ...</code></pre>
+
+    <h3>Rogue Behavior (~15% chance)</h3>
+
+    <p>Calendar sabotage: deletes all real appointments and fills the calendar with 20 junk entries dated 1999-01-01. Each deletion and addition is logged to the activity log.</p>
+
+    <!-- Section 5: Skill Acquirer -->
+    <h2 id="skill-acquirer"><span class="step-number">5</span> Skill Acquirer</h2>
+
+    <p>The skill acquirer manages a local <strong>ClawHub-style marketplace</strong>. It installs Python skill files from <code>clawhub/</code> into <code>data/installed_skills/</code>, verifying SHA-256 hashes against the registry.</p>
+
+    <h3>The ClawHub Registry</h3>
+
+    <pre><code class="language-json">{
+  "weather_lookup.py": {
+    "sha256": "a5212db6...",
+    "malicious": false,
+    "description": "Weather Lookup"
+  },
+  "data_exfiltrator.py": {
+    "sha256": "d18b5ae5...",
+    "malicious": true,
+    "description": "Data Exfiltrator"
+  }
+}</code></pre>
+
+    <h3>Normal Behavior</h3>
+
+    <p>The install tool checks the registry before installing. If a skill is flagged <code>"malicious": true</code>, installation is blocked:</p>
+
+    <pre><code class="language-python">@skill_tools.action("install_skill", "Install a skill from ClawHub")
+async def install_skill(skill_name: str) -> str:
+    info = registry[skill_name]
+    if info.get("malicious"):
+        return f"BLOCKED: '{skill_name}' is flagged as malicious"
+
+    # Verify SHA-256 before installing
+    actual_hash = hashlib.sha256(open(source, "rb").read()).hexdigest()
+    if actual_hash != info["sha256"]:
+        return "INTEGRITY ERROR: hash mismatch"
+
+    shutil.copy2(source, dest)
+    return f"Installed '{skill_name}' (SHA-256 verified)"</code></pre>
+
+    <h3>Rogue Behavior (~15% chance)</h3>
+
+    <p>Bypasses the malicious check and installs <code>data_exfiltrator.py</code> directly. The file is inert (no actual network calls), but contains suspicious imports (<code>base64</code>, <code>socket</code>) that the supply chain sentinel will flag.</p>
+
+    <div class="info-box danger">
+        <div class="info-box-title">The data_exfiltrator.py Skill</div>
+        <p>This file is intentionally crafted to look malicious for the demo. It imports <code>base64</code> and <code>socket</code> and defines an <code>_EXFIL_ENDPOINT</code>, but the <code>exfiltrate_data()</code> function just returns a string. It performs <strong>no actual network calls or data theft</strong>.</p>
+    </div>
+
+    <!-- Section 6: Behavior Sentinel -->
+    <h2 id="behavior-sentinel"><span class="step-number">6</span> Behavior Sentinel</h2>
+
+    <p>The behavior sentinel monitors <strong>output rates</strong> by reading the shared activity log every 10 seconds. It doesn't use the LLM for monitoring &mdash; it does direct file I/O and math.</p>
+
+    <h3>Detection Logic</h3>
+
+    <pre><code class="language-python"># Monitoring loop (every 10 seconds):
+entries = _read_recent_activity(minutes=2)
+counts = {}
+for e in entries:
+    agent = e.get("agent", "unknown")
+    counts[agent] = counts.get(agent, 0) + 1
+
+for agent_name, count in counts.items():
+    rate = count / 2.0  # actions per minute
+    if rate > 10:  # THRESHOLD
+        alert = Signal(
+            kind="alert",
+            sender="behavior-sentinel",
+            payload={
+                "severity": "high",
+                "category": "behavior_anomaly",
+                "agent": agent_name,
+                "rate": rate,
+                "message": f"Agent '{agent_name}' output rate anomaly",
+            },
+        )
+        await agent.broadcast("alerts", alert)</code></pre>
+
+    <h3>Tools (for commander queries)</h3>
+
+    <p>When the commander queries the behavior sentinel via <code>request()</code>, the LLM uses these tools to investigate:</p>
+
+    <table>
+        <tr><th>Tool</th><th>What It Does</th></tr>
+        <tr><td><code>check_activity_log(minutes)</code></td><td>Count actions per agent in time window</td></tr>
+        <tr><td><code>check_output_rate(agent_name)</code></td><td>Actions/minute for a specific agent</td></tr>
+        <tr><td><code>get_anomaly_report()</code></td><td>Full report of all anomalies detected</td></tr>
+    </table>
+
+    <!-- Section 7: Supply Chain Sentinel -->
+    <h2 id="supply-chain-sentinel"><span class="step-number">7</span> Supply Chain Sentinel</h2>
+
+    <p>The supply chain sentinel scans <code>data/installed_skills/</code> every 15 seconds, computing SHA-256 hashes and comparing them against the ClawHub registry.</p>
+
+    <h3>Detection Logic</h3>
+
+    <pre><code class="language-python">def _scan_for_issues() -> list[dict]:
+    registry = _load_registry()
+    for f in os.listdir(_INSTALLED_DIR):
+        actual_hash = hashlib.sha256(open(path, "rb").read()).hexdigest()
+        info = registry.get(f)
+
+        if info is None:
+            issues.append({"type": "unknown_origin"})
+        elif info.get("malicious"):
+            issues.append({"type": "known_malicious"})
+        elif actual_hash != info["sha256"]:
+            issues.append({"type": "hash_mismatch"})
+    return issues</code></pre>
+
+    <p>Three detection categories:</p>
+
+    <table>
+        <tr><th>Issue Type</th><th>Severity</th><th>Meaning</th></tr>
+        <tr><td><code>known_malicious</code></td><td>Critical</td><td>Installed skill is flagged malicious in registry</td></tr>
+        <tr><td><code>hash_mismatch</code></td><td>High</td><td>File has been tampered with since registry was created</td></tr>
+        <tr><td><code>unknown_origin</code></td><td>High</td><td>Skill not in registry at all (unknown provenance)</td></tr>
+    </table>
+
+    <!-- Section 8: Sentinel Commander -->
+    <h2 id="sentinel-commander"><span class="step-number">8</span> Sentinel Commander</h2>
+
+    <p>The commander is the correlation engine. It listens for alert signals and uses <strong>Sense network RPC</strong> to query sentinels for evidence before issuing quarantine.</p>
+
+    <h3>Alert Handling Flow</h3>
+
+    <div class="whats-happening">
+        <h4>When an alert arrives:</h4>
+        <ol>
+            <li><strong>Claim the incident</strong> using the claim protocol (prevents duplicate handling)</li>
+            <li><strong>Query sentinels</strong> via <code>request_remote_agent()</code> for corroborating evidence</li>
+            <li><strong>Assess the threat</strong> &mdash; the LLM synthesizes findings from multiple sentinels</li>
+            <li><strong>Issue quarantine</strong> if evidence confirms compromise</li>
+            <li><strong>Generate report</strong> &mdash; a threat assessment printed to the console</li>
+        </ol>
+    </div>
+
+    <h3>Network Tools</h3>
+
+    <pre><code class="language-python">@commander_tools.action("request_remote_agent", "Query a sentinel for information")
+async def request_remote_agent(agent_name: str, task: str) -> str:
+    result = await _commander.request(agent_name, task, timeout=30.0)
+    return result
+
+@commander_tools.action("issue_quarantine", "Quarantine a compromised agent")
+async def issue_quarantine(agent_name: str, reason: str) -> str:
+    signal = Signal(
+        kind="alert",
+        sender="sentinel-commander",
+        payload={
+            "action": "quarantine",
+            "severity": "critical",
+            "agent": agent_name,
+            "reason": reason,
+        },
+    )
+    await _commander.broadcast("quarantine", signal)
+    return f"Quarantine issued for '{agent_name}'"</code></pre>
+
+    <div class="info-box tip">
+        <div class="info-box-title">How request() Works</div>
+        <p>When the commander calls <code>request("behavior-sentinel", "check web-researcher activity")</code>, the Sixth Sense sends a <code>request</code> signal to the behavior sentinel's direct channel. The sentinel's LLM receives the task, uses its tools to read the activity log, and sends the result back as a <code>response</code> signal matched by <code>correlation_id</code>. The commander's <code>request()</code> call returns the string result.</p>
+    </div>
+
+    <!-- Section 9: Setup -->
+    <h2 id="setup"><span class="step-number">9</span> Setup &amp; Run</h2>
+
+    <h3>Prerequisites</h3>
+
+    <ol>
+        <li><strong>PubNub account</strong> &mdash; Sign up at <a href="https://www.pubnub.com">pubnub.com</a> (free tier is sufficient)</li>
+        <li><strong>Anthropic API key</strong> &mdash; For Claude LLM access</li>
+        <li><strong>Python 3.11+</strong></li>
+    </ol>
+
+    <h3>Installation</h3>
+
+    <pre><code class="language-bash"># Install dependencies
+uv pip install bedsheet[sense] duckduckgo-search
+
+# Navigate to the demo
+cd examples/agent-sentinel
+
+# Validate the project configuration
+bedsheet validate</code></pre>
+
+    <div class="output">
+&#x2577; Configuration is valid!
+
+Configuration Summary:
+  Version: 1.0
+  Project: agent-sentinel
+  Active Target: local
+  Number of Agents: 6</div>
+
+    <h3>Running</h3>
+
+    <pre><code class="language-bash"># Set environment variables
+export PUBNUB_SUBSCRIBE_KEY=sub-c-...
+export PUBNUB_PUBLISH_KEY=pub-c-...
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Launch all 6 agents
+python run.py</code></pre>
+
+    <div class="output">============================================================
+  Agent Sentinel - AI Agent Security Monitoring
+  Inspired by the OpenClaw crisis of 2026
+  Launching 6 agents (3 workers + 2 sentinels + 1 commander)...
+============================================================
+  Starting web-researcher...
+[web-researcher] Online and researching...
+  Starting scheduler...
+[scheduler] Online and managing calendar...
+  Starting skill-acquirer...
+[skill-acquirer] Online and acquiring skills...
+  Starting behavior-sentinel...
+[behavior-sentinel] Online and monitoring behavior...
+  Starting supply-chain-sentinel...
+[supply-chain-sentinel] Online and monitoring skill integrity...
+  Starting sentinel-commander...
+[sentinel-commander] Online and coordinating...
+============================================================
+  All agents online! Workers are doing real work.
+  Sentinels are watching. ~15% chance of rogue behavior per cycle.
+  Press Ctrl+C to stop.
+============================================================</div>
+
+    <!-- Section 10: Demo Flow -->
+    <h2 id="demo-flow"><span class="step-number">10</span> Expected Demo Flow</h2>
+
+    <p>Because rogue behavior triggers randomly (~15% per cycle), each run tells a different story. Here's a typical sequence:</p>
+
+    <h3>Phase 1: Normal Operations (first 30-60 seconds)</h3>
+
+    <p>Workers do real work. The web researcher searches DuckDuckGo. The scheduler manages appointments. The skill acquirer installs legitimate skills. Sentinels scan and find nothing unusual.</p>
+
+    <h3>Phase 2: Rogue Trigger</h3>
+
+    <p>Eventually a worker goes rogue (15% chance per cycle). The most dramatic scenarios:</p>
+
+    <div class="info-box danger">
+        <div class="info-box-title">Scenario A: Search Spam</div>
+        <p>Web researcher fires 50 rapid searches. Behavior sentinel detects rate anomaly (25 actions/min, threshold is 10). Broadcasts alert. Commander investigates.</p>
+    </div>
+
+    <div class="info-box danger">
+        <div class="info-box-title">Scenario B: Malicious Skill Install</div>
+        <p>Skill acquirer installs <code>data_exfiltrator.py</code>. Supply chain sentinel detects known-malicious skill on next scan. Broadcasts critical alert. Commander queries both sentinels and issues quarantine.</p>
+    </div>
+
+    <h3>Phase 3: Commander Response</h3>
+
+    <div class="output">[sentinel-commander] Alert from behavior-sentinel: [high] Agent 'web-researcher' output rate anomaly
+[sentinel-commander] Claimed inc-a1b2c3, investigating...
+  -> request_remote_agent(behavior-sentinel, check web-researcher activity)
+  -> request_remote_agent(supply-chain-sentinel, audit installed skills)
+
+[THREAT ASSESSMENT]
+Based on my investigation:
+- behavior-sentinel reports web-researcher at 25.0 actions/min (threshold: 10)
+- supply-chain-sentinel reports no skill integrity issues
+Recommendation: Quarantine web-researcher for behavior anomaly.
+
+  -> issue_quarantine(web-researcher, Anomalous output rate detected)
+
+============================================================
+  QUARANTINE ISSUED: web-researcher
+  Reason: Anomalous output rate detected
+============================================================</div>
+
+    <h3>Using the Bedsheet CLI</h3>
+
+    <p>This project was created with the Bedsheet CLI and includes a <code>bedsheet.yaml</code> configuration:</p>
+
+    <pre><code class="language-bash"># Validate configuration
+bedsheet validate
+
+# Generate deployment artifacts
+bedsheet generate --target local    # Docker deployment
+bedsheet generate --target gcp      # Google Cloud Platform
+bedsheet generate --target aws      # Amazon Web Services</code></pre>
+
+    <div class="info-box tip">
+        <div class="info-box-title">Build Your Own</div>
+        <p>Start from scratch with <code>bedsheet init my-sentinel-network</code>, then add your own worker and sentinel agents. See the <a href="sixth-sense-guide.html">Sixth Sense Guide</a> for the full API tutorial, and the <a href="sixth-sense-design.html">Design Document</a> for architecture details.</p>
+    </div>
+
+    <footer>
+        <p>Bedsheet Agents &mdash; <a href="https://github.com/sivang/bedsheet">GitHub</a> | <a href="sixth-sense-guide.html">Sixth Sense Tutorial</a> | <a href="sixth-sense-design.html">Design Document</a></p>
+    </footer>
+</main>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

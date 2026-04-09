@@ -10,6 +10,7 @@ to Amazon Bedrock AgentCore with Gateway integration for tools.
 
    Report bugs at: https://github.com/sivang/bedsheet/issues
 """
+
 from dataclasses import replace
 from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -35,10 +36,7 @@ class AgentCoreTarget(DeploymentTarget):
         return "agentcore"
 
     def generate(
-        self,
-        config: BedsheetConfig,
-        agent_metadata: AgentMetadata,
-        output_dir: Path
+        self, config: BedsheetConfig, agent_metadata: AgentMetadata, output_dir: Path
     ) -> list[GeneratedFile]:
         """Generate AgentCore deployment files."""
         files = []
@@ -53,8 +51,7 @@ class AgentCoreTarget(DeploymentTarget):
         filtered_agent = agent_metadata
         if agent_metadata.is_supervisor and agent_metadata.collaborators:
             filtered_tools = [
-                tool for tool in agent_metadata.tools
-                if tool.name != "delegate"
+                tool for tool in agent_metadata.tools if tool.name != "delegate"
             ]
             filtered_agent = replace(agent_metadata, tools=filtered_tools)
 
@@ -76,11 +73,13 @@ class AgentCoreTarget(DeploymentTarget):
         for template_name, output_name, executable in terraform_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Common files
         common_templates = [
@@ -92,11 +91,13 @@ class AgentCoreTarget(DeploymentTarget):
         for template_name, output_name, executable in common_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Runtime container files
         runtime_templates = [
@@ -108,43 +109,53 @@ class AgentCoreTarget(DeploymentTarget):
         for template_name, output_name, executable in runtime_templates:
             template = self.env.get_template(template_name)
             content = template.render(**context)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=content,
-                executable=executable,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=content,
+                    executable=executable,
+                )
+            )
 
         # Generate Lambda handlers for action groups (if tools exist after filtering)
         if filtered_agent.tools:
             handler_template = self.env.get_template("lambda/handler.py.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "handler.py",
-                content=handler_template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "handler.py",
+                    content=handler_template.render(**context),
+                    executable=False,
+                )
+            )
 
             # Lambda __init__.py
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "__init__.py",
-                content="",
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "__init__.py",
+                    content="",
+                    executable=False,
+                )
+            )
 
             # Lambda requirements
             lambda_req = self.env.get_template("lambda/requirements.txt.j2")
-            files.append(GeneratedFile(
-                path=output_dir / "lambda" / "requirements.txt",
-                content=lambda_req.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / "lambda" / "requirements.txt",
+                    content=lambda_req.render(**context),
+                    executable=False,
+                )
+            )
 
         # Generate OpenAPI schema for Gateway tools
         openapi_template = self.env.get_template("schemas/openapi.yaml.j2")
-        files.append(GeneratedFile(
-            path=output_dir / "schemas" / "openapi.yaml",
-            content=openapi_template.render(**context),
-            executable=False,
-        ))
+        files.append(
+            GeneratedFile(
+                path=output_dir / "schemas" / "openapi.yaml",
+                content=openapi_template.render(**context),
+                executable=False,
+            )
+        )
 
         # Generate GitHub Actions CI/CD workflows
         github_templates = [
@@ -153,11 +164,13 @@ class AgentCoreTarget(DeploymentTarget):
         ]
         for template_name, output_name in github_templates:
             template = self.env.get_template(template_name)
-            files.append(GeneratedFile(
-                path=output_dir / output_name,
-                content=template.render(**context),
-                executable=False,
-            ))
+            files.append(
+                GeneratedFile(
+                    path=output_dir / output_name,
+                    content=template.render(**context),
+                    executable=False,
+                )
+            )
 
         return files
 
@@ -168,12 +181,24 @@ class AgentCoreTarget(DeploymentTarget):
             agentcore = config.targets["agentcore"]
             if isinstance(agentcore, AgentCoreTargetConfig):
                 # Validate Lambda memory
-                if agentcore.lambda_memory and (agentcore.lambda_memory < 128 or agentcore.lambda_memory > 10240):
-                    errors.append(f"Lambda memory must be between 128-10240 MB: {agentcore.lambda_memory}")
+                if agentcore.lambda_memory and (
+                    agentcore.lambda_memory < 128 or agentcore.lambda_memory > 10240
+                ):
+                    errors.append(
+                        f"Lambda memory must be between 128-10240 MB: {agentcore.lambda_memory}"
+                    )
                 # Validate Runtime memory
-                if agentcore.runtime_memory and (agentcore.runtime_memory < 512 or agentcore.runtime_memory > 8192):
-                    errors.append(f"Runtime memory must be between 512-8192 MB: {agentcore.runtime_memory}")
+                if agentcore.runtime_memory and (
+                    agentcore.runtime_memory < 512 or agentcore.runtime_memory > 8192
+                ):
+                    errors.append(
+                        f"Runtime memory must be between 512-8192 MB: {agentcore.runtime_memory}"
+                    )
                 # Validate Runtime vCPU
-                if agentcore.runtime_vcpu and (agentcore.runtime_vcpu < 0.25 or agentcore.runtime_vcpu > 4):
-                    errors.append(f"Runtime vCPU must be between 0.25-4: {agentcore.runtime_vcpu}")
+                if agentcore.runtime_vcpu and (
+                    agentcore.runtime_vcpu < 0.25 or agentcore.runtime_vcpu > 4
+                ):
+                    errors.append(
+                        f"Runtime vCPU must be between 0.25-4: {agentcore.runtime_vcpu}"
+                    )
         return errors

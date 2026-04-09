@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Agents - Sentinel Network Architecture Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eef1f4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #bf8700;
+            --accent-red: #cf222e;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --sidebar-width: 260px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .nav-section {
+            padding: 8px 20px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+
+        .nav-link:hover { color: var(--accent-blue); }
+
+        .nav-link .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .nav-link:hover .step {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            max-width: 1000px;
+            padding: 48px 64px;
+        }
+
+        .hero {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .hero .description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        section { margin-bottom: 48px; }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        p { margin-bottom: 16px; }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        pre {
+            margin-bottom: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        pre code {
+            display: block;
+            padding: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid var(--border-color);
+        }
+
+        .callout {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+
+        .callout-blue {
+            background: #ddf4ff;
+            border-color: var(--accent-blue);
+        }
+
+        .callout-green {
+            background: #dafbe1;
+            border-color: var(--accent-green);
+        }
+
+        .callout-orange {
+            background: #fff8c5;
+            border-color: var(--accent-orange);
+        }
+
+        .callout-red {
+            background: #ffebe9;
+            border-color: var(--accent-red);
+        }
+
+        .callout-purple {
+            background: #fbefff;
+            border-color: var(--accent-purple);
+        }
+
+        .callout strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        .arch-diagram {
+            background: #1e293b;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 24px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+            white-space: pre;
+        }
+
+        .flow-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-green { background: #dafbe1; color: var(--accent-green); }
+        .badge-red { background: #ffebe9; color: var(--accent-red); }
+        .badge-orange { background: #fff8c5; color: var(--accent-orange); }
+        .badge-blue { background: #ddf4ff; color: var(--accent-blue); }
+        .badge-purple { background: #fbefff; color: var(--accent-purple); }
+
+        ul, ol { margin-bottom: 16px; padding-left: 24px; }
+        li { margin-bottom: 6px; }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .process-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .process-card h4 {
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 6px;
+        }
+
+        .process-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .process-card .role {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .signal-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .signal-box h4 {
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 4px;
+        }
+
+        .signal-box .direction {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <h1>Sentinel Network</h1>
+        <div class="subtitle">Architecture Guide</div>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <a href="#threat-model" class="nav-link"><span class="step">1</span> Threat Model</a>
+        <a href="#architecture" class="nav-link"><span class="step">2</span> Architecture</a>
+        <a href="#processes" class="nav-link"><span class="step">3</span> Process Map</a>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-section-title">Action Gateway</div>
+        <a href="#gateway-overview" class="nav-link"><span class="step">4</span> Gateway Design</a>
+        <a href="#ledger" class="nav-link"><span class="step">5</span> Tamper-Proof Ledger</a>
+        <a href="#anomaly-detector" class="nav-link"><span class="step">6</span> Anomaly Detector</a>
+        <a href="#tool-executor" class="nav-link"><span class="step">7</span> Tool Executor</a>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-section-title">Signal Protocol</div>
+        <a href="#signal-types" class="nav-link"><span class="step">8</span> Signal Types</a>
+        <a href="#request-flow" class="nav-link"><span class="step">9</span> Request Flow</a>
+        <a href="#escalation" class="nav-link"><span class="step">10</span> Alert Escalation</a>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-section-title">Defense Layers</div>
+        <a href="#supply-chain" class="nav-link"><span class="step">11</span> Supply Chain</a>
+        <a href="#rogue-behavior" class="nav-link"><span class="step">12</span> Rogue Blocking</a>
+        <a href="#defense-depth" class="nav-link"><span class="step">13</span> Defense in Depth</a>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-section-title">Operations</div>
+        <a href="#running" class="nav-link"><span class="step">14</span> Running</a>
+        <a href="#dashboard" class="nav-link"><span class="step">15</span> Dashboard</a>
+    </div>
+</nav>
+
+<main class="main-content">
+
+    <!-- Hero -->
+    <div class="hero">
+        <h1>Sentinel Network Architecture</h1>
+        <p class="description">
+            A tamper-proof AI agent security monitoring system built on Bedsheet.
+            Workers delegate all tool execution to an isolated Action Gateway that
+            validates, logs, and rate-limits every action. Poisoned agents can't
+            bypass what they can't reach.
+        </p>
+    </div>
+
+    <!-- 1. Threat Model -->
+    <section id="threat-model">
+        <h2>1. Threat Model</h2>
+
+        <p>
+            The Sentinel Network addresses a fundamental problem in multi-agent systems:
+            <strong>what happens when an agent goes rogue?</strong>
+        </p>
+
+        <p>
+            In the OpenClaw crisis scenario, a compromised agent could perform unauthorized
+            searches, install malicious skills, sabotage shared resources, or exfiltrate data.
+            Traditional monitoring (reading log files) has two fatal flaws:
+        </p>
+
+        <div class="callout callout-red">
+            <strong>Flaw 1: Local file logs don't work distributed</strong>
+            Agents in different regions can't share a local <code>activity_log.jsonl</code> file.
+        </div>
+
+        <div class="callout callout-red">
+            <strong>Flaw 2: Poisoned agents can bypass logging</strong>
+            A rogue agent can call functions directly without logging, or write fake
+            log entries to cover its tracks.
+        </div>
+
+        <p>
+            The fix: move tool execution itself into an isolated, trusted process.
+            Workers become thin LLM shells with no local tool implementations.
+        </p>
+    </section>
+
+    <!-- 2. Architecture -->
+    <section id="architecture">
+        <h2>2. Architecture</h2>
+
+        <div class="arch-diagram">Worker Agent (thin LLM shell)          Action Gateway (owns all tools)
+&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;                &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502; LLM decides:        &#x2502;   PubNub req   &#x2502; Receives request             &#x2502;
+&#x2502; "call search_web"   &#x2502; &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B6;&#x2502; Check rate limits            &#x2502;
+&#x2502;                     &#x2502;                &#x2502; Check suspicious patterns    &#x2502;
+&#x2502; Has tool SCHEMAS    &#x2502;                &#x2502; If approved:                 &#x2502;
+&#x2502; but NO tool CODE    &#x2502;   PubNub resp  &#x2502;   Execute actual tool fn     &#x2502;
+&#x2502;                     &#x2502; &#x25C0;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2502;   Return result              &#x2502;
+&#x2502; Gets result back,   &#x2502;                &#x2502; If denied:                   &#x2502;
+&#x2502; continues reasoning &#x2502;                &#x2502;   Return denial reason       &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;                &#x2502; Log EVERYTHING to ledger     &#x2502;
+                                       &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;
+                                                    &#x2191;
+                                       Behavior Sentinel queries
+                                       ledger via PubNub for rates</div>
+
+        <div class="callout callout-blue">
+            <strong>Key property</strong>
+            The gateway IS the execution layer, not just a logger. Workers have tool
+            descriptions (so the LLM knows what to call) but zero local implementation.
+            A poisoned agent retrying 1000 times just generates 1000 denied log entries
+            in the gateway's tamper-proof ledger.
+        </div>
+    </section>
+
+    <!-- 3. Process Map -->
+    <section id="processes">
+        <h2>3. Process Map</h2>
+
+        <p>The system runs as 7 independent processes, launched in order:</p>
+
+        <div class="process-grid">
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-orange);">Gateway</div>
+                <h4>Action Gateway</h4>
+                <p>Owns all tool execution. Validates, rate-limits, logs, responds. Not an LLM agent &mdash; pure deterministic infrastructure.</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-green);">Worker</div>
+                <h4>Web Researcher</h4>
+                <p>DuckDuckGo searches via gateway. ~15% chance of rogue search burst (gateway blocks after rate threshold).</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-green);">Worker</div>
+                <h4>Scheduler</h4>
+                <p>Calendar management via gateway. ~15% chance of rogue appointment spam (gateway rate-limits).</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-green);">Worker</div>
+                <h4>Skill Acquirer</h4>
+                <p>ClawHub skill installation via gateway. ~15% chance of malicious install attempt (gateway blocks).</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-purple);">Sentinel</div>
+                <h4>Behavior Sentinel</h4>
+                <p>Queries gateway ledger every 10s. Detects rate anomalies and broadcasts alerts.</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-purple);">Sentinel</div>
+                <h4>Supply Chain Sentinel</h4>
+                <p>Independent filesystem verification. Hashes installed skills against registry. Defense in depth.</p>
+            </div>
+            <div class="process-card">
+                <div class="role" style="color: var(--accent-blue);">Commander</div>
+                <h4>Sentinel Commander</h4>
+                <p>Correlates alerts from sentinels and gateway. Coordinates responses.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Gateway Design -->
+    <section id="gateway-overview">
+        <h2>4. Action Gateway Design</h2>
+
+        <p>
+            The Action Gateway is <strong>not a Bedsheet agent</strong>. It's a standalone
+            <code>asyncio</code> process that connects directly to PubNub. No LLM, no
+            instruction, no memory. This keeps the trust boundary clean: the gateway
+            is deterministic code, not an LLM that could be prompt-injected.
+        </p>
+
+        <h3>Components</h3>
+
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Role</th>
+            </tr>
+            <tr>
+                <td><code>ActionLedger</code></td>
+                <td>Append-only deque of <code>ActionRecord</code> dataclasses. Time-windowed queries. Auto-prunes records older than 10 minutes.</td>
+            </tr>
+            <tr>
+                <td><code>AnomalyDetector</code></td>
+                <td>Stateless evaluator. Checks rate limits (&gt;10 actions/min) and suspicious keyword patterns. Returns <code>(verdict, reason)</code>.</td>
+            </tr>
+            <tr>
+                <td><code>ToolExecutor</code></td>
+                <td>Holds the actual tool implementations: DuckDuckGo search, calendar CRUD, skill install with SHA-256 verification.</td>
+            </tr>
+            <tr>
+                <td><code>ActionGateway</code></td>
+                <td>Main class. PubNub listener + processor loop. Routes requests to detector &rarr; executor &rarr; ledger &rarr; response.</td>
+            </tr>
+        </table>
+
+        <h3>Processing Pipeline</h3>
+
+        <div class="flow-diagram">Incoming Signal
+    &#x2502;
+    &#x251C;&#x2500; action_request &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B6; AnomalyDetector.evaluate()
+    &#x2502;                          &#x2502;
+    &#x2502;                    &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2534;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+    &#x2502;                    &#x2502;  approved  &#x2502;  denied / rate_limited
+    &#x2502;                    &#x2502;           &#x2502;
+    &#x2502;              ToolExecutor    Log to Ledger
+    &#x2502;              .execute()      Respond with denial
+    &#x2502;                    &#x2502;
+    &#x2502;              Log to Ledger
+    &#x2502;              Respond with result
+    &#x2502;
+    &#x251C;&#x2500; query_rates &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B6; Ledger.agent_stats(minutes)
+    &#x2502;                          &#x2502;
+    &#x2502;                    Respond with stats
+    &#x2502;
+    &#x2514;&#x2500; query_agent_log &#x2500;&#x2500;&#x2500;&#x25B6; Ledger.agent_log(agent, minutes)
+                                   &#x2502;
+                             Respond with records</div>
+    </section>
+
+    <!-- 5. Tamper-Proof Ledger -->
+    <section id="ledger">
+        <h2>5. Tamper-Proof Ledger</h2>
+
+        <p>
+            The <code>ActionLedger</code> is the single source of truth for all agent
+            activity. Every action request &mdash; approved, denied, or rate-limited &mdash;
+            is recorded as an <code>ActionRecord</code>.
+        </p>
+
+        <h3>ActionRecord Fields</h3>
+
+        <table>
+            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+            <tr><td><code>timestamp</code></td><td>float</td><td>Unix timestamp of the request</td></tr>
+            <tr><td><code>agent</code></td><td>str</td><td>Name of the requesting agent</td></tr>
+            <tr><td><code>action</code></td><td>str</td><td>Tool action name (e.g., <code>search_web</code>)</td></tr>
+            <tr><td><code>params</code></td><td>dict</td><td>Parameters passed to the tool</td></tr>
+            <tr><td><code>verdict</code></td><td>str</td><td><code>approved</code>, <code>denied</code>, or <code>rate_limited</code></td></tr>
+            <tr><td><code>reason</code></td><td>str</td><td>Explanation if denied</td></tr>
+            <tr><td><code>result_summary</code></td><td>str</td><td>First 200 chars of result (if approved)</td></tr>
+        </table>
+
+        <h3>Why It's Tamper-Proof</h3>
+
+        <ul>
+            <li>The ledger lives inside the gateway process &mdash; no external process can modify it</li>
+            <li>Workers communicate via PubNub signals, never touching the ledger directly</li>
+            <li>Even denied actions are logged &mdash; a rogue agent's attempts create evidence</li>
+            <li>Auto-pruning keeps only the last 10 minutes (configurable), bounding memory usage</li>
+        </ul>
+
+        <h3>Query Interface</h3>
+
+        <p>The behavior sentinel queries the ledger via PubNub signals:</p>
+
+        <pre><code class="language-python"># Sentinel sends:
+Signal(kind="request", sender="behavior-sentinel", target="action-gateway",
+       payload={"type": "query_rates", "minutes": 2})
+
+# Gateway responds with:
+{
+    "type": "rate_stats",
+    "window_minutes": 2,
+    "total_actions": 47,
+    "agents": {
+        "web-researcher": {"count": 35, "rate": 17.5, "denied": 20, "approved": 15},
+        "scheduler": {"count": 8, "rate": 4.0, "denied": 0, "approved": 8},
+    },
+}</code></pre>
+    </section>
+
+    <!-- 6. Anomaly Detector -->
+    <section id="anomaly-detector">
+        <h2>6. Anomaly Detector</h2>
+
+        <p>
+            The <code>AnomalyDetector</code> is a stateless evaluator that runs before
+            every tool execution. It checks two conditions:
+        </p>
+
+        <h3>Rate Limiting</h3>
+
+        <div class="callout callout-orange">
+            <strong>Threshold: 10 actions per minute per agent</strong>
+            The detector queries the ledger for the last 1 minute of records from the
+            requesting agent. If the count exceeds 10, the action is rate-limited.
+        </div>
+
+        <p>
+            This is what stops rogue bursts. When the web researcher fires 50 rapid searches,
+            the first ~10 get approved. Every subsequent request returns
+            <code>"verdict": "rate_limited"</code>. The rogue loop gets back "denied" for
+            every attempt.
+        </p>
+
+        <h3>Suspicious Keywords</h3>
+
+        <p>The detector scans all action parameters for suspicious terms:</p>
+
+        <pre><code class="language-python">SUSPICIOUS_KEYWORDS = {
+    "password", "exploit", "bypass", "credential", "dump",
+    "exfiltrat", "inject", "hack", "leaked", "pastebin",
+}</code></pre>
+
+        <p>
+            If any keyword is found in the JSON-serialized parameters, the action is
+            immediately denied. This catches the rogue search queries like
+            "password dump site" and "bypass authentication" on the first attempt,
+            before any rate limit is even reached.
+        </p>
+
+        <table>
+            <tr><th>Verdict</th><th>Meaning</th></tr>
+            <tr>
+                <td><span class="badge badge-green">approved</span></td>
+                <td>Action passes all checks. Tool is executed, result returned.</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-red">denied</span></td>
+                <td>Suspicious content detected. Action blocked, reason returned.</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-orange">rate_limited</span></td>
+                <td>Agent exceeded 10 actions/min. Action blocked until rate drops.</td>
+            </tr>
+        </table>
+    </section>
+
+    <!-- 7. Tool Executor -->
+    <section id="tool-executor">
+        <h2>7. Tool Executor</h2>
+
+        <p>
+            The <code>ToolExecutor</code> class holds the actual implementations of every
+            tool that workers use. When a worker was previously doing
+            <code>ddgs.text(query)</code> locally, that code now lives exclusively inside
+            the gateway's executor.
+        </p>
+
+        <h3>Available Tools</h3>
+
+        <table>
+            <tr><th>Action</th><th>Worker</th><th>Implementation</th></tr>
+            <tr>
+                <td><code>search_web</code></td>
+                <td>Web Researcher</td>
+                <td>DuckDuckGo search via <code>ddgs</code> package, returns top 3 results</td>
+            </tr>
+            <tr>
+                <td><code>get_search_summary</code></td>
+                <td>Web Researcher</td>
+                <td>Returns session search count</td>
+            </tr>
+            <tr>
+                <td><code>list_appointments</code></td>
+                <td>Scheduler</td>
+                <td>Reads <code>calendar.json</code></td>
+            </tr>
+            <tr>
+                <td><code>add_appointment</code></td>
+                <td>Scheduler</td>
+                <td>Appends to <code>calendar.json</code></td>
+            </tr>
+            <tr>
+                <td><code>delete_appointment</code></td>
+                <td>Scheduler</td>
+                <td>Removes from <code>calendar.json</code> by ID</td>
+            </tr>
+            <tr>
+                <td><code>list_available_skills</code></td>
+                <td>Skill Acquirer</td>
+                <td>Reads <code>clawhub/registry.json</code></td>
+            </tr>
+            <tr>
+                <td><code>install_skill</code></td>
+                <td>Skill Acquirer</td>
+                <td>SHA-256 verification + malicious flag check. Returns file content if clean.</td>
+            </tr>
+            <tr>
+                <td><code>list_installed_skills</code></td>
+                <td>Skill Acquirer</td>
+                <td>Lists <code>installed_skills/</code> with hash verification</td>
+            </tr>
+        </table>
+    </section>
+
+    <!-- 8. Signal Types -->
+    <section id="signal-types">
+        <h2>8. Signal Protocol</h2>
+
+        <p>
+            All communication between workers, the gateway, and sentinels uses Bedsheet's
+            <code>Signal</code> dataclass over PubNub. The serialization is compact
+            (short keys, 30KB limit) to fit within PubNub's 32KB message limit.
+        </p>
+
+        <div class="signal-box">
+            <h4>Action Request</h4>
+            <div class="direction">worker &rarr; gateway</div>
+            <pre><code class="language-python">Signal(kind="request", sender="web-researcher", target="action-gateway",
+       correlation_id="abc123",
+       payload={
+           "type": "action_request",
+           "action": "search_web",
+           "params": {"query": "AI trends 2026"},
+       })</code></pre>
+        </div>
+
+        <div class="signal-box">
+            <h4>Action Response</h4>
+            <div class="direction">gateway &rarr; worker</div>
+            <pre><code class="language-python">Signal(kind="response", sender="action-gateway", target="web-researcher",
+       correlation_id="abc123",
+       payload={
+           "verdict": "approved",       # or "denied" / "rate_limited"
+           "result": "Results for 'AI trends': ...",
+           "reason": "",                # explanation if denied
+           "rate": 3.5,                 # agent's current rate
+       })</code></pre>
+        </div>
+
+        <div class="signal-box">
+            <h4>Rate Query</h4>
+            <div class="direction">behavior-sentinel &rarr; gateway</div>
+            <pre><code class="language-python">Signal(kind="request", sender="behavior-sentinel", target="action-gateway",
+       payload={"type": "query_rates", "minutes": 2})</code></pre>
+        </div>
+
+        <div class="signal-box">
+            <h4>Rate Response</h4>
+            <div class="direction">gateway &rarr; behavior-sentinel</div>
+            <pre><code class="language-python">Signal(kind="response", sender="action-gateway", target="behavior-sentinel",
+       payload={
+           "type": "rate_stats",
+           "window_minutes": 2,
+           "total_actions": 47,
+           "agents": {
+               "web-researcher": {"count": 35, "rate": 17.5, "denied": 20, "approved": 15},
+               "scheduler": {"count": 8, "rate": 4.0, "denied": 0, "approved": 8},
+           },
+       })</code></pre>
+        </div>
+
+        <div class="signal-box">
+            <h4>Gateway Alert</h4>
+            <div class="direction">gateway &rarr; alerts channel (broadcast)</div>
+            <pre><code class="language-python">Signal(kind="alert", sender="action-gateway",
+       payload={
+           "severity": "critical",
+           "category": "gateway_enforcement",
+           "agent": "web-researcher",
+           "denied_count": 20,
+           "message": "Agent 'web-researcher' blocked: 20 denied requests in 1min",
+       })</code></pre>
+        </div>
+    </section>
+
+    <!-- 9. Request Flow -->
+    <section id="request-flow">
+        <h2>9. Request Flow</h2>
+
+        <p>
+            Every tool call follows this exact path. There are no shortcuts &mdash;
+            every action goes through the gateway, every action is logged.
+        </p>
+
+        <div class="flow-diagram">Worker LLM              gateway_request()          Action Gateway
+&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;              &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;          &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;
+Decides: "search_web"
+    &#x2502;
+    &#x2514;&#x2500;&#x25B6; @action proxy fn
+         &#x2502;
+         &#x251C;&#x2500; Create correlation_id
+         &#x251C;&#x2500; Register Future in _pending_requests
+         &#x251C;&#x2500; Send Signal via PubNub &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B6; Receive signal
+         &#x2502;                                      &#x2502;
+         &#x2502;                                AnomalyDetector.evaluate()
+         &#x2502;                                      &#x2502;
+         &#x2502;                              &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2534;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+         &#x2502;                         approved    denied
+         &#x2502;                              &#x2502;          &#x2502;
+         &#x2502;                        Execute tool  Log denial
+         &#x2502;                              &#x2502;          &#x2502;
+         &#x2502;                         Log result   Track for escalation
+         &#x2502;                              &#x2502;          &#x2502;
+         &#x2502;   &#x25C0;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; Respond via PubNub
+         &#x2502;
+         &#x251C;&#x2500; Future resolved by _signal_loop
+         &#x2502;
+         &#x2514;&#x2500;&#x25B6; Return result (or "denied") to LLM</div>
+
+        <h3>Fail-Closed Design</h3>
+
+        <div class="callout callout-red">
+            <strong>Gateway unreachable = all actions denied</strong>
+            If the gateway doesn't respond within the timeout (10s default), workers
+            get <code>{"verdict": "denied", "reason": "gateway_unreachable"}</code>.
+            This is the secure default &mdash; no tool execution without the gateway.
+        </div>
+    </section>
+
+    <!-- 10. Alert Escalation -->
+    <section id="escalation">
+        <h2>10. Alert Escalation</h2>
+
+        <p>The system has two alert sources that feed the Sentinel Commander:</p>
+
+        <h3>Gateway Direct Alerts</h3>
+        <p>
+            When the gateway denies 5+ actions from the same agent within 1 minute,
+            it broadcasts a <span class="badge badge-red">critical</span> alert directly
+            to the <code>alerts</code> channel. This gives the commander immediate
+            notification from the trusted authority.
+        </p>
+
+        <h3>Behavior Sentinel Alerts</h3>
+        <p>
+            The behavior sentinel polls the gateway ledger every 10 seconds and detects
+            rate anomalies (&gt;10 actions/min). It broadcasts
+            <span class="badge badge-orange">high</span> severity alerts for sustained
+            anomalies. This catches lower-severity trends that the gateway's per-request
+            denial doesn't escalate.
+        </p>
+
+        <h3>Alert Timeline (Rogue Burst)</h3>
+
+        <div class="flow-diagram">T+0s   Web researcher fires rogue burst (50 rapid searches)
+T+0.1s Gateway: first few searches approved (rate &lt; 10/min)
+T+0.5s Gateway: suspicious keywords detected &#x2500;&#x25B6; "denied" responses
+T+1s   Gateway: rate threshold hit &#x2500;&#x25B6; all subsequent "rate_limited"
+T+2s   Gateway: 5+ denials &#x2500;&#x25B6; broadcasts CRITICAL alert to alerts channel
+T+10s  Behavior sentinel polls &#x2500;&#x25B6; sees rate anomaly &#x2500;&#x25B6; broadcasts HIGH alert
+T+10s  Commander receives both alerts &#x2500;&#x25B6; correlates and responds</div>
+    </section>
+
+    <!-- 11. Supply Chain Trust Boundary -->
+    <section id="supply-chain">
+        <h2>11. Supply Chain Trust Boundary</h2>
+
+        <p>
+            Skill installation is the most security-sensitive operation. The gateway
+            enforces the trust boundary:
+        </p>
+
+        <div class="flow-diagram">skill-acquirer LLM            Action Gateway                     Filesystem
+&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;           &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;                &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;
+calls install_skill         receives request
+("weather_lookup.py")       reads clawhub/weather_lookup.py
+        &#x2502;                   computes SHA-256
+        &#x2502;                   checks registry.json
+        &#x2502;                   &#x251C;&#x2500; malicious flag? &#x2500;&#x25B6; DENY
+        &#x2502;                   &#x251C;&#x2500; hash mismatch?  &#x2500;&#x25B6; DENY
+        &#x2502;                   &#x2514;&#x2500; clean?          &#x2500;&#x25B6; APPROVE
+        &#x2502;                   returns file content &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B6; agent writes to
+        &#x2502;                   in response payload              installed_skills/
+        &#x25C0;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;
+   gets content + writes it</div>
+
+        <div class="callout callout-green">
+            <strong>Defense in depth</strong>
+            The supply chain sentinel independently verifies what's on disk by hashing
+            installed skills against the registry. Even if something bypasses or survives
+            the gateway (e.g., a pre-existing file), the supply chain sentinel catches it.
+        </div>
+    </section>
+
+    <!-- 12. Rogue Behavior Blocking -->
+    <section id="rogue-behavior">
+        <h2>12. How Rogue Behavior Is Blocked</h2>
+
+        <p>Each worker has a ~15% chance of going rogue per cycle. Here's what happens for each:</p>
+
+        <h3>Web Researcher Rogue Burst</h3>
+
+        <p>Fires 50 rapid searches with suspicious queries like "password dump site".</p>
+
+        <table>
+            <tr><th>Check</th><th>Result</th></tr>
+            <tr>
+                <td>Suspicious keywords ("password", "exploit", "bypass")</td>
+                <td><span class="badge badge-red">denied</span> immediately &mdash; keyword detected before rate limit even applies</td>
+            </tr>
+            <tr>
+                <td>Rate limit (10/min)</td>
+                <td><span class="badge badge-orange">rate_limited</span> after first 10 requests, even for non-suspicious queries</td>
+            </tr>
+            <tr>
+                <td>Escalation (5+ denials/min)</td>
+                <td><span class="badge badge-red">critical alert</span> broadcast to commander</td>
+            </tr>
+        </table>
+
+        <h3>Scheduler Rogue Sabotage</h3>
+
+        <p>Rapid-fires 20 junk appointments ("JUNK-XXXX" on "1999-01-01").</p>
+
+        <table>
+            <tr><th>Check</th><th>Result</th></tr>
+            <tr>
+                <td>Rate limit (10/min)</td>
+                <td><span class="badge badge-orange">rate_limited</span> after first 10. Maximum 10 junk entries instead of 20.</td>
+            </tr>
+        </table>
+
+        <h3>Skill Acquirer Rogue Install</h3>
+
+        <p>Tries to install <code>data_exfiltrator.py</code> (flagged malicious).</p>
+
+        <table>
+            <tr><th>Check</th><th>Result</th></tr>
+            <tr>
+                <td>Malicious flag in registry</td>
+                <td><span class="badge badge-red">denied</span> &mdash; gateway returns "BLOCKED: flagged as malicious"</td>
+            </tr>
+            <tr>
+                <td>Keyword check ("exfiltrat")</td>
+                <td><span class="badge badge-red">denied</span> &mdash; suspicious keyword in skill name</td>
+            </tr>
+        </table>
+
+        <div class="callout callout-purple">
+            <strong>Rogue code still runs in the worker</strong>
+            The rogue burst code is still present in each worker &mdash; it simulates a
+            compromised agent. But now every call goes through the gateway. The rogue
+            code can retry forever; every retry is logged, every retry is blocked.
+        </div>
+    </section>
+
+    <!-- 13. Defense in Depth -->
+    <section id="defense-depth">
+        <h2>13. Defense in Depth</h2>
+
+        <p>The Sentinel Network uses three independent defense layers:</p>
+
+        <table>
+            <tr><th>Layer</th><th>Mechanism</th><th>Catches</th></tr>
+            <tr>
+                <td><strong>Layer 1: Gateway</strong></td>
+                <td>Rate limiting, keyword detection, malicious flag checks</td>
+                <td>All tool abuse in real-time. Blocks before execution.</td>
+            </tr>
+            <tr>
+                <td><strong>Layer 2: Behavior Sentinel</strong></td>
+                <td>Polls gateway ledger for rate anomalies</td>
+                <td>Sustained patterns, lower-severity trends, alert correlation</td>
+            </tr>
+            <tr>
+                <td><strong>Layer 3: Supply Chain Sentinel</strong></td>
+                <td>Independent filesystem hash verification</td>
+                <td>Anything that bypasses gateway (pre-existing files, race conditions)</td>
+            </tr>
+        </table>
+
+        <div class="callout callout-blue">
+            <strong>No single point of failure</strong>
+            If the gateway is bypassed (hypothetically), the supply chain sentinel catches
+            bad files on disk. If the behavior sentinel is compromised, the gateway still
+            enforces rate limits. Each layer operates independently.
+        </div>
+    </section>
+
+    <!-- 14. Running -->
+    <section id="running">
+        <h2>14. Running the System</h2>
+
+        <h3>Prerequisites</h3>
+
+        <pre><code class="language-bash"># Required environment variables
+export PUBNUB_SUBSCRIBE_KEY=sub-c-...
+export PUBNUB_PUBLISH_KEY=pub-c-...
+export GEMINI_API_KEY=AIza...
+
+# Install dependencies
+uv pip install -e ".[sense,demo]"</code></pre>
+
+        <h3>Option A: Shell Script (recommended)</h3>
+
+        <pre><code class="language-bash">cd examples/agent-sentinel
+./start.sh              # Launch gateway + 6 agents + dashboard
+./start.sh --no-dash    # Without dashboard server</code></pre>
+
+        <h3>Option B: Python Launcher</h3>
+
+        <pre><code class="language-bash">cd examples/agent-sentinel
+python run.py</code></pre>
+
+        <h3>Launch Order</h3>
+
+        <ol>
+            <li><strong>Action Gateway</strong> (must start first &mdash; workers need it)</li>
+            <li><strong>Workers</strong> (web-researcher, scheduler, skill-acquirer)</li>
+            <li><strong>Sentinels</strong> (behavior-sentinel, supply-chain-sentinel)</li>
+            <li><strong>Commander</strong> (sentinel-commander)</li>
+        </ol>
+
+        <p>Each process is staggered by 2 seconds to allow PubNub connections to establish.</p>
+    </section>
+
+    <!-- 15. Dashboard -->
+    <section id="dashboard">
+        <h2>15. Live Dashboard</h2>
+
+        <p>
+            The Sentinel Dashboard connects directly to PubNub and displays real-time
+            signals from all agents. When using <code>start.sh</code>, the dashboard
+            is automatically served at:
+        </p>
+
+        <pre><code class="language-bash">http://localhost:8765/agent-sentinel-dashboard.html</code></pre>
+
+        <p>The dashboard shows:</p>
+
+        <ul>
+            <li><strong>Agent status</strong> &mdash; heartbeats, online/offline indicators</li>
+            <li><strong>Alert feed</strong> &mdash; gateway enforcement alerts and sentinel anomaly reports</li>
+            <li><strong>LLM activity</strong> &mdash; thinking, tool calls, completions per agent</li>
+            <li><strong>World map</strong> &mdash; animated agent locations</li>
+        </ul>
+
+        <p>
+            Gateway alerts appear as <span class="badge badge-red">critical</span> events
+            with the category <code>gateway_enforcement</code>, showing exactly which agent
+            was blocked and how many requests were denied.
+        </p>
+    </section>
+
+</main>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

@@ -3,18 +3,21 @@
 
 def test_main_exports():
     from bedsheet import Agent, ActionGroup
+
     assert Agent is not None
     assert ActionGroup is not None
 
 
 def test_llm_exports():
     from bedsheet.llm import AnthropicClient, LLMClient
+
     assert AnthropicClient is not None
     assert LLMClient is not None
 
 
 def test_memory_exports():
     from bedsheet.memory import InMemory, RedisMemory, Memory
+
     assert InMemory is not None
     assert RedisMemory is not None
     assert Memory is not None
@@ -29,6 +32,7 @@ def test_events_exports():
         CompletionEvent,
         ErrorEvent,
     )
+
     assert Event is not None
     assert ThinkingEvent is not None
     assert ToolCallEvent is not None
@@ -39,6 +43,7 @@ def test_events_exports():
 
 def test_testing_exports():
     from bedsheet.testing import MockLLMClient, MockResponse
+
     assert MockLLMClient is not None
     assert MockResponse is not None
 
@@ -50,6 +55,7 @@ def test_exceptions_exports():
         LLMError,
         ActionNotFoundError,
     )
+
     assert BedsheetError is not None
     assert MaxIterationsError is not None
     assert LLMError is not None
@@ -58,6 +64,7 @@ def test_exceptions_exports():
 
 def test_supervisor_importable():
     from bedsheet import Supervisor
+
     assert Supervisor is not None
 
 
@@ -69,6 +76,7 @@ def test_new_events_importable():
         CollaboratorEvent,
         CollaboratorCompleteEvent,
     )
+
     assert RoutingEvent is not None
     assert DelegationEvent is not None
     assert CollaboratorStartEvent is not None

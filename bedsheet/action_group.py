@@ -1,7 +1,16 @@
 """ActionGroup and Action system for defining agent tools."""
+
 import inspect
 from dataclasses import dataclass
-from typing import Any, Callable, Awaitable
+from typing import (
+    Annotated,
+    Any,
+    Awaitable,
+    Callable,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from bedsheet.llm.base import ToolDefinition
 
@@ -18,9 +27,16 @@ TYPE_MAP: dict[type, str] = {
 
 
 def generate_schema(fn: Callable) -> dict[str, Any]:
-    """Generate a JSON Schema from a function's type hints."""
+    """Generate a JSON Schema from a function's type hints.
+
+    Supports typing.Annotated for per-parameter descriptions:
+        def fn(name: Annotated[str, "User's full name"]) -> str:
+
+    The first str metadata in Annotated is used as the JSON Schema
+    "description". Non-string metadata is ignored.
+    """
     sig = inspect.signature(fn)
-    hints = fn.__annotations__
+    hints = get_type_hints(fn, include_extras=True)
 
     properties: dict[str, Any] = {}
     required: list[str] = []
@@ -29,8 +45,18 @@ def generate_schema(fn: Callable) -> dict[str, Any]:
         if name in ("self", "cls"):
             continue
 
-        # Get type hint
         type_hint = hints.get(name, str)
+        description: str | None = None
+
+        # Unwrap Annotated[T, ...] — extract base type and description
+        if get_origin(type_hint) is Annotated:
+            args = get_args(type_hint)
+            type_hint = args[0]
+            for meta in args[1:]:
+                if isinstance(meta, str):
+                    description = meta
+                    break
+
         if type_hint not in TYPE_MAP:
             raise TypeError(
                 f"Unsupported type {type_hint} for parameter '{name}'. "
@@ -40,7 +66,9 @@ def generate_schema(fn: Callable) -> dict[str, Any]:
         json_type = TYPE_MAP[type_hint]
         prop: dict[str, Any] = {"type": json_type}
 
-        # Check if parameter has a default value
+        if description is not None:
+            prop["description"] = description
+
         if param.default is inspect.Parameter.empty:
             required.append(name)
         else:
@@ -58,6 +86,7 @@ def generate_schema(fn: Callable) -> dict[str, Any]:
 @dataclass
 class Action:
     """An action that can be invoked by the agent."""
+
     name: str
     description: str
     fn: Callable[..., Awaitable[Any]]
@@ -87,7 +116,10 @@ class ActionGroup:
         parameters: dict[str, Any] | None = None,
     ) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
         """Decorator to register an action."""
-        def decorator(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+
+        def decorator(
+            fn: Callable[..., Awaitable[Any]],
+        ) -> Callable[..., Awaitable[Any]]:
             # Use explicit parameters or infer from function
             schema = parameters if parameters is not None else generate_schema(fn)
 
@@ -99,6 +131,7 @@ class ActionGroup:
             )
             self._actions[name] = action
             return fn
+
         return decorator
 
     def get_action(self, name: str) -> Action | None:

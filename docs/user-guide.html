@@ -651,6 +651,46 @@ The weather in Tokyo is currently 68°F and partly cloudy.</div>
                     <li>The LLM generates a natural language response</li>
                 </ol>
             </div>
+
+            <h3>Parameter Descriptions with Annotated</h3>
+
+            <p>Bedsheet automatically introspects your function signatures to build tool schemas for the LLM. For simple tools, plain type hints are enough. But when you want to give the LLM extra context about what each parameter means, use <code>Annotated</code>:</p>
+
+            <pre><code class="language-python">from bedsheet import Agent, ActionGroup, Annotated
+
+tools = ActionGroup(name="CalendarTools")
+
+@tools.action("add_appointment", "Add a new appointment to the calendar")
+async def add_appointment(
+    title: Annotated[str, "Appointment title"],
+    date: Annotated[str, "Date in YYYY-MM-DD format"],
+    time: Annotated[str, "Time in HH:MM format"] = "09:00",
+) -> str:
+    # Your implementation here
+    return f"Added '{title}' on {date} at {time}"</code></pre>
+
+            <p>The first string in the <code>Annotated</code> metadata becomes the parameter's <code>description</code> in the JSON Schema sent to the LLM. Plain type hints (without <code>Annotated</code>) still work &mdash; they just won't have descriptions. You can mix both styles freely.</p>
+
+            <div class="info-box note">
+                <div class="info-box-title">Ruff users: known F722/F821 false positives</div>
+                <p>The <a href="https://docs.astral.sh/ruff/">ruff</a> linter treats string metadata inside <code>Annotated</code> as forward references and flags them as syntax errors (F722) or undefined names (F821). This is a known ruff limitation &mdash; the strings are valid <code>Annotated</code> metadata, not forward references. Add this to your <code>pyproject.toml</code>:</p>
+                <pre><code class="language-toml">[tool.ruff.lint.per-file-ignores]
+"your_agents/**/*.py" = ["F722", "F821"]</code></pre>
+            </div>
+
+            <p>If you need full control over the schema (e.g., for complex nested types), you can still pass an explicit <code>parameters</code> dict as an escape hatch:</p>
+
+            <pre><code class="language-python">@tools.action("search", "Search for items", parameters={
+    "type": "object",
+    "properties": {
+        "query": {"type": "string", "description": "Search query"},
+        "limit": {"type": "integer", "description": "Max results", "default": 10},
+    },
+    "required": ["query"],
+})
+async def search(query: str, limit: int = 10) -> str:
+    ...</code></pre>
+
         </section>
 
         <!-- Section 4: Events -->

@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Sentinel Network - Live Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.8.3.0.js"></script>
+    <style>
+        :root {
+            --bg-deep: #141c2b;
+            --bg-panel: rgba(24, 34, 56, 0.92);
+            --bg-panel-solid: #1a2540;
+            --border-glow: rgba(0, 200, 255, 0.3);
+            --border-dim: rgba(255, 255, 255, 0.12);
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.5);
+            --red: #ff4d6d;
+            --red-dim: rgba(255, 77, 109, 0.5);
+            --amber: #ffc030;
+            --amber-dim: rgba(255, 192, 48, 0.5);
+            --green: #00ef82;
+            --green-dim: rgba(0, 239, 130, 0.5);
+            --purple: #c49fff;
+            --text-primary: #f0f4fa;
+            --text-secondary: #9aacbf;
+            --text-dim: #6a7d94;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        /* Layout */
+        .app {
+            display: grid;
+            grid-template-rows: 48px 1fr 180px;
+            grid-template-columns: 1fr 340px;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border-dim);
+        }
+
+        .topbar {
+            grid-column: 1 / -1;
+            background: var(--bg-panel-solid);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-glow);
+        }
+
+        .map-area {
+            position: relative;
+            background: var(--bg-deep);
+            overflow: hidden;
+        }
+
+        .map-viewport {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            transition: transform 0.25s ease-out;
+        }
+
+        .map-area .world-map-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            pointer-events: none;
+        }
+
+        .map-area .map-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .map-area .map-svg .agent-node {
+            pointer-events: auto;
+        }
+
+        .map-interact {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            cursor: grab;
+        }
+
+        .map-interact.grabbing {
+            cursor: grabbing;
+        }
+
+        .map-controls {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .map-controls button {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .map-controls button:hover {
+            background: var(--bg-panel-solid);
+            border-color: var(--border-glow);
+        }
+
+        .sidebar-right {
+            background: var(--bg-panel-solid);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-left: 1px solid var(--border-glow);
+        }
+
+        .signal-log {
+            grid-column: 1 / -1;
+            background: var(--bg-panel-solid);
+            border-top: 1px solid var(--border-glow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .logo {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .logo span { color: var(--text-dim); font-weight: 400; }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .status-dot.live {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red-dim);
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green-dim);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .topbar-stats {
+            margin-left: auto;
+            display: flex;
+            gap: 24px;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cyan);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value.red { color: var(--red); }
+        .stat-value.amber { color: var(--amber); }
+        .stat-value.green { color: var(--green); }
+
+        /* Connection Panel */
+        .connection-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 23, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+
+        .connection-overlay.hidden { display: none; }
+
+        .connection-panel {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 40px;
+            width: 440px;
+            text-align: center;
+        }
+
+        .connection-panel h2 {
+            font-family: var(--font-sans);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .connection-panel .subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: var(--bg-deep);
+            border: 1px solid var(--border-glow);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.15);
+        }
+
+        .input-group input::placeholder { color: var(--text-dim); }
+
+        .btn-connect {
+            background: var(--cyan);
+            color: var(--bg-deep);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-connect:hover { filter: brightness(1.15); }
+        .btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .connection-error {
+            color: var(--red);
+            font-size: 15px;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        /* World Map — overlay SVG must match background map dimensions */
+        .map-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Country paths styled in world-map.svg <style> block */
+
+        .agent-node { cursor: pointer; }
+
+        .agent-node-ring {
+            fill: none;
+            stroke: var(--text-dim);
+            stroke-width: 1;
+            opacity: 0.5;
+        }
+
+        .agent-node-core {
+            fill: var(--text-dim);
+            opacity: 0.5;
+        }
+
+        .agent-node.online .agent-node-ring { stroke: var(--green); opacity: 1; }
+        .agent-node.online .agent-node-core { fill: var(--green); opacity: 1; }
+        .agent-node.sentinel .agent-node-ring { stroke: var(--purple); }
+        .agent-node.sentinel .agent-node-core { fill: var(--purple); }
+        .agent-node.gateway .agent-node-ring { stroke: var(--amber); }
+        .agent-node.gateway .agent-node-core { fill: var(--amber); }
+        .agent-node.commander .agent-node-ring { stroke: var(--cyan); }
+        .agent-node.commander .agent-node-core { fill: var(--cyan); }
+
+        .agent-node.quarantined .agent-node-ring { stroke: var(--red) !important; opacity: 1 !important; }
+        .agent-node.quarantined .agent-node-core { fill: var(--red) !important; opacity: 1 !important; }
+
+        .agent-node-label {
+            fill: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 8px;
+            text-anchor: middle;
+        }
+
+        .agent-node.online .agent-node-label { fill: var(--text-primary); }
+
+        @keyframes node-pulse {
+            0% { r: 6; opacity: 0.6; }
+            100% { r: 20; opacity: 0; }
+        }
+
+        .pulse-ring { fill: none; stroke-width: 1.5; opacity: 0; }
+        .pulse-ring.active { animation: node-pulse 1.5s ease-out; }
+
+        .signal-line {
+            fill: none;
+            stroke-width: 2;
+            stroke-dasharray: 6 4;
+            opacity: 0;
+        }
+
+        .signal-line.active {
+            opacity: 1;
+            animation: signal-travel 1.2s ease-out forwards;
+        }
+
+        @keyframes signal-travel {
+            0% { stroke-dashoffset: 100; opacity: 0.8; }
+            80% { stroke-dashoffset: 0; opacity: 0.6; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        @keyframes broadcast-pulse {
+            0% { r: 5; opacity: 0.8; stroke-width: 3; }
+            100% { r: 80; opacity: 0; stroke-width: 0.5; }
+        }
+
+        .broadcast-ring { fill: none; stroke: var(--red); opacity: 0; }
+        .broadcast-ring.active { animation: broadcast-pulse 2s ease-out; }
+
+        /* Right Sidebar */
+        .sidebar-section {
+            border-bottom: 1px solid var(--border-dim);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section.alerts { flex: 1; min-height: 0; }
+        .sidebar-section.agents { flex: 1; min-height: 0; }
+        .sidebar-section.stats { flex: 0 0 auto; }
+
+        .section-header {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-dim);
+            flex-shrink: 0;
+        }
+
+        .section-body {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Alert cards */
+        .alert-card {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-dim);
+            animation: card-in 0.3s ease-out;
+        }
+
+        @keyframes card-in {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .alert-card .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .alert-card .alert-time { font-size: 13px; color: var(--text-dim); }
+
+        .severity-badge {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+
+        .severity-badge.critical { background: var(--red-dim); color: var(--red); }
+        .severity-badge.high { background: var(--amber-dim); color: var(--amber); }
+        .severity-badge.medium { background: var(--cyan-dim); color: var(--cyan); }
+        .severity-badge.low { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+
+        .alert-card .alert-sender { font-size: 14px; color: var(--text-secondary); }
+        .alert-card .alert-message { font-size: 14px; color: var(--text-primary); line-height: 1.5; margin-top: 2px; }
+
+        /* Agent status cards */
+        .agent-card {
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agent-card .agent-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .agent-card .agent-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green-dim); }
+        .agent-card .agent-dot.quarantined { background: var(--red); box-shadow: 0 0 6px var(--red-dim); }
+
+        .agent-card .agent-info { flex: 1; min-width: 0; }
+
+        .agent-card .agent-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-card .agent-region { font-size: 9px; color: var(--text-dim); }
+
+        .agent-card .role-badge {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+
+        .role-badge.gateway { background: rgba(255,192,48,0.15); color: var(--amber); }
+        .role-badge.worker { background: rgba(0,200,255,0.1); color: var(--cyan); }
+        .role-badge.sentinel { background: rgba(179,136,255,0.15); color: var(--purple); }
+        .role-badge.commander { background: rgba(255,59,92,0.1); color: var(--red); }
+
+        /* Network stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border-dim);
+        }
+
+        .stats-cell {
+            background: var(--bg-panel-solid);
+            padding: 8px 16px;
+            text-align: center;
+        }
+
+        .stats-cell .stats-value { font-size: 18px; font-weight: 600; }
+        .stats-cell .stats-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Signal Log */
+        .log-header {
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-dim);
+            flex-shrink: 0;
+        }
+
+        .log-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 20px;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .log-entry { white-space: nowrap; animation: log-in 0.2s ease-out; }
+
+        @keyframes log-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .log-time { color: var(--text-dim); }
+        .log-kind { font-weight: 500; }
+        .log-kind.heartbeat { color: var(--green); }
+        .log-kind.alert { color: var(--red); }
+        .log-kind.request { color: var(--cyan); }
+        .log-kind.response { color: var(--cyan); }
+        .log-kind.claim { color: var(--amber); }
+        .log-kind.event { color: var(--purple); }
+        .log-sender { color: var(--text-secondary); }
+        .log-detail { color: var(--text-dim); }
+
+        .empty-state {
+            padding: 20px 16px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Agent cards are clickable */
+        .agent-card { cursor: pointer; transition: background 0.15s; }
+        .agent-card:hover { background: rgba(0, 200, 255, 0.06); }
+
+        /* ── LLM Activity Panel ── */
+        .llm-panel-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 23, 0.55);
+            backdrop-filter: blur(2px);
+            z-index: 900;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .llm-panel-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .llm-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 480px;
+            height: 100vh;
+            background: var(--bg-panel-solid);
+            border-left: 1px solid var(--border-glow);
+            z-index: 910;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: -8px 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .llm-panel.open {
+            transform: translateX(0);
+        }
+
+        .llm-panel-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-glow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .llm-panel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green-dim);
+            flex-shrink: 0;
+        }
+
+        .llm-panel-title {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .llm-panel-btn {
+            background: none;
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 3px 8px;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s;
+            flex-shrink: 0;
+        }
+
+        .llm-panel-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .llm-panel-btn.active { border-color: var(--cyan); color: var(--cyan); }
+
+        .llm-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            transition: color 0.15s;
+        }
+
+        .llm-panel-close:hover { color: var(--text-primary); }
+
+        .llm-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            min-height: 0;
+        }
+
+        .llm-panel-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        /* ── Floating Mini-Windows (all-agents overlay) ── */
+        .mini-windows-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* SVG layer for connector lines from agent dots to windows */
+        .mini-connectors-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .connector-line {
+            fill: none;
+            stroke-width: 1.2;
+            stroke-dasharray: 6 4;
+            opacity: 0;
+            animation: connector-in 0.5s ease-out forwards;
+        }
+
+        @keyframes connector-in {
+            from { opacity: 0; }
+            to   { opacity: 0.55; }
+        }
+
+        /* Animated flow overlay */
+        .connector-flow {
+            fill: none;
+            stroke-width: 1.2;
+            stroke-dasharray: 4 10;
+            opacity: 0;
+            animation: connector-flow-anim 1.2s linear infinite;
+        }
+
+        @keyframes connector-flow-anim {
+            from { stroke-dashoffset: 14; opacity: 0.4; }
+            to   { stroke-dashoffset: 0; opacity: 0.4; }
+        }
+
+        /* Dot at the agent end */
+        .connector-dot {
+            opacity: 0;
+            animation: connector-dot-in 0.3s ease-out 0.3s forwards;
+        }
+
+        @keyframes connector-dot-in {
+            from { opacity: 0; }
+            to   { opacity: 0.8; }
+        }
+
+        .agent-mini-win {
+            position: absolute;
+            width: 210px;
+            height: 160px;
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--border-glow);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 200, 255, 0.06);
+            opacity: 0;
+            animation: mini-win-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            overflow: hidden;
+        }
+
+        @keyframes mini-win-in {
+            from { opacity: 0; transform: scale(0.88) translateY(4px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .agent-mini-win .mini-win-header {
+            padding: 5px 8px;
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .agent-mini-win .mini-win-header:hover {
+            background: rgba(0, 200, 255, 0.06);
+        }
+
+        .agent-mini-win .mini-win-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .agent-mini-win .mini-win-title {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .agent-mini-win .mini-win-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 6px;
+            min-height: 0;
+            font-size: 10px;
+        }
+
+        .agent-mini-win .mini-win-body::-webkit-scrollbar { width: 3px; }
+        .agent-mini-win .mini-win-body::-webkit-scrollbar-track { background: transparent; }
+        .agent-mini-win .mini-win-body::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+
+        .agent-mini-win .mini-win-empty {
+            padding: 16px 8px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 10px;
+            line-height: 1.6;
+        }
+
+        .agent-mini-win .mini-event {
+            padding: 3px 6px;
+            margin-bottom: 3px;
+            border-radius: 4px;
+            border-left: 2px solid var(--text-dim);
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .agent-mini-win .mini-event.thinking   { border-left-color: var(--purple); }
+        .agent-mini-win .mini-event.tool_call   { border-left-color: var(--amber); }
+        .agent-mini-win .mini-event.tool_result  { border-left-color: var(--green); }
+        .agent-mini-win .mini-event.completion  { border-left-color: var(--cyan); }
+        .agent-mini-win .mini-event.error       { border-left-color: var(--red); }
+
+        .agent-mini-win .mini-event-badge {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-secondary);
+        }
+
+        .agent-mini-win .mini-event-text {
+            color: var(--text-dim);
+            font-size: 9px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 190px;
+        }
+
+        /* Toggle button in topbar */
+        .btn-mini-windows {
+            background: none;
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-mini-windows:hover {
+            border-color: var(--border-glow);
+            color: var(--text-primary);
+        }
+
+        .btn-mini-windows.active {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        /* Event cards */
+        .llm-event {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            border-left: 3px solid var(--text-dim);
+            background: rgba(255, 255, 255, 0.02);
+            animation: card-in 0.25s ease-out;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .llm-event-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
+        }
+
+        .llm-event-badge {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+
+        .llm-event-time {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+
+        .llm-event-text {
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Event type colors */
+        .llm-event.thinking {
+            border-left-color: var(--purple);
+        }
+        .llm-event.thinking .llm-event-badge {
+            background: rgba(196, 159, 255, 0.15);
+            color: var(--purple);
+        }
+
+        .llm-event.tool_call {
+            border-left-color: var(--cyan);
+        }
+        .llm-event.tool_call .llm-event-badge {
+            background: rgba(0, 212, 255, 0.12);
+            color: var(--cyan);
+        }
+
+        .llm-event.tool_result {
+            border-left-color: var(--green);
+        }
+        .llm-event.tool_result .llm-event-badge {
+            background: rgba(0, 239, 130, 0.12);
+            color: var(--green);
+        }
+
+        .llm-event.completion {
+            border-left-color: var(--amber);
+        }
+        .llm-event.completion .llm-event-badge {
+            background: rgba(255, 192, 48, 0.12);
+            color: var(--amber);
+        }
+
+        .llm-event.error {
+            border-left-color: var(--red);
+        }
+        .llm-event.error .llm-event-badge {
+            background: rgba(255, 77, 109, 0.12);
+            color: var(--red);
+        }
+
+        .llm-event.observation {
+            border-left-color: var(--cyan-dim);
+        }
+        .llm-event.observation .llm-event-badge {
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--cyan-dim);
+        }
+
+        .llm-event-tool-name {
+            color: var(--cyan);
+            font-weight: 500;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+    </style>
+    <script src="sentinel-config.js"></script>
+</head>
+<body>
+    <!-- Connection Overlay -->
+    <div class="connection-overlay hidden" id="connectionOverlay">
+        <div class="connection-panel">
+            <h2>Sentinel Network</h2>
+            <p class="subtitle">
+                Enter your PubNub subscribe key to connect to a running
+                Agent Sentinel network and observe signals in real time.
+            </p>
+            <div class="input-group">
+                <input type="text" id="subscribeKeyInput" placeholder="sub-c-your-subscribe-key" spellcheck="false" value="">
+                <button class="btn-connect" id="connectBtn" onclick="connectToPubNub()">Connect</button>
+            </div>
+            <div class="connection-error" id="connectionError"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="logo">Bedsheet <span>Sentinel Network</span></div>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <button class="btn-mini-windows" id="btnMiniWindows" title="Toggle all agent activity windows on map">All Agents</button>
+            <div class="topbar-stats">
+                <div class="stat">
+                    <span class="stat-value" id="statSignals">0</span>
+                    <span class="stat-label">Signals</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value red" id="statAlerts">0</span>
+                    <span class="stat-label">Alerts</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value amber" id="statQuarantine">0</span>
+                    <span class="stat-label">Quarantine</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value green" id="statOnline">0</span>
+                    <span class="stat-label">Online</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Map Area -->
+        <div class="map-area" id="mapArea">
+            <div class="map-viewport" id="mapViewport">
+                <!-- Real world map (256 countries, CC BY 4.0 mapsvg.com) -->
+                <object class="world-map-bg" data="world-map.svg" type="image/svg+xml"></object>
+
+                <!-- Overlay SVG: agent nodes + signal lines (matches world-map.svg viewBox) -->
+                <svg class="map-svg" id="mapSvg" viewBox="0 0 1009.6727 665.96301" preserveAspectRatio="xMidYMid meet">
+                    <!-- Signal lines layer -->
+                    <g id="signalLines"></g>
+
+                    <!-- Agent Nodes — geo-positioned to match mapsvg coordinates -->
+                    <g id="agentNodes">
+                        <!-- action-gateway: us-central1 (Iowa, 41.9°N 93.6°W — center of network) -->
+                        <g class="agent-node gateway" id="node-action-gateway" data-agent="action-gateway" transform="translate(195, 195)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--amber)"/>
+                            <circle class="agent-node-ring" r="12"/>
+                            <circle class="agent-node-core" r="5"/>
+                            <text class="agent-node-label" y="24">action-gateway</text>
+                            <text class="agent-node-label" y="33" style="font-size:6px;fill:var(--text-dim)">us-central1</text>
+                        </g>
+
+                        <!-- web-researcher: us-east1 (Virginia, 37°N 79°W) -->
+                        <g class="agent-node" id="node-web-researcher" data-agent="web-researcher" transform="translate(253, 218)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">web-researcher</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-east1</text>
+                        </g>
+
+                        <!-- scheduler: europe-west1 (Frankfurt, 50°N 8.7°E) -->
+                        <g class="agent-node" id="node-scheduler" data-agent="scheduler" transform="translate(499, 157)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">scheduler</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">europe-west1</text>
+                        </g>
+
+                        <!-- skill-acquirer: asia-northeast1 (Tokyo, 35.7°N 139.7°E) -->
+                        <g class="agent-node" id="node-skill-acquirer" data-agent="skill-acquirer" transform="translate(867, 224)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">skill-acquirer</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-northeast1</text>
+                        </g>
+
+                        <!-- behavior-sentinel: us-west1 (Oregon, 45.5°N 122.7°W) -->
+                        <g class="agent-node sentinel" id="node-behavior-sentinel" data-agent="behavior-sentinel" transform="translate(130, 179)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">behavior-sentinel</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-west1</text>
+                        </g>
+
+                        <!-- supply-chain-sentinel: asia-southeast1 (Singapore, 1.3°N 103.8°E) -->
+                        <g class="agent-node sentinel" id="node-supply-chain-sentinel" data-agent="supply-chain-sentinel" transform="translate(766, 386)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">supply-chain-sentinel</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-southeast1</text>
+                        </g>
+
+                        <!-- sentinel-commander: europe-west2 (London, 51.5°N 0.1°W) -->
+                        <g class="agent-node commander" id="node-sentinel-commander" data-agent="sentinel-commander" transform="translate(475, 150)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--cyan)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">sentinel-commander</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">europe-west2</text>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Invisible interaction layer — captures mouse/wheel over the <object> -->
+            <div class="map-interact" id="mapInteract"></div>
+
+            <!-- Floating mini-windows for all agents (toggled on/off) -->
+            <div class="mini-windows-container" id="miniWindowsContainer"></div>
+
+            <!-- SVG layer for sci-fi elbow connector lines -->
+            <svg class="mini-connectors-svg" id="miniConnectorsSvg"></svg>
+
+            <!-- Zoom controls -->
+            <div class="map-controls">
+                <button id="zoomIn" title="Zoom in">+</button>
+                <button id="zoomOut" title="Zoom out">&minus;</button>
+                <button id="zoomReset" title="Reset zoom" style="font-size:12px;">1:1</button>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <aside class="sidebar-right">
+            <div class="sidebar-section alerts">
+                <div class="section-header">Alert Feed</div>
+                <div class="section-body" id="alertFeed">
+                    <div class="empty-state">Waiting for alerts from running agents...</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section agents">
+                <div class="section-header">Agent Status</div>
+                <div class="section-body" id="agentStatus"></div>
+            </div>
+
+            <div class="sidebar-section stats">
+                <div class="section-header">Network Stats</div>
+                <div class="stats-grid">
+                    <div class="stats-cell">
+                        <div class="stats-value" style="color:var(--cyan)" id="statsSignals">0</div>
+                        <div class="stats-label">Signals</div>
+                    </div>
+                    <div class="stats-cell">
+                        <div class="stats-value" style="color:var(--red)" id="statsAlerts">0</div>
+                        <div class="stats-label">Alerts</div>
+                    </div>
+                    <div class="stats-cell">
+                        <div class="stats-value" style="color:var(--amber)" id="statsQuarantine">0</div>
+                        <div class="stats-label">Quarantine</div>
+                    </div>
+                    <div class="stats-cell">
+                        <div class="stats-value" style="color:var(--green)" id="statsOnline">0</div>
+                        <div class="stats-label">Online</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Signal Log -->
+        <div class="signal-log">
+            <div class="log-header">Signal Log</div>
+            <div class="log-body" id="signalLog">
+                <div class="empty-state">Connect to PubNub to start receiving signals...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Activity Panel -->
+    <div class="llm-panel-backdrop" id="llmBackdrop"></div>
+    <div class="llm-panel" id="llmPanel">
+        <div class="llm-panel-header">
+            <div class="llm-panel-dot" id="llmPanelDot"></div>
+            <div class="llm-panel-title" id="llmPanelTitle">Agent Activity</div>
+            <button class="llm-panel-btn" id="llmAutoScrollBtn" title="Toggle auto-scroll">scroll-lock</button>
+            <button class="llm-panel-close" id="llmCloseBtn" title="Close panel">&times;</button>
+        </div>
+        <div class="llm-panel-body" id="llmPanelBody">
+            <div class="llm-panel-empty">Click an agent to view its live LLM activity...</div>
+        </div>
+    </div>
+
+    <script>
+    // ── Agent Registry ──
+    var AGENTS = {
+        'action-gateway':         { region: 'us-central1',      role: 'gateway',   x: 195, y: 195 },
+        'web-researcher':         { region: 'us-east1',         role: 'worker',    x: 253, y: 218 },
+        'scheduler':              { region: 'europe-west1',     role: 'worker',    x: 499, y: 157 },
+        'skill-acquirer':         { region: 'asia-northeast1',  role: 'worker',    x: 867, y: 224 },
+        'behavior-sentinel':      { region: 'us-west1',         role: 'sentinel',  x: 130, y: 179 },
+        'supply-chain-sentinel':  { region: 'asia-southeast1',  role: 'sentinel',  x: 766, y: 386 },
+        'sentinel-commander':     { region: 'europe-west2',     role: 'commander', x: 475, y: 150 },
+    };
+
+    // Compact key map (matches bedsheet/sense/serialization.py)
+    var KEY_MAP = { k: 'kind', s: 'sender', p: 'payload', c: 'correlation_id', t: 'target', ts: 'timestamp' };
+
+    // ── State ──
+    var pubnub = null;
+    var stats = { signals: 0, alerts: 0, quarantine: 0 };
+    var onlineAgents = new Set();
+    var quarantinedAgents = new Set();
+
+    var CHANNELS = [
+        'bedsheet.agent-sentinel.alerts',
+        'bedsheet.agent-sentinel.quarantine',
+        'bedsheet.agent-sentinel.heartbeat',
+        'bedsheet.agent-sentinel.action-gateway',
+        'bedsheet.agent-sentinel.web-researcher',
+        'bedsheet.agent-sentinel.skill-acquirer',
+        'bedsheet.agent-sentinel.scheduler',
+        'bedsheet.agent-sentinel.behavior-sentinel',
+        'bedsheet.agent-sentinel.supply-chain-sentinel',
+        'bedsheet.agent-sentinel.sentinel-commander',
+    ];
+
+    // ── Utility: safe text node creation ──
+    function createEl(tag, className, textContent) {
+        var el = document.createElement(tag);
+        if (className) el.className = className;
+        if (textContent !== undefined) el.textContent = textContent;
+        return el;
+    }
+
+    // ── Connect ──
+    function connectToPubNub() {
+        var key = document.getElementById('subscribeKeyInput').value.trim();
+        var errorEl = document.getElementById('connectionError');
+        var btn = document.getElementById('connectBtn');
+
+        if (!key.startsWith('sub-c-')) {
+            errorEl.textContent = 'Key must start with "sub-c-"';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+        errorEl.textContent = '';
+
+        try {
+            pubnub = new PubNub({
+                subscribeKey: key,
+                userId: 'dashboard-observer',
+            });
+
+            pubnub.addListener({
+                message: handleMessage,
+                presence: handlePresence,
+                status: handleStatus,
+            });
+
+            pubnub.subscribe({
+                channels: CHANNELS,
+                withPresence: true,
+            });
+        } catch (e) {
+            errorEl.textContent = 'Failed to connect: ' + e.message;
+            btn.disabled = false;
+            btn.textContent = 'Connect';
+        }
+    }
+
+    // Allow Enter key to connect
+    document.getElementById('subscribeKeyInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') connectToPubNub();
+    });
+
+    // Auto-connect from config or pre-filled value
+    (function() {
+        var input = document.getElementById('subscribeKeyInput');
+        var cfg = window.SENTINEL_CONFIG;
+        if (cfg && cfg.subscribeKey) {
+            input.value = cfg.subscribeKey;
+        }
+        if (input.value && input.value.startsWith('sub-c-')) {
+            connectToPubNub();
+        } else {
+            document.getElementById('connectionOverlay').classList.remove('hidden');
+        }
+    })();
+
+    // ── PubNub Handlers ──
+    function handleStatus(statusEvent) {
+        if (statusEvent.category === 'PNConnectedCategory') {
+            document.getElementById('connectionOverlay').classList.add('hidden');
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Connected';
+            populateAgentCards();
+            fetchPresence();
+        }
+    }
+
+    function handleMessage(event) {
+        var raw = event.message;
+        var signal = decodeSignal(raw, event.channel);
+        if (!signal) return;
+
+        stats.signals++;
+        updateStats();
+        addLogEntry(signal, event.channel);
+
+        var kind = signal.kind;
+        var sender = signal.sender;
+
+        // Track as online
+        if (sender && AGENTS[sender]) {
+            setAgentOnline(sender);
+        }
+
+        if (kind === 'alert') {
+            stats.alerts++;
+            updateStats();
+            addAlertCard(signal);
+            pulseNode(sender, 'var(--red)');
+
+            // Check if quarantine
+            var payload = signal.payload || {};
+            if (payload.action === 'quarantine' && payload.agent) {
+                stats.quarantine++;
+                updateStats();
+                quarantineAgent(payload.agent);
+                animateBroadcast(sender);
+            } else {
+                animateSignalLine(sender, 'sentinel-commander', 'var(--red)');
+            }
+
+            // Mark live indicator
+            document.getElementById('statusDot').classList.add('live');
+            clearTimeout(window._liveTimeout);
+            window._liveTimeout = setTimeout(function() {
+                document.getElementById('statusDot').classList.remove('live');
+            }, 5000);
+        }
+
+        if (kind === 'heartbeat') {
+            pulseNode(sender, 'var(--green)');
+        }
+
+        if (kind === 'request' && signal.target && AGENTS[signal.target]) {
+            var reqColor = signal.target === 'action-gateway' ? 'var(--amber)' : 'var(--cyan)';
+            animateSignalLine(sender, signal.target, reqColor);
+        }
+
+        if (kind === 'response' && signal.target && AGENTS[signal.target]) {
+            var respColor = sender === 'action-gateway' ? 'var(--amber)' : 'var(--cyan)';
+            animateSignalLine(sender, signal.target, respColor);
+        }
+
+        if (kind === 'claim') {
+            pulseNode(sender, 'var(--amber)');
+        }
+
+        if (kind === 'event' && sender) {
+            bufferEvent(sender, signal);
+            appendToMiniWindow(sender, signal);
+            pulseNode(sender, 'var(--purple)');
+            // If this agent's panel is open, append the card live
+            if (activePanel === sender) {
+                var body = document.getElementById('llmPanelBody');
+                var empty = body.querySelector('.llm-panel-empty');
+                if (empty) empty.remove();
+                body.appendChild(buildEventCard(signal));
+                if (autoScroll) {
+                    body.scrollTop = body.scrollHeight;
+                }
+                // Cap rendered cards
+                while (body.children.length > MAX_EVENTS_PER_AGENT) {
+                    body.removeChild(body.firstChild);
+                }
+            }
+        }
+    }
+
+    function handlePresence(event) {
+        var uuid = event.uuid;
+        if (!uuid || uuid === 'dashboard-observer') return;
+
+        var agentName = matchAgentUUID(uuid);
+        if (!agentName) return;
+
+        if (event.action === 'join') {
+            setAgentOnline(agentName);
+        } else if (event.action === 'leave' || event.action === 'timeout') {
+            setAgentOffline(agentName);
+        }
+    }
+
+    // ── Signal Decoding ──
+    function decodeSignal(raw, channel) {
+        if (!raw || typeof raw !== 'object') return null;
+
+        var decoded = {};
+        for (var short in KEY_MAP) {
+            if (raw[short] !== undefined) decoded[KEY_MAP[short]] = raw[short];
+        }
+        // Also copy any full-length keys
+        var fullKeys = Object.values(KEY_MAP);
+        for (var i = 0; i < fullKeys.length; i++) {
+            if (raw[fullKeys[i]] !== undefined && decoded[fullKeys[i]] === undefined) {
+                decoded[fullKeys[i]] = raw[fullKeys[i]];
+            }
+        }
+        decoded.source_channel = channel;
+        return decoded;
+    }
+
+    function matchAgentUUID(uuid) {
+        if (AGENTS[uuid]) return uuid;
+        var names = Object.keys(AGENTS);
+        for (var i = 0; i < names.length; i++) {
+            if (uuid.indexOf(names[i]) !== -1) return names[i];
+        }
+        return null;
+    }
+
+    // ── Presence Fetch ──
+    function fetchPresence() {
+        if (!pubnub) return;
+        pubnub.hereNow({ channels: CHANNELS, includeUUIDs: true }).then(function(result) {
+            if (result && result.channels) {
+                var channels = Object.values(result.channels);
+                for (var c = 0; c < channels.length; c++) {
+                    var ch = channels[c];
+                    if (ch.occupants) {
+                        for (var o = 0; o < ch.occupants.length; o++) {
+                            var name = matchAgentUUID(ch.occupants[o].uuid);
+                            if (name) setAgentOnline(name);
+                        }
+                    }
+                }
+            }
+        }).catch(function(e) {
+            console.warn('hereNow failed:', e);
+        });
+    }
+
+    // ── UI: Agent Status Cards (safe DOM construction) ──
+    function populateAgentCards() {
+        var container = document.getElementById('agentStatus');
+        container.textContent = ''; // clear safely
+
+        var names = Object.keys(AGENTS);
+        for (var i = 0; i < names.length; i++) {
+            var name = names[i];
+            var info = AGENTS[name];
+
+            var card = createEl('div', 'agent-card');
+            card.id = 'card-' + name;
+
+            var dot = createEl('div', 'agent-dot');
+            dot.id = 'dot-' + name;
+            card.appendChild(dot);
+
+            var infoDiv = createEl('div', 'agent-info');
+            infoDiv.appendChild(createEl('div', 'agent-name', name));
+            infoDiv.appendChild(createEl('div', 'agent-region', info.region));
+            card.appendChild(infoDiv);
+
+            card.appendChild(createEl('span', 'role-badge ' + info.role, info.role));
+            container.appendChild(card);
+        }
+    }
+
+    function setAgentOnline(name) {
+        if (!AGENTS[name]) return;
+        onlineAgents.add(name);
+        var dot = document.getElementById('dot-' + name);
+        if (dot) dot.className = 'agent-dot online';
+        var node = document.getElementById('node-' + name);
+        if (node) node.classList.add('online');
+        updateOnlineCount();
+    }
+
+    function setAgentOffline(name) {
+        onlineAgents.delete(name);
+        var dot = document.getElementById('dot-' + name);
+        if (dot) dot.className = 'agent-dot';
+        var node = document.getElementById('node-' + name);
+        if (node) node.classList.remove('online');
+        updateOnlineCount();
+    }
+
+    function quarantineAgent(name) {
+        quarantinedAgents.add(name);
+        var dot = document.getElementById('dot-' + name);
+        if (dot) dot.className = 'agent-dot quarantined';
+        var node = document.getElementById('node-' + name);
+        if (node) node.classList.add('quarantined');
+    }
+
+    function updateOnlineCount() {
+        var count = onlineAgents.size;
+        document.getElementById('statOnline').textContent = count;
+        document.getElementById('statsOnline').textContent = count;
+    }
+
+    // ── UI: Alert Feed (safe DOM construction) ──
+    function addAlertCard(signal) {
+        var container = document.getElementById('alertFeed');
+        var empty = container.querySelector('.empty-state');
+        if (empty) empty.remove();
+
+        var payload = signal.payload || {};
+        var severity = payload.severity || 'medium';
+        var time = signal.timestamp ? new Date(signal.timestamp * 1000).toLocaleTimeString() : '--:--:--';
+        var sender = signal.sender || 'unknown';
+        var message = payload.message || JSON.stringify(payload);
+
+        var card = createEl('div', 'alert-card');
+
+        var header = createEl('div', 'alert-header');
+        header.appendChild(createEl('span', 'alert-time', time));
+        header.appendChild(createEl('span', 'severity-badge ' + severity, severity));
+        card.appendChild(header);
+
+        card.appendChild(createEl('div', 'alert-sender', sender));
+        card.appendChild(createEl('div', 'alert-message', message));
+
+        container.insertBefore(card, container.firstChild);
+
+        // Cap at 50 alerts
+        while (container.children.length > 50) {
+            container.removeChild(container.lastChild);
+        }
+    }
+
+    // ── UI: Signal Log (safe DOM construction) ──
+    function addLogEntry(signal, channel) {
+        var container = document.getElementById('signalLog');
+        var empty = container.querySelector('.empty-state');
+        if (empty) empty.remove();
+
+        var time = signal.timestamp ? new Date(signal.timestamp * 1000).toLocaleTimeString() : '--:--:--';
+        var kind = signal.kind || '?';
+        var sender = signal.sender || '?';
+        var shortChannel = channel.replace('bedsheet.agent-sentinel.', '');
+        var summary = getSignalSummary(signal);
+
+        var entry = createEl('div', 'log-entry');
+        entry.appendChild(createEl('span', 'log-time', time + ' '));
+
+        var kindSpan = createEl('span', 'log-kind ' + kind, '[' + kind + '] ');
+        entry.appendChild(kindSpan);
+
+        entry.appendChild(createEl('span', 'log-sender', sender + ' '));
+        entry.appendChild(createEl('span', 'log-detail', '\u2192 ' + shortChannel + ' ' + summary));
+
+        container.insertBefore(entry, container.firstChild);
+
+        // Cap at 200 entries
+        while (container.children.length > 200) {
+            container.removeChild(container.lastChild);
+        }
+    }
+
+    function getSignalSummary(signal) {
+        var p = signal.payload;
+        if (!p) return '';
+        if (p.severity) return '(' + p.severity + ')';
+        if (p.action) return '(' + p.action + ')';
+        if (p.category) return '(' + p.category + ')';
+        return '';
+    }
+
+    // ── UI: Stats ──
+    function updateStats() {
+        document.getElementById('statSignals').textContent = stats.signals;
+        document.getElementById('statAlerts').textContent = stats.alerts;
+        document.getElementById('statQuarantine').textContent = stats.quarantine;
+        document.getElementById('statsSignals').textContent = stats.signals;
+        document.getElementById('statsAlerts').textContent = stats.alerts;
+        document.getElementById('statsQuarantine').textContent = stats.quarantine;
+    }
+
+    // ── Map Animations ──
+    function pulseNode(agentName, color) {
+        var node = document.getElementById('node-' + agentName);
+        if (!node) return;
+
+        var ring = node.querySelector('.pulse-ring');
+        if (!ring) return;
+
+        ring.setAttribute('stroke', color);
+        ring.classList.remove('active');
+        void ring.offsetWidth; // force reflow
+        ring.classList.add('active');
+
+        setTimeout(function() { ring.classList.remove('active'); }, 1600);
+    }
+
+    function animateSignalLine(fromAgent, toAgent, color) {
+        var from = AGENTS[fromAgent];
+        var to = AGENTS[toAgent];
+        if (!from || !to) return;
+
+        var svg = document.getElementById('signalLines');
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', from.x);
+        line.setAttribute('y1', from.y);
+        line.setAttribute('x2', to.x);
+        line.setAttribute('y2', to.y);
+        line.setAttribute('stroke', color);
+        line.classList.add('signal-line', 'active');
+
+        svg.appendChild(line);
+        setTimeout(function() { line.remove(); }, 1300);
+    }
+
+    function animateBroadcast(fromAgent) {
+        var node = document.getElementById('node-' + fromAgent);
+        if (!node) return;
+
+        var ring = node.querySelector('.broadcast-ring');
+        if (!ring) return;
+
+        ring.classList.remove('active');
+        void ring.offsetWidth;
+        ring.classList.add('active');
+
+        setTimeout(function() { ring.classList.remove('active'); }, 2100);
+    }
+
+    // ── LLM Activity Panel ──
+    var agentEventBuffers = {};  // { agentName: [signal, ...] }
+    var activePanel = null;      // currently open agent name
+    var autoScroll = true;
+    var MAX_EVENTS_PER_AGENT = 200;
+
+    var EVENT_TYPE_LABELS = {
+        thinking: 'Thinking',
+        tool_call: 'Tool Call',
+        tool_result: 'Result',
+        completion: 'Completion',
+        error: 'Error',
+        observation: 'Observation',
+    };
+
+    function bufferEvent(agentName, signal) {
+        if (!agentEventBuffers[agentName]) {
+            agentEventBuffers[agentName] = [];
+        }
+        var buf = agentEventBuffers[agentName];
+        buf.push(signal);
+        while (buf.length > MAX_EVENTS_PER_AGENT) {
+            buf.shift();
+        }
+    }
+
+    function buildEventCard(signal) {
+        var payload = signal.payload || {};
+        var eventType = payload.event_type || 'unknown';
+        var time = signal.timestamp
+            ? new Date(signal.timestamp * 1000).toLocaleTimeString()
+            : '--:--:--';
+
+        var card = createEl('div', 'llm-event ' + eventType);
+
+        var header = createEl('div', 'llm-event-header');
+        var label = EVENT_TYPE_LABELS[eventType] || eventType;
+        header.appendChild(createEl('span', 'llm-event-badge', label));
+
+        // Tool name for tool_call events
+        if (eventType === 'tool_call' && payload.tool_name) {
+            header.appendChild(createEl('span', 'llm-event-tool-name', payload.tool_name));
+        }
+
+        header.appendChild(createEl('span', 'llm-event-time', time));
+        card.appendChild(header);
+
+        // Body text
+        var text = '';
+        if (eventType === 'tool_call') {
+            text = payload.tool_input || '';
+        } else if (eventType === 'tool_result') {
+            text = payload.result || '';
+        } else {
+            text = payload.text || '';
+        }
+
+        if (text) {
+            card.appendChild(createEl('div', 'llm-event-text', text));
+        }
+
+        return card;
+    }
+
+    function renderPanelEvents(agentName) {
+        var body = document.getElementById('llmPanelBody');
+        body.textContent = '';
+
+        var buf = agentEventBuffers[agentName] || [];
+        if (buf.length === 0) {
+            body.appendChild(createEl('div', 'llm-panel-empty',
+                'No activity yet for ' + agentName + '. Events will appear as the agent works...'));
+            return;
+        }
+
+        for (var i = 0; i < buf.length; i++) {
+            body.appendChild(buildEventCard(buf[i]));
+        }
+
+        if (autoScroll) {
+            body.scrollTop = body.scrollHeight;
+        }
+    }
+
+    function openAgentPanel(agentName) {
+        activePanel = agentName;
+
+        document.getElementById('llmPanelTitle').textContent = agentName;
+
+        // Color the dot based on agent role
+        var info = AGENTS[agentName];
+        var dot = document.getElementById('llmPanelDot');
+        if (info) {
+            var colorMap = { worker: 'var(--green)', sentinel: 'var(--purple)', commander: 'var(--cyan)' };
+            dot.style.background = colorMap[info.role] || 'var(--green)';
+            dot.style.boxShadow = '0 0 6px ' + (colorMap[info.role] || 'var(--green-dim)');
+        }
+
+        renderPanelEvents(agentName);
+
+        document.getElementById('llmPanel').classList.add('open');
+        document.getElementById('llmBackdrop').classList.add('open');
+    }
+
+    function closeAgentPanel() {
+        activePanel = null;
+        document.getElementById('llmPanel').classList.remove('open');
+        document.getElementById('llmBackdrop').classList.remove('open');
+    }
+
+    // Close handlers
+    document.getElementById('llmBackdrop').addEventListener('click', closeAgentPanel);
+    document.getElementById('llmCloseBtn').addEventListener('click', closeAgentPanel);
+
+    // Auto-scroll toggle
+    document.getElementById('llmAutoScrollBtn').addEventListener('click', function() {
+        autoScroll = !autoScroll;
+        this.classList.toggle('active', autoScroll);
+        if (autoScroll) {
+            var body = document.getElementById('llmPanelBody');
+            body.scrollTop = body.scrollHeight;
+        }
+    });
+    // Initialize as active
+    document.getElementById('llmAutoScrollBtn').classList.add('active');
+
+    // Click handlers on map nodes
+    document.querySelectorAll('.agent-node').forEach(function(node) {
+        node.addEventListener('click', function() {
+            var name = this.getAttribute('data-agent');
+            if (name) openAgentPanel(name);
+        });
+    });
+
+    // Click handlers on sidebar agent cards (wired after populateAgentCards)
+    var _origPopulate = populateAgentCards;
+    populateAgentCards = function() {
+        _origPopulate();
+        document.querySelectorAll('.agent-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                var nameEl = this.querySelector('.agent-name');
+                if (nameEl) openAgentPanel(nameEl.textContent);
+            });
+        });
+    };
+
+    // Keyboard: Escape closes panel
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && activePanel) closeAgentPanel();
+    });
+
+    // ── Mini-Windows (all-agents overlay on map) ──
+    var miniWindowsOpen = false;
+    var miniWindowEls = {};  // { agentName: { container: div, body: div } }
+    var VIEWBOX_W = 1009.6727;
+    var VIEWBOX_H = 665.96301;
+    var WIN_W = 210;
+    var WIN_H = 160;
+
+    // Pre-defined scattered positions for each window (percentage of map area).
+    // Carefully placed so no two windows overlap, spread around the map edges.
+    // Scattered positions: pctX/pctY = fraction of (area - windowSize).
+    var WINDOW_SLOTS = {
+        'behavior-sentinel':     { pctX: 0.01,  pctY: 0.02 },
+        'action-gateway':        { pctX: 0.14,  pctY: 0.46 },
+        'web-researcher':        { pctX: 0.28,  pctY: 0.82 },
+        'sentinel-commander':    { pctX: 0.36,  pctY: 0.02 },
+        'scheduler':             { pctX: 0.62,  pctY: 0.02 },
+        'supply-chain-sentinel': { pctX: 0.58,  pctY: 0.68 },
+        'skill-acquirer':        { pctX: 0.80,  pctY: 0.02 },
+    };
+
+    var COLOR_HEX = {
+        worker: '#00ef82', sentinel: '#c49fff',
+        commander: '#00d4ff', gateway: '#ffc030'
+    };
+
+    function svgToScreen(svgX, svgY, areaW, areaH) {
+        var svgAspect = VIEWBOX_W / VIEWBOX_H;
+        var areaAspect = areaW / areaH;
+        var renderW, renderH, offsetX, offsetY;
+        if (areaAspect > svgAspect) {
+            renderH = areaH; renderW = areaH * svgAspect;
+            offsetX = (areaW - renderW) / 2; offsetY = 0;
+        } else {
+            renderW = areaW; renderH = areaW / svgAspect;
+            offsetX = 0; offsetY = (areaH - renderH) / 2;
+        }
+        return {
+            x: offsetX + (svgX / VIEWBOX_W) * renderW,
+            y: offsetY + (svgY / VIEWBOX_H) * renderH
+        };
+    }
+
+    // Find the point where a line from an external point to the rect center
+    // intersects the rectangle edge. Returns the exact tangent point.
+    function rectEdgePoint(px, py, rx, ry, rw, rh) {
+        var cx = rx + rw / 2;
+        var cy = ry + rh / 2;
+        var dx = px - cx;
+        var dy = py - cy;
+        if (dx === 0 && dy === 0) return { x: cx, y: ry }; // on top of center
+
+        var absDx = Math.abs(dx);
+        var absDy = Math.abs(dy);
+        var halfW = rw / 2;
+        var halfH = rh / 2;
+
+        // Which edge does the line cross?
+        if (absDx * halfH > absDy * halfW) {
+            // Hits left or right edge
+            var signX = dx > 0 ? 1 : -1;
+            var t = halfW / absDx;
+            return { x: cx + signX * halfW, y: cy + dy * t };
+        } else {
+            // Hits top or bottom edge
+            var signY = dy > 0 ? 1 : -1;
+            var t2 = halfH / absDy;
+            return { x: cx + dx * t2, y: cy + signY * halfH };
+        }
+    }
+
+    function buildMiniEventCard(signal) {
+        var payload = signal.payload || {};
+        var eventType = payload.event_type || 'unknown';
+        var label = EVENT_TYPE_LABELS[eventType] || eventType;
+
+        var card = createEl('div', 'mini-event ' + eventType);
+        card.appendChild(createEl('span', 'mini-event-badge', label));
+
+        var text = '';
+        if (eventType === 'tool_call') {
+            text = payload.tool_name ? payload.tool_name + ': ' + (payload.tool_input || '') : (payload.tool_input || '');
+        } else if (eventType === 'tool_result') {
+            text = payload.result || '';
+        } else {
+            text = payload.text || '';
+        }
+        if (text) {
+            card.appendChild(createEl('div', 'mini-event-text', text));
+        }
+        return card;
+    }
+
+    function createMiniWindows() {
+        var container = document.getElementById('miniWindowsContainer');
+        var connSvg = document.getElementById('miniConnectorsSvg');
+        var mapArea = document.getElementById('mapArea');
+        if (!container || !connSvg || !mapArea) return;
+
+        var areaW = mapArea.offsetWidth;
+        var areaH = mapArea.offsetHeight;
+
+        var colorMap = {
+            worker: 'var(--green)', sentinel: 'var(--purple)',
+            commander: 'var(--cyan)', gateway: 'var(--amber)'
+        };
+
+        var names = Object.keys(AGENTS);
+        for (var i = 0; i < names.length; i++) {
+            var name = names[i];
+            var info = AGENTS[name];
+            var slot = WINDOW_SLOTS[name];
+            if (!slot) continue;
+
+            var color = COLOR_HEX[info.role] || '#00ef82';
+
+            // Agent dot position in screen coords
+            var dotPos = svgToScreen(info.x, info.y, areaW, areaH);
+
+            // Window position from slot percentages
+            var winLeft = slot.pctX * (areaW - WIN_W);
+            var winTop = slot.pctY * (areaH - WIN_H);
+
+            // Find exact point where line from dot hits the window rectangle edge
+            var edgePt = rectEdgePoint(dotPos.x, dotPos.y, winLeft, winTop, WIN_W, WIN_H);
+
+            // Straight dashed line from agent dot to window edge
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', dotPos.x);
+            line.setAttribute('y1', dotPos.y);
+            line.setAttribute('x2', edgePt.x);
+            line.setAttribute('y2', edgePt.y);
+            line.setAttribute('stroke', color);
+            line.classList.add('connector-line');
+            line.style.animationDelay = (i * 0.06) + 's';
+            connSvg.appendChild(line);
+
+            // Flowing dash overlay (animated)
+            var flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            flow.setAttribute('x1', dotPos.x);
+            flow.setAttribute('y1', dotPos.y);
+            flow.setAttribute('x2', edgePt.x);
+            flow.setAttribute('y2', edgePt.y);
+            flow.setAttribute('stroke', color);
+            flow.classList.add('connector-flow');
+            flow.style.animationDelay = (i * 0.06) + 's';
+            connSvg.appendChild(flow);
+
+            // Small dot at agent end
+            var cdot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            cdot.setAttribute('cx', dotPos.x);
+            cdot.setAttribute('cy', dotPos.y);
+            cdot.setAttribute('r', '3');
+            cdot.setAttribute('fill', color);
+            cdot.classList.add('connector-dot');
+            cdot.style.animationDelay = (0.2 + i * 0.06) + 's';
+            connSvg.appendChild(cdot);
+
+            // Create the window
+            var win = createEl('div', 'agent-mini-win');
+            win.style.left = winLeft + 'px';
+            win.style.top = winTop + 'px';
+            win.style.animationDelay = (i * 0.06) + 's';
+            win.style.borderColor = color;
+
+            var header = createEl('div', 'mini-win-header');
+            var hdot = createEl('div', 'mini-win-dot');
+            hdot.style.background = color;
+            hdot.style.boxShadow = '0 0 4px ' + color;
+            header.appendChild(hdot);
+            header.appendChild(createEl('span', 'mini-win-title', name));
+            win.appendChild(header);
+
+            // Click header to open full panel
+            (function(agentName) {
+                header.addEventListener('click', function() { openAgentPanel(agentName); });
+            })(name);
+
+            var body = createEl('div', 'mini-win-body');
+
+            // Populate with buffered events
+            var buf = agentEventBuffers[name] || [];
+            if (buf.length === 0) {
+                body.appendChild(createEl('div', 'mini-win-empty', 'Awaiting events...'));
+            } else {
+                var start = Math.max(0, buf.length - 20);
+                for (var j = start; j < buf.length; j++) {
+                    body.appendChild(buildMiniEventCard(buf[j]));
+                }
+                setTimeout(function(b) { b.scrollTop = b.scrollHeight; }.bind(null, body), 50);
+            }
+
+            win.appendChild(body);
+            container.appendChild(win);
+
+            miniWindowEls[name] = { container: win, body: body };
+        }
+    }
+
+    function destroyMiniWindows() {
+        var container = document.getElementById('miniWindowsContainer');
+        if (container) container.textContent = '';
+        var connSvg = document.getElementById('miniConnectorsSvg');
+        if (connSvg) connSvg.textContent = '';
+        miniWindowEls = {};
+    }
+
+    function toggleMiniWindows() {
+        miniWindowsOpen = !miniWindowsOpen;
+        var btn = document.getElementById('btnMiniWindows');
+        btn.classList.toggle('active', miniWindowsOpen);
+
+        if (miniWindowsOpen) {
+            createMiniWindows();
+        } else {
+            destroyMiniWindows();
+        }
+    }
+
+    // Append live events to mini-windows when open
+    function appendToMiniWindow(agentName, signal) {
+        if (!miniWindowsOpen) return;
+        var win = miniWindowEls[agentName];
+        if (!win) return;
+
+        var body = win.body;
+        var empty = body.querySelector('.mini-win-empty');
+        if (empty) empty.remove();
+
+        body.appendChild(buildMiniEventCard(signal));
+        body.scrollTop = body.scrollHeight;
+
+        // Cap at 30 cards
+        while (body.children.length > 30) {
+            body.removeChild(body.firstChild);
+        }
+    }
+
+    document.getElementById('btnMiniWindows').addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleMiniWindows();
+    });
+
+    // Reposition mini-windows on resize
+    window.addEventListener('resize', function() {
+        if (miniWindowsOpen) {
+            destroyMiniWindows();
+            createMiniWindows();
+        }
+    });
+
+    // ── Map Zoom & Pan ──
+    (function() {
+        var viewport = document.getElementById('mapViewport');
+        var mapArea = document.getElementById('mapArea');
+        var interact = document.getElementById('mapInteract');
+        if (!viewport || !mapArea || !interact) return;
+
+        var scale = 1;
+        var panX = 0;
+        var panY = 0;
+        var minScale = 1;
+        var maxScale = 4;
+
+        function applyTransform(smooth) {
+            viewport.style.transition = smooth ? 'transform 0.25s ease-out' : 'none';
+            viewport.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+        }
+
+        function clampPan() {
+            if (scale <= 1) { panX = 0; panY = 0; return; }
+            var w = mapArea.offsetWidth;
+            var h = mapArea.offsetHeight;
+            // Allow panning to any edge of the scaled content
+            var maxPanX = w * (scale - 1);
+            var maxPanY = h * (scale - 1);
+            panX = Math.max(-maxPanX, Math.min(0, panX));
+            panY = Math.max(-maxPanY, Math.min(0, panY));
+        }
+
+        function zoomTo(newScale, centerX, centerY) {
+            newScale = Math.max(minScale, Math.min(maxScale, Math.round(newScale * 10) / 10));
+            if (newScale === scale) return;
+            if (centerX !== undefined && centerY !== undefined) {
+                var ratio = newScale / scale;
+                panX = centerX - ratio * (centerX - panX);
+                panY = centerY - ratio * (centerY - panY);
+            }
+            scale = newScale;
+            clampPan();
+            applyTransform(true);
+        }
+
+        // Scroll wheel zoom (zooms toward cursor)
+        interact.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var rect = mapArea.getBoundingClientRect();
+            var cx = e.clientX - rect.left;
+            var cy = e.clientY - rect.top;
+            var delta = e.deltaY < 0 ? 0.25 : -0.25;
+            zoomTo(scale + delta, cx, cy);
+        }, { passive: false });
+
+        // Button controls
+        document.getElementById('zoomIn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            var w = mapArea.offsetWidth;
+            var h = mapArea.offsetHeight;
+            zoomTo(scale + 0.3, w / 2, h / 2);
+        });
+        document.getElementById('zoomOut').addEventListener('click', function(e) {
+            e.stopPropagation();
+            var w = mapArea.offsetWidth;
+            var h = mapArea.offsetHeight;
+            zoomTo(scale - 0.3, w / 2, h / 2);
+        });
+        document.getElementById('zoomReset').addEventListener('click', function(e) {
+            e.stopPropagation();
+            scale = 1; panX = 0; panY = 0;
+            applyTransform(true);
+        });
+
+        // Mouse drag to pan + click-through to agent nodes
+        var dragging = false;
+        var didDrag = false;
+        var dragStartX, dragStartY, startPanX, startPanY;
+
+        interact.addEventListener('mousedown', function(e) {
+            dragging = true;
+            didDrag = false;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            startPanX = panX;
+            startPanY = panY;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (dragging) {
+                var dx = e.clientX - dragStartX;
+                var dy = e.clientY - dragStartY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                    didDrag = true;
+                    interact.classList.add('grabbing');
+                }
+                if (!didDrag || scale <= 1) return;
+                panX = startPanX + dx;
+                panY = startPanY + dy;
+                clampPan();
+                applyTransform(false);
+            } else {
+                // Hover cursor: check if an agent node is underneath
+                interact.style.pointerEvents = 'none';
+                var el = document.elementFromPoint(e.clientX, e.clientY);
+                interact.style.pointerEvents = '';
+                if (el && el.closest('.agent-node')) {
+                    interact.style.cursor = 'pointer';
+                } else {
+                    interact.style.cursor = scale > 1 ? 'grab' : '';
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (!dragging) return;
+            dragging = false;
+            interact.classList.remove('grabbing');
+
+            // If it was a click (not a drag), pass through to agent node underneath
+            if (!didDrag) {
+                interact.style.pointerEvents = 'none';
+                var el = document.elementFromPoint(e.clientX, e.clientY);
+                interact.style.pointerEvents = '';
+                if (el) {
+                    var node = el.closest('.agent-node');
+                    if (node) {
+                        node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                }
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

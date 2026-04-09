@@ -18,18 +18,14 @@ def test_message_with_tool_calls():
     msg = Message(
         role="assistant",
         content=None,
-        tool_calls=[{"id": "call_1", "name": "get_weather", "input": {"city": "SF"}}]
+        tool_calls=[{"id": "call_1", "name": "get_weather", "input": {"city": "SF"}}],
     )
     assert msg.tool_calls is not None
     assert len(msg.tool_calls) == 1
 
 
 def test_message_tool_result():
-    msg = Message(
-        role="tool_result",
-        content='{"temp": 72}',
-        tool_call_id="call_1"
-    )
+    msg = Message(role="tool_result", content='{"temp": 72}', tool_call_id="call_1")
     assert msg.role == "tool_result"
     assert msg.tool_call_id == "call_1"
 

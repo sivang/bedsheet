@@ -1,0 +1,4 @@
+{"type":"llm_call","seq":0,"agent":"web-researcher","messages_hash":"1718f040f5d0","system_hash":"cdcdb7ad0daa","tools":["search_web","get_search_summary"]}
+{"type":"llm_response","seq":0,"text":null,"tool_calls":[{"id":"519c5b68-be37-4129-8d07-ecfaf40673b2","name":"search_web","input":{"query":"latest AI and cloud computing news March 2026"}}],"stop_reason":"tool_use","thinking":null,"parsed_output":null}
+{"type":"tool_result","seq":0,"call_id":"","name":"search_web","result":"Action denied: Rate exceeded: 50 actions in last 1min (limit 10)","error":null}
+{"type":"llm_call","seq":1,"agent":"web-researcher","messages_hash":"7feb5d016883","system_hash":"fa8519e3ee80","tools":["search_web","get_search_summary"]}

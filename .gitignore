@@ -28,6 +28,9 @@ ENV/
 # IDE
 .idea/
 .vscode/
+
+# Draw.io backup files
+docs/.$agent-sentinel-security-architecture.drawio.bkp
 *.swp
 *.swo
 
@@ -49,6 +52,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 docs/internal/
+
+# Generated dashboard config (written by start.sh at runtime)
+docs/sentinel-config.js
 .claude/
 firebase-debug.log
 
