@@ -163,6 +163,18 @@ Current date: $current_datetime$
                 yield CompletionEvent(response=response.text)
                 return
 
+            # Empty response — no text AND no tool calls. This happens with
+            # Gemini when the stream is content-filtered or when the model
+            # produces no parts. Looping would just re-issue the same prompt
+            # max_iterations times before yielding a generic "max iterations
+            # exceeded" error, which is misleading. Bail out cleanly.
+            if not response.tool_calls:
+                yield ErrorEvent(
+                    error="Model returned an empty response (no text, no tool calls)",
+                    recoverable=False,
+                )
+                return
+
             # Handle tool calls
             if response.tool_calls:
                 # Record assistant message with tool calls
