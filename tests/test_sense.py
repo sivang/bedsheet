@@ -536,6 +536,92 @@ class TestClaimProtocol:
         await worker.leave_network()
         await commander.leave_network()
 
+    async def test_inflight_request_survives_gc_pressure(self):
+        """REGRESSION TEST for B2 (pure-behavioral complement): force a
+        garbage-collection sweep while a request handler is suspended and
+        verify the request still completes successfully.
+
+        The previous test in this class (test_inflight_request_tasks_tracked_
+        during_execution) is *structural* — it asserts that
+        `_inflight_request_tasks` exists and contains the task. This test is
+        *behavioral* — it doesn't care HOW the agent retains the task, only
+        that the task survives a GC cycle. If a future refactor moves the
+        retention to a different attribute, queue, or strategy, the
+        structural test would fail (false positive) but this test would
+        still correctly verify the underlying invariant.
+        """
+        import gc
+
+        hub = _MockSenseHub()
+        t_worker = MockSenseTransport(hub)
+        t_commander = MockSenseTransport(hub)
+
+        gate = asyncio.Event()
+
+        class BlockingLLMClient:
+            async def chat(self, messages, system, tools=None, output_schema=None):
+                await gate.wait()
+                return LLMResponse(
+                    text="survived-gc", tool_calls=[], stop_reason="end_turn"
+                )
+
+            async def chat_stream(
+                self, messages, system, tools=None, output_schema=None
+            ):
+                response = await self.chat(messages, system, tools, output_schema)
+                yield response
+
+        worker = SenseAgent(
+            name="gc-worker",
+            instruction="Worker that must survive GC",
+            model_client=BlockingLLMClient(),
+        )
+        commander = SenseAgent(
+            name="gc-commander",
+            instruction="Commander",
+            model_client=MockLLMClient([MockResponse(text="ack")]),
+        )
+
+        await worker.join_network(t_worker, "test-ns")
+        await commander.join_network(t_commander, "test-ns")
+
+        # Fire the request — handler will block on `gate.wait()`
+        request_task = asyncio.create_task(
+            commander.request("gc-worker", "survive please", timeout=5.0)
+        )
+
+        # Wait for the signal loop to dispatch the handler
+        for _ in range(20):
+            await asyncio.sleep(0.02)
+            # Heuristic: handler is dispatched once it's blocked on gate.
+            # We can't directly observe that, so just give it some time.
+            if len(worker._inflight_request_tasks) > 0:
+                break
+
+        # Force a full GC cycle while the handler is suspended. If the
+        # handler task were only weakly referenced (the bug), CPython could
+        # collect it here and the request would time out.
+        gc.collect()
+        gc.collect()  # second pass to handle reference cycles
+        await asyncio.sleep(0.05)
+        gc.collect()
+
+        # Release the handler — if it survived, it'll complete normally
+        gate.set()
+        result = await request_task
+
+        # The behavioral assertion: the request returned the expected result
+        # (which means the handler task survived GC and ran to completion).
+        # This test makes ZERO claims about HOW retention is implemented.
+        assert result == "survived-gc", (
+            "Request handler did not complete after GC pressure — the "
+            "task was likely garbage-collected mid-execution. This is "
+            "the actual B2 bug, independent of the implementation strategy."
+        )
+
+        await worker.leave_network()
+        await commander.leave_network()
+
 
 # ---------- SenseNetwork tests ----------
 

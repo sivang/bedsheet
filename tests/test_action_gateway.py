@@ -15,27 +15,41 @@ the sentinel demo:
 
 from __future__ import annotations
 
-import sys
+import importlib.util
 import time
 from pathlib import Path
 
 import pytest
 
-# Make `examples/agent-sentinel/middleware/action_gateway.py` importable.
-# The gateway is example code under examples/agent-sentinel/, but the
-# Ledger/Detector/Executor classes are pure-Python and have no transport
-# dependencies — they can be unit-tested without pubnub installed because the
-# gateway now imports its transport via make_sense_transport() (lazy).
+# Load `examples/agent-sentinel/middleware/action_gateway.py` as a module
+# without touching sys.path. Using importlib.util.spec_from_file_location
+# keeps the gateway example isolated from the test's import graph — no
+# global sys.path pollution, and no risk of name collisions if the example
+# tree grows to contain other modules named `middleware.*`.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_GATEWAY_DIR = _REPO_ROOT / "examples" / "agent-sentinel"
-sys.path.insert(0, str(_GATEWAY_DIR))
-
-from middleware.action_gateway import (  # noqa: E402
-    ActionLedger,
-    ActionRecord,
-    AnomalyDetector,
-    ToolExecutor,
+_GATEWAY_PATH = (
+    _REPO_ROOT / "examples" / "agent-sentinel" / "middleware" / "action_gateway.py"
 )
+
+
+def _load_action_gateway_module():
+    spec = importlib.util.spec_from_file_location(
+        "_agent_sentinel_action_gateway", _GATEWAY_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_gateway = _load_action_gateway_module()
+
+ActionLedger = _gateway.ActionLedger
+ActionRecord = _gateway.ActionRecord
+AnomalyDetector = _gateway.AnomalyDetector
+ToolExecutor = _gateway.ToolExecutor
+ActionGateway = _gateway.ActionGateway
+_RATE_LIMIT = _gateway._RATE_LIMIT
 
 
 # ---------- ToolExecutor error handling (B3 regression) ----------
@@ -156,12 +170,93 @@ def test_ledger_agent_stats_per_agent():
     assert stats["agent-b"]["denied"] == 1
 
 
+@pytest.mark.asyncio
+async def test_handle_action_request_records_error_verdict_on_executor_failure():
+    """REGRESSION TEST for B3 (gateway-side, integration level): when an
+    action handler raises, the audit ledger MUST record verdict='error',
+    NOT verdict='approved' with the exception text in result_summary.
+
+    The B3 unit tests pin ToolExecutor's behavior in isolation, but the
+    actual lie was in `_handle_action_request`'s bookkeeping after the
+    executor call. This test wires a failing handler all the way through
+    the gateway's _handle_action_request and inspects the resulting ledger
+    entry. If a future refactor reorders the try/except or moves
+    `_ledger.append()` above the executor call, this test fires while the
+    unit tests would still pass.
+    """
+    from bedsheet.sense.signals import Signal  # noqa: E402
+
+    # Stub transport that records broadcasts but doesn't talk to anything.
+    broadcasts: list[Signal] = []
+
+    class StubTransport:
+        async def broadcast(self, channel: str, signal: Signal) -> None:
+            broadcasts.append(signal)
+
+        async def connect(self, agent_id: str, namespace: str) -> None:
+            pass
+
+        async def disconnect(self) -> None:
+            pass
+
+        async def subscribe(self, channel: str) -> None:
+            pass
+
+        async def unsubscribe(self, channel: str) -> None:
+            pass
+
+        async def signals(self):  # pragma: no cover - not used in this test
+            if False:
+                yield
+
+        async def get_online_agents(self, channel: str):
+            return []
+
+    gateway = ActionGateway(StubTransport())  # type: ignore[arg-type]
+
+    # Inject a failing handler into the executor. The handler name must
+    # start with `_do_` for ToolExecutor.execute to find it.
+    async def boom(params: dict) -> str:
+        raise RuntimeError("disk on fire")
+
+    gateway._executor._do_explode = boom  # type: ignore[attr-defined]
+
+    request = Signal(
+        kind="request",
+        sender="rogue-worker",
+        payload={"action": "explode", "params": {}},
+        target=ActionGateway.GATEWAY_NAME,
+    )
+
+    await gateway._handle_action_request(request)
+
+    # The ledger must reflect that the action FAILED, not that it was approved
+    records = gateway._ledger.query(minutes=10)
+    assert len(records) == 1
+    record = records[0]
+    assert record.verdict == "error", (
+        f"Audit ledger lied: expected verdict='error' but got "
+        f"'{record.verdict}'. Reason: {record.reason!r}. This is the B3 "
+        f"audit-ledger contract being violated."
+    )
+    assert "disk on fire" in record.reason
+    assert record.agent == "rogue-worker"
+    assert record.action == "explode"
+    assert record.result_summary == ""  # no result on error
+
+    # The response signal sent back to the worker must also carry the
+    # error verdict, not approved.
+    assert len(broadcasts) == 1
+    response = broadcasts[0]
+    assert response.payload["verdict"] == "error"
+    assert response.payload["result"] == ""
+    assert "disk on fire" in response.payload["reason"]
+
+
 def test_anomaly_detector_rate_limit_is_per_agent():
     """The anomaly detector's rate limit must be applied per-agent, so one
     chatty agent can't push another agent over the threshold. This was
     explicitly called out as an invariant in the security architecture."""
-    from middleware.action_gateway import _RATE_LIMIT  # noqa: E402
-
     ledger = ActionLedger(max_age_seconds=600.0)
     detector = AnomalyDetector()
 

@@ -75,10 +75,19 @@ class SenseMixin:
         """Disconnect from the sense network."""
         # Cancel any in-flight request handler tasks before tearing down the
         # transport — otherwise they may try to broadcast a response on a
-        # disconnected transport.
-        for task in list(self._inflight_request_tasks):
-            task.cancel()
-        self._inflight_request_tasks.clear()
+        # disconnected transport. We must AWAIT the cancellations: calling
+        # task.cancel() schedules a CancelledError but does not synchronously
+        # stop execution. asyncio.gather() with return_exceptions=True ensures
+        # every handler has actually reacted to the cancel (or finished
+        # naturally) before we close the transport below.
+        if self._inflight_request_tasks:
+            inflight = list(self._inflight_request_tasks)
+            for task in inflight:
+                task.cancel()
+            await asyncio.gather(*inflight, return_exceptions=True)
+            # done_callbacks should have already cleared the set; be explicit
+            # in case any callback was bypassed.
+            self._inflight_request_tasks.clear()
 
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
