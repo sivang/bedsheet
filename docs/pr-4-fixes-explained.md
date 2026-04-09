@@ -558,3 +558,11 @@ This is exactly what Python's normal import machinery does under the hood; `impo
 ## One-line meta takeaway
 
 The common thread is **honesty about state**: the B1 fix makes streamed text equal persisted text, the B2 fix prevents the event loop from silently dropping work, the B3 fix stops the audit ledger from lying, the H1 fix turns a silent retry loop into an explicit error, and the factory removes hidden coupling between examples and one specific transport. Every fix replaces an implicit behavior with an explicit one.
+
+---
+
+**Copyright © 2025-2026 Sivan Grünberg, [Vitakka Consulting](https://vitakka.co/)**
+
+Elastic License 2.0
+
+Bedsheet Agents — [GitHub](https://github.com/sivang/bedsheet) · [User Guide](https://sivang.github.io/bedsheet/user-guide.html) · [Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)

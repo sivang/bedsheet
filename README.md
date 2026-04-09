@@ -380,12 +380,37 @@ Total: ~1,000 lines. Coffee break reading.
 
 ## Documentation
 
+### Core guides
+
 - **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
 - **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
 - **[Deployment Guide](https://sivang.github.io/bedsheet/deployment-guide.html)** — Local, GCP, and AWS deployment
 - **[GCP Deployment Deep Dive](https://sivang.github.io/bedsheet/gcp-deployment-deep-dive.html)** — GCP architecture, troubleshooting, and best practices
 - **[Multi-Agent Guide](https://sivang.github.io/bedsheet/multi-agent-guide.html)** — Supervisor deep dive
 - **[Multi-Agent Patterns](https://sivang.github.io/bedsheet/multi-agent-patterns.html)** — Swarms, Graphs, Workflows, A2A
+
+### Sixth Sense — distributed agent communication
+
+Agents running on different machines, processes, or networks can exchange typed signals over a pluggable transport. Ships with `MockSenseTransport` for tests and `PubNubTransport` for production; future transports (NATS, Redis pub/sub) plug in via the `make_sense_transport()` factory.
+
+- **[Sixth Sense Guide](https://sivang.github.io/bedsheet/sixth-sense-guide.html)** — Tutorial: join a network, send signals, request/response, claim protocol
+- **[Sixth Sense Design](https://sivang.github.io/bedsheet/sixth-sense-design.html)** — Architecture, protocols, design decisions
+- **[Sixth Sense Internals](https://sivang.github.io/bedsheet/sixth-sense-internals.html)** — Honest deep-dive into how every piece works under the hood
+
+### Agent Sentinel — security demo
+
+A complete multi-agent security monitoring system built on Bedsheet + Sixth Sense. Demonstrates tamper-proof tool execution via a pure-Python Action Gateway, behavior-based and supply-chain sentinels, and a sentinel commander that orchestrates threat response. Ships with a live dashboard.
+
+- **[Agent Sentinel Guide](https://sivang.github.io/bedsheet/agent-sentinel-guide.html)** — What it is, how it works, how to run it
+- **[Agent Sentinel Setup](https://sivang.github.io/bedsheet/agent-sentinel-setup.html)** — Step-by-step setup instructions
+- **[Sentinel Network Guide](https://sivang.github.io/bedsheet/sentinel-network-guide.html)** — Multi-agent network topology and signal flow
+- **[Security Architecture](https://sivang.github.io/bedsheet/agent-sentinel-security-architecture.html)** — Threat model, trust boundaries, and mitigations (including a documented prompt-injection vector and the v0.6 roadmap to close it)
+- **[Live Dashboard](https://sivang.github.io/bedsheet/agent-sentinel-dashboard.html)** — Real-time PubNub signal visualization for the running sentinel network
+
+### Engineering notes & retrospectives
+
+- **[PR #4 Fixes Explained](docs/pr-4-fixes-explained.md)** — Post-merge walkthrough of the nine fixes that landed with the Sixth Sense + Agent Sentinel + Gemini release. Each fix documents the Python language constructs involved (async generators, `asyncio` weak task refs, PEP 563, `importlib.util`, lazy imports, list invariance, etc.) with before/after snippets. Also mirrored on the [wiki](https://github.com/sivang/bedsheet/wiki/PR-4-Fixes-Explained).
+- **[Project Wiki](https://github.com/sivang/bedsheet/wiki)** — Informal notes, post-hoc explanations, and collaborative knowledge that doesn't fit the polished user guide
 
 ---
 
