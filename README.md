@@ -382,6 +382,8 @@ Total: ~1,000 lines. Coffee break reading.
 
 ### Core guides
 
+The progressive tutorial, technical patterns, and deployment paths for using Bedsheet day-to-day. Start here if you're new to the framework.
+
 - **[User Guide](https://sivang.github.io/bedsheet/user-guide.html)** — Beginner to advanced, 12 lessons
 - **[Technical Guide](https://sivang.github.io/bedsheet/technical-guide.html)** — Python patterns explained
 - **[Deployment Guide](https://sivang.github.io/bedsheet/deployment-guide.html)** — Local, GCP, and AWS deployment
