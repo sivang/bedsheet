@@ -1,8 +1,8 @@
 # Bedsheet Agents - Project Status
 
-## Current Version: v0.4.7 (released)
+## Current Version: v0.4.8 (released on PyPI, codebase ahead with merged PR #4 work)
 
-**Last Session:** 2026-03-29
+**Last Session:** 2026-04-10
 
 ### Release Status
 
@@ -16,45 +16,84 @@
 | v0.4.5 | ✅ Released on PyPI | main |
 | v0.4.6 | ✅ Released on PyPI | main |
 | v0.4.7 | ✅ Released on PyPI | main |
+| v0.4.8 | ✅ Released on PyPI | main |
+| v0.5.0 | 📋 Not yet released — codebase on main is ahead of PyPI | main |
 
 ### Release Artifacts
 
 | Artifact | Status |
 |----------|--------|
 | Source Code | ✅ Complete |
-| Test Suite | ✅ 326 tests passing |
-| README.md | ✅ Comprehensive with examples |
-| CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented |
+| Test Suite | ✅ 372 tests passing |
+| README.md | ✅ Comprehensive — tagline, features, architecture updated for current state |
+| CHANGELOG.md | ✅ v0.1.0-v0.4.0 documented (needs v0.4.8 entry) |
 | CONTRIBUTING.md | ✅ Contributor guidelines |
 | LICENSE | ✅ Elastic License 2.0 (Sivan Grünberg, Vitakka Consulting) |
-| CI/CD | ✅ GitHub Actions (test, lint, typecheck) |
-| Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide |
-| Examples | ✅ Investment advisor demo |
-| Demo | ✅ `uvx bedsheet demo` (requires API key, uses REAL DATA from Yahoo Finance + DuckDuckGo) |
+| CI/CD | ✅ GitHub Actions (test 3.11, test 3.12, lint, typecheck) — all green |
+| Documentation | ✅ User Guide + Technical Guide + Multi-agent Guide + Sixth Sense (3 guides) + Agent Sentinel (5 guides) + PR #4 Fixes walkthrough |
+| Wiki | ✅ https://github.com/sivang/bedsheet/wiki (Home + PR-4-Fixes-Explained) |
+| Copyright | ✅ All 14 HTML docs have footer + 11 sidebar docs have sidebar copyright |
+| Examples | ✅ Investment advisor demo + Agent Sentinel security demo + Cloud Monitor demo |
+| Demo | ✅ `uvx bedsheet demo` (requires GEMINI_API_KEY, uses REAL DATA from Yahoo Finance + DuckDuckGo) |
 | pyproject.toml | ✅ PyPI ready |
+
+### What Shipped Since v0.4.7 (merged to main, not yet released)
+
+- **Sixth Sense** — distributed agent communication (`bedsheet/sense/`)
+- **LLM Recording & Replay** — `RecordingLLMClient` + `ReplayLLMClient` (`bedsheet/recording.py`)
+- **GeminiClient** — first-class Gemini support with thought-signature handling (`bedsheet/llm/gemini.py`)
+- **LLM Factory** — `make_llm_client()` picks provider from env vars (`bedsheet/llm/factory.py`)
+- **Transport Factory** — `make_sense_transport()` picks transport from env vars (`bedsheet/sense/factory.py`)
+- **Agent Sentinel** — full security demo with Action Gateway, sentinels, commander, live dashboard
+- **Cloud Monitor** — second multi-agent example
+- **Annotated schema support** — `Annotated[T, "desc"]` for tool parameter descriptions
+- **Verbose logging** — `print_event()` framework-level stdout logging
+- **Empty response handling** — agent loop explicitly catches "no text, no tool calls"
+- **9 bug fixes** from two rounds of automated code review (B1/B2/B3/H1/M1 + 5 hardening items)
+- **+46 new tests** (326 → 372)
 
 ---
 
-## Roadmap
+## Open Issues
 
-### v0.5.0 - Custom UIs & Enhanced Examples
+| Issue | Description |
+|-------|-------------|
+| [#5](https://github.com/sivang/bedsheet/issues/5) | v0.5.x cleanup: provider-state refactor, recording dataclass, Signal validation, test gaps, heartbeat dead code, Agent internals encapsulation |
 
-| Feature | Priority | Status |
-|---------|----------|--------|
-| **Investment Advisor Custom UI** | High | 📋 Planned |
-| - Stock price charts (candlestick/line) | | |
-| - Technical indicator gauges (RSI, MACD) | | |
-| - Risk assessment meters | | |
-| - Sentiment analysis display | | |
-| - Recommendation cards with confidence | | |
-| Example: Customer Support Agent | Medium | 📋 Planned |
-| Example: Code Review Agent | Medium | 📋 Planned |
+---
 
-### Future Considerations
+## Session Summary (2026-04-10) — PR #4 Merge + Review Fixes + Docs + Wiki + README Overhaul
 
-- AWS Bedrock target improvements
-- Azure OpenAI target
-- Local LLM support (Ollama)
+### What Was Done
+
+1. **PR #4 merged** (`feature/sixth-sense` → `main`, squash merge)
+   - 60 original commits + 9 fix commits from review
+   - Two rounds of automated code review (7 agent passes)
+   - All critical/important findings fixed before merge
+   - CI green on all 4 checks
+
+2. **9 bug fixes applied** (B1 Gemini double-call, B2 asyncio task GC, B3 gateway audit lies, H1 empty response loop, M1 ledger integration test, Defer #1-5 hardening)
+
+3. **Transport factory** (`make_sense_transport()`) — decoupled Action Gateway from PubNubTransport, enabled future NATS support
+
+4. **PR #6 merged** — `docs/pr-4-fixes-explained.md` walkthrough
+
+5. **PR #7 merged** — README doc links + copyright footers + review fix (dashboard HUD overlay + security-arch dark-theme colors)
+
+6. **Wiki bootstrapped** — Home + PR-4-Fixes-Explained
+
+7. **README fully updated** — new tagline, features, architecture tree, comparison table, installation, roadmap, FAQ
+
+8. **Copyright footers** — all 14 HTML docs (footer) + all 11 sidebar docs (sidebar)
+
+9. **Branch cleanup** — all 6 merged branches verified and deleted (local + remote)
+
+10. **Issue #5 filed** — v0.5.x cleanup tracker for deferred review items
+
+### Test Status
+
+- 372 passed, 1 pre-existing failure (`test_memory_exports` — missing `redis` module locally, passes in CI)
+- CI: test (3.11) ✅, test (3.12) ✅, lint ✅, typecheck ✅
 
 ---
 
