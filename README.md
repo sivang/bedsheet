@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
   <a href="https://www.elastic.co/licensing/elastic-license"><img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/tests-180%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-372%20passing-brightgreen.svg" alt="Tests">
 </p>
 
 **Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside.
@@ -436,7 +436,7 @@ A complete multi-agent security monitoring system built on Bedsheet + Sixth Sens
 git clone https://github.com/sivang/bedsheet.git
 cd bedsheet
 uv pip install -e ".[dev]"
-pytest -v  # 265 tests, all green
+pytest -v  # 372 tests, all green
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -446,10 +446,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## FAQ
 
 **Production ready?**
-Yes. 265 tests, type hints, async-first, Redis support. We use it.
+Yes. 372 tests, type hints, async-first, Redis support. We use it.
 
 **Only Claude?**
-For now. `LLMClient` is a protocol—implement it for OpenAI/Gemini/local. PRs welcome.
+No. Ships with `GeminiClient` (default) and `AnthropicClient`. `LLMClient` is a protocol—implement it for OpenAI/local/any provider. `make_llm_client()` picks the right one from env vars.
 
 **Why not LangChain?**
 Life is short.
