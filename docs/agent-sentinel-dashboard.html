@@ -2174,5 +2174,15 @@
         });
     })();
     </script>
+    <!--
+        Footer is a fixed-position HUD overlay because the dashboard body uses
+        `overflow: hidden` and `.app` fills the viewport via a locked CSS grid.
+        A regular bottom-of-page footer would be clipped invisible. The overlay
+        sits in the bottom-right corner with a compact one-line layout that
+        matches the dashboard's HUD aesthetic and stays out of the map area.
+    -->
+    <footer style="position: fixed; bottom: 6px; right: 12px; z-index: 100; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); text-align: right; pointer-events: auto; line-height: 1.6;">
+        <span>&copy; 2025-2026 Sivan Grünberg, <a href="https://vitakka.co/" style="color: rgba(255,255,255,0.65); text-decoration: none;">Vitakka Consulting</a> &middot; Elastic License 2.0 &middot; <a href="https://github.com/sivang/bedsheet" style="color: rgba(255,255,255,0.65); text-decoration: none;">GitHub</a></span>
+    </footer>
 </body>
 </html>
