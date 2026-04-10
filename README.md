@@ -15,15 +15,15 @@
   <img src="https://img.shields.io/badge/tests-372%20passing-brightgreen.svg" alt="Tests">
 </p>
 
-**Cloud-agnostic AI agent framework for Python.** Build agents that actually do things, coordinate multi-agent teams, and see what's happening inside.
+**Distributed AI agent framework for Python.** Build agent teams that communicate across machines, deploy to any cloud from one codebase, and replay any run deterministically.
 
 ---
 
 ## Quick Start (60 seconds)
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-uvx bedsheet demo  # Run demo instantly, no install needed
+export GEMINI_API_KEY=AIza...     # or ANTHROPIC_API_KEY — framework auto-detects
+uvx bedsheet demo                 # Run demo instantly, no install needed
 ```
 
 **A research assistant in 20 lines:**
@@ -31,7 +31,7 @@ uvx bedsheet demo  # Run demo instantly, no install needed
 ```python
 import asyncio
 from bedsheet import Agent, ActionGroup
-from bedsheet.llm import AnthropicClient
+from bedsheet.llm.factory import make_llm_client
 from bedsheet.events import CompletionEvent
 
 # Give your agent a superpower
@@ -42,11 +42,11 @@ async def search(query: str) -> str:
     # Your real implementation here (API calls, database, etc.)
     return f"Found 3 results for '{query}': ..."
 
-# Create the agent
+# Create the agent — make_llm_client() picks Gemini or Anthropic from env vars
 agent = Agent(
     name="Researcher",
     instruction="You help users find information. Use the search tool.",
-    model_client=AnthropicClient(),
+    model_client=make_llm_client(),
 )
 agent.add_action_group(tools)
 
@@ -270,6 +270,104 @@ print(response.parsed_output)  # {"symbol": "NVDA", "recommendation": "buy", "co
 - ✅ Uses Anthropic's beta `structured-outputs-2025-11-13` under the hood
 - ✅ Zero chance of malformed JSON—constrained at token generation
 
+### Sixth Sense — Distributed Agent Communication
+
+Agents on different machines, processes, or containers exchange typed signals over a pluggable transport. No shared memory, no direct function calls — just signals on a bus.
+
+```python
+from bedsheet import Agent, SenseMixin, SenseNetwork
+from bedsheet.sense import make_sense_transport
+
+# Any Agent gains distributed sensing via the mixin
+class MonitorAgent(SenseMixin, Agent):
+    pass
+
+agent = MonitorAgent(name="cpu-watcher", instruction="Monitor CPU", model_client=client)
+transport = make_sense_transport()  # Picks PubNub/Mock/NATS from env vars
+
+await agent.join_network(transport, namespace="cloud-ops", channels=["alerts"])
+
+# Broadcast a typed signal
+await agent.broadcast("alerts", Signal(kind="alert", sender=agent.name, payload={"cpu": 95}))
+
+# Request/response across agents (with timeout)
+result = await agent.request("log-analyzer", "What caused the CPU spike?", timeout=30.0)
+
+# Claim protocol for distributed coordination (only one agent handles each incident)
+won = await agent.claim_incident("incident-42", "alerts")
+```
+
+**Key points:**
+- ✅ `SenseTransport` is a `Protocol` — swap PubNub for NATS/Redis/ZMQ without touching agent code
+- ✅ `MockSenseTransport` for tests — no broker needed, fully in-process
+- ✅ `make_sense_transport()` factory auto-selects from `BEDSHEET_TRANSPORT` env var
+- ✅ Signals are typed dataclasses (`Signal`, `SignalKind`), not raw dicts
+
+### LLM Recording & Replay
+
+Capture every LLM interaction during a run, then replay it deterministically — no API keys needed. Useful for demos, CI, debugging, and reproducing bugs.
+
+```python
+from bedsheet.recording import enable_recording, enable_replay
+
+# Record: wraps the agent's LLM client, saves all calls to .jsonl
+recorder = enable_recording(agent, "recordings/")
+async for event in agent.invoke("session-1", "Analyze NVDA"):
+    ...
+recorder.close()
+
+# Replay: reads from .jsonl, no API keys needed, deterministic output
+enable_replay(agent, "recordings/", delay=0.1)
+async for event in agent.invoke("session-1", "Analyze NVDA"):
+    ...  # Exact same events, every time
+```
+
+```bash
+# Or via the Agent Sentinel demo's start.sh
+./start.sh --record          # Record all 7 agents
+./start.sh --replay 0.1      # Replay without API keys (0.1s delay between tokens)
+```
+
+**Key points:**
+- ✅ Generic — works with any `LLMClient`, not just one provider
+- ✅ Graceful exhaustion — replay returns `end_turn` when recordings run out, no crash
+- ✅ Env-var driven — `BEDSHEET_RECORD` / `BEDSHEET_REPLAY` for zero-code integration
+
+### Multi-Provider LLM Support
+
+Ships with `GeminiClient` (default) and `AnthropicClient`. The `make_llm_client()` factory picks the right one from environment variables — agent code never imports a specific provider.
+
+```python
+from bedsheet.llm.factory import make_llm_client
+
+# Set GEMINI_API_KEY or ANTHROPIC_API_KEY — the factory handles the rest
+client = make_llm_client()
+
+# Or import directly
+from bedsheet.llm.gemini import GeminiClient
+client = GeminiClient(api_key="...", model="gemini-3-flash-preview")
+```
+
+| Env var | Provider | Default model |
+|---------|----------|---------------|
+| `GEMINI_API_KEY` | GeminiClient | `gemini-3-flash-preview` |
+| `ANTHROPIC_API_KEY` | AnthropicClient | `claude-sonnet-4-5-20250929` |
+
+Override with `GEMINI_MODEL` or `ANTHROPIC_MODEL`. Gemini takes priority when both keys are set.
+
+### Verbose Agent Logging
+
+See LLM reasoning in real-time with Docker-Compose-style `[agent-name]` prefixes:
+
+```python
+from bedsheet import print_event
+
+async for event in agent.invoke("session-1", "Analyze this"):
+    print_event(agent.name, event)  # [Researcher] Thinking: I should search for...
+```
+
+Or set `BEDSHEET_VERBOSE=1` to enable globally. The Agent Sentinel demo's `start.sh` does this by default (`--quiet` to disable).
+
 ---
 
 ## Real Example: Todo Assistant
@@ -333,15 +431,17 @@ asyncio.run(main())
 
 ```bash
 # Recommended: Use uv for fast, reliable installs
-uv pip install bedsheet           # Basic
+uv pip install bedsheet           # Core framework (Gemini + Anthropic)
+uv pip install bedsheet[sense]    # + Distributed agent communication (PubNub transport)
 uv pip install bedsheet[redis]    # + Redis memory backend
-uv pip install bedsheet[dev]      # + Development tools
+uv pip install bedsheet[demo]     # + Real data tools (yfinance, ddgs)
+uv pip install bedsheet[dev]      # + Full test suite dependencies
 
 # Or run directly without installing
 uvx bedsheet --help
 ```
 
-**Requirements:** Python 3.11+ and an [Anthropic API key](https://console.anthropic.com/)
+**Requirements:** Python 3.11+ and a [Gemini API key](https://aistudio.google.com/apikey) (default) or [Anthropic API key](https://console.anthropic.com/)
 
 ---
 
@@ -349,18 +449,36 @@ uvx bedsheet --help
 
 ```
 bedsheet/
-├── agent.py          # Single agent (189 lines)
-├── supervisor.py     # Multi-agent coordination (362 lines)
-├── action_group.py   # Tool definitions (115 lines)
-├── events.py         # Event types (105 lines)
+├── agent.py           # Single agent with ReAct loop
+├── supervisor.py      # Multi-agent coordination (extends Agent)
+├── action_group.py    # @action decorator, tool schemas, Annotated support
+├── events.py          # 11 event types + print_event() verbose logging
+├── recording.py       # RecordingLLMClient + ReplayLLMClient
+├── testing.py         # MockLLMClient, MockSenseTransport for tests
 ├── llm/
-│   ├── base.py       # LLM protocol
-│   └── anthropic.py  # Claude implementation
-└── memory/
-    ├── in_memory.py  # Development
-    └── redis.py      # Production
+│   ├── base.py        # LLMClient protocol + LLMResponse dataclass
+│   ├── anthropic.py   # Claude implementation
+│   ├── gemini.py      # Gemini implementation (with thought-signature handling)
+│   └── factory.py     # make_llm_client() — picks provider from env vars
+├── sense/
+│   ├── protocol.py    # SenseTransport protocol
+│   ├── signals.py     # Signal dataclass + SignalKind literals
+│   ├── mixin.py       # SenseMixin — opt-in distributed sensing for any Agent
+│   ├── network.py     # SenseNetwork — multi-peer coordination
+│   ├── pubnub_transport.py  # PubNub backend
+│   ├── factory.py     # make_sense_transport() — picks transport from env vars
+│   └── serialization.py     # Wire-format serialization
+├── memory/
+│   ├── in_memory.py   # Development (dict-based)
+│   └── redis.py       # Production (Redis-backed)
+├── cli/
+│   └── main.py        # bedsheet init, generate, validate, deploy
+└── deploy/
+    ├── config.py      # bedsheet.yaml schema
+    ├── introspect.py   # Agent metadata extraction
+    └── targets/       # Local (Docker), GCP (Terraform), AWS (CDK)
 
-Total: ~1,000 lines. Coffee break reading.
+Total: ~2,500 lines. Still readable in an afternoon.
 ```
 
 ---
@@ -369,11 +487,13 @@ Total: ~1,000 lines. Coffee break reading.
 
 | | Bedsheet | LangChain | AWS Bedrock | CrewAI |
 |---|---|---|---|---|
-| **Lines of code** | ~1,000 | ~100,000+ | N/A | ~10,000 |
+| **Lines of code** | ~2,500 | ~100,000+ | N/A | ~10,000 |
 | **Time to understand** | 1 afternoon | 1 week | 2 days | 3 days |
-| **Debugging** | print() works | Good luck | CloudWatch | Logs |
+| **Distributed agents** | Built-in (Sixth Sense) | External | N/A | N/A |
+| **Record & replay** | Built-in | No | No | No |
 | **Streaming events** | Built-in | Add-on | Limited | Limited |
 | **Parallel execution** | Default | Manual | Manual | Manual |
+| **Multi-provider LLM** | Gemini + Claude | Many | Bedrock only | OpenAI-centric |
 | **Cloud lock-in** | None | None | AWS | None |
 
 ---
@@ -421,10 +541,11 @@ A complete multi-agent security monitoring system built on Bedsheet + Sixth Sens
 - [x] v0.1 — Single agents, tools, streaming
 - [x] v0.2 — Multi-agent, parallel delegation
 - [x] v0.3 — Structured outputs
-- [x] v0.4 — Deploy anywhere (Local/GCP/AWS), Debug UI, E2E tested ✅
-  - v0.4.7: Credential preflight checks, project consistency validation, `make ui` command
+- [x] v0.4 — Deploy anywhere (Local/GCP/AWS), CLI (`init`, `generate`, `validate`, `deploy`)
+  - v0.4.7: Real data demo (yfinance + ddgs), credential preflight checks
+  - v0.4.8: Sixth Sense distributed comms, GeminiClient, LLM recording/replay, `make_llm_client()` + `make_sense_transport()` factories, Agent Sentinel security demo, verbose logging, `Annotated[T, "desc"]` tool schemas ✅
 - [ ] v0.5 — Knowledge bases, RAG, custom UI examples
-- [ ] v0.6 — Guardrails, safety (classification models for high-speed validation)
+- [ ] v0.6 — Guardrails, NATS transport, [security architecture hardening](https://github.com/sivang/bedsheet/issues/5)
 - [ ] v0.7 — GCP Agent Engine, A2A protocol
 - [ ] v0.8 — WASM/Spin support (browser agents, edge deployment, Fermyon Cloud)
 
