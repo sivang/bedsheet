@@ -70,3 +70,6 @@ uv.lock
 
 # Test environments
 .venv-test/
+
+# Git worktrees
+.worktrees/
