@@ -519,10 +519,12 @@
         .btn-speed.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 212, 255, 0.08); }
 
         /* ── Intro Crawl ── */
+        /* ── Intro: typed text overlaid on the map ── */
         .intro-overlay {
             position: fixed;
             inset: 0;
-            background: var(--bg-deep);
+            background: rgba(20, 28, 43, 0.75);
+            backdrop-filter: blur(2px);
             z-index: 2000;
             display: flex;
             align-items: center;
@@ -539,45 +541,66 @@
         .intro-overlay.hidden { display: none; }
 
         .intro-crawl {
-            max-width: 560px;
-            text-align: center;
+            max-width: 620px;
+            text-align: left;
             padding: 40px;
         }
 
         .intro-title {
             font-family: var(--font-mono);
-            font-size: 14px;
+            font-size: 12px;
             color: var(--cyan);
             text-transform: uppercase;
             letter-spacing: 3px;
-            margin-bottom: 32px;
+            margin-bottom: 28px;
             opacity: 0;
-            animation: intro-fade-in 1.5s ease forwards;
         }
 
         .intro-line {
-            font-family: var(--font-sans);
-            font-size: 20px;
-            font-weight: 300;
-            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--green);
             line-height: 1.8;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             opacity: 0;
+            white-space: pre-wrap;
+        }
+
+        .intro-line .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--green);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         .intro-line.dim {
             color: var(--text-secondary);
-            font-size: 17px;
+            font-size: 14px;
         }
 
         .intro-line.accent {
             color: var(--cyan);
-            font-weight: 400;
             font-style: italic;
         }
 
+        .intro-line.classified {
+            color: var(--red);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
         .intro-proceed {
-            margin-top: 40px;
+            margin-top: 32px;
             opacity: 0;
         }
 
@@ -609,8 +632,8 @@
         }
 
         @keyframes intro-fade-in {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* ── Chapter Title Card ── */
@@ -817,27 +840,17 @@
     <script src="sentinel-config.js"></script>
 </head>
 <body>
-    <!-- Intro Crawl -->
+    <!-- Intro: classified-style typed text overlaid on the map -->
     <div class="intro-overlay" id="introOverlay">
         <div class="intro-crawl">
+            <div class="intro-line classified" id="introLine0">// classified &mdash; sentinel network</div>
             <div class="intro-title" id="introTitle">Bedsheet Sentinel Network</div>
-            <div class="intro-line" id="introLine1">
-                In our times, autonomous AI agents operate across global infrastructure
-                with unprecedented power and autonomy.
-            </div>
-            <div class="intro-line" id="introLine2">
-                They face threats from every direction &mdash; poisoned models,
-                compromised supply chains, and rogue behavior from within.
-            </div>
-            <div class="intro-line dim" id="introLine3">
-                In the aftermath of the OpenClaw crisis of 2026, a new generation
-                of security sentinels was deployed to watch the watchers.
-            </div>
-            <div class="intro-line accent" id="introLine4">
-                This is the story of how they work.
-            </div>
+            <div class="intro-line" id="introLine1"></div>
+            <div class="intro-line" id="introLine2"></div>
+            <div class="intro-line dim" id="introLine3"></div>
+            <div class="intro-line accent" id="introLine4"></div>
             <div class="intro-proceed" id="introProceed">
-                <button id="introStartBtn">Begin</button>
+                <button id="introStartBtn">Begin Monitoring</button>
                 <div class="intro-skip">or press Space</div>
             </div>
         </div>
@@ -1174,25 +1187,72 @@
     // ── Intro Crawl Animation ──
     var introShown = false;
 
-    function animateIntro() {
-        var lines = [
-            { el: 'introTitle', delay: 0 },
-            { el: 'introLine1', delay: 1200 },
-            { el: 'introLine2', delay: 3200 },
-            { el: 'introLine3', delay: 5200 },
-            { el: 'introLine4', delay: 7200 },
-            { el: 'introProceed', delay: 8800 },
-        ];
+    // Intro text typed out character by character like a classified terminal
+    var INTRO_LINES = [
+        'In our times, autonomous AI agents operate across global infrastructure with unprecedented power and autonomy.',
+        'They face threats from every direction \u2014 poisoned models, compromised supply chains, and rogue behavior from within.',
+        'In the aftermath of the OpenClaw crisis of 2026, a new generation of security sentinels was deployed to watch the watchers.',
+        'This is the story of how they work.',
+    ];
 
-        lines.forEach(function(item) {
-            setTimeout(function() {
-                var el = document.getElementById(item.el);
-                if (el) {
-                    el.style.animation = 'intro-fade-in 1.2s ease forwards';
-                    el.style.animationDelay = '0s';
+    var introTypingSpeed = 25; // ms per character
+
+    function typeText(el, text, callback) {
+        var i = 0;
+        el.style.opacity = '1';
+        el.textContent = '';
+        var cursorSpan = document.createElement('span');
+        cursorSpan.className = 'cursor';
+        el.appendChild(cursorSpan);
+
+        var interval = setInterval(function() {
+            if (i < text.length) {
+                el.insertBefore(document.createTextNode(text[i]), cursorSpan);
+                i++;
+            } else {
+                clearInterval(interval);
+                // Remove cursor after typing done
+                setTimeout(function() {
+                    if (cursorSpan.parentNode) cursorSpan.remove();
+                }, 600);
+                if (callback) setTimeout(callback, 400);
+            }
+        }, introTypingSpeed);
+    }
+
+    function animateIntro() {
+        // Show classified label immediately
+        var line0 = document.getElementById('introLine0');
+        line0.style.opacity = '1';
+        line0.style.animation = 'intro-fade-in 0.5s ease forwards';
+
+        // Title fades in
+        setTimeout(function() {
+            var title = document.getElementById('introTitle');
+            title.style.animation = 'intro-fade-in 1s ease forwards';
+        }, 800);
+
+        // Type each line sequentially
+        setTimeout(function() {
+            var lineIndex = 0;
+            function typeNextLine() {
+                if (lineIndex >= INTRO_LINES.length) {
+                    // Show proceed button
+                    setTimeout(function() {
+                        var proceed = document.getElementById('introProceed');
+                        proceed.style.animation = 'intro-fade-in 0.8s ease forwards';
+                    }, 500);
+                    return;
                 }
-            }, item.delay);
-        });
+                var elId = 'introLine' + (lineIndex + 1);
+                var el = document.getElementById(elId);
+                typeText(el, INTRO_LINES[lineIndex], function() {
+                    lineIndex++;
+                    typeNextLine();
+                });
+            }
+            typeNextLine();
+        }, 2000);
     }
 
     function dismissIntro() {
