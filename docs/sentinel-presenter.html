@@ -1176,14 +1176,36 @@
         var overlay = document.getElementById('focusOverlay');
         var areaW = mapArea.offsetWidth;
         var areaH = mapArea.offsetHeight;
+        var overlayW = 380;
+        var overlayH = 420;
+        var gap = 60; // distance from center (where the zoomed node sits)
 
-        // After zoom, the agent is roughly centered. Place overlay to the right.
-        var overlayX = areaW / 2 + 40;
-        var overlayY = areaH / 2 - 100;
+        // Agent's fractional position in the SVG determines which side to place the overlay.
+        // If agent is on the right half of the map, place overlay to the left of center, and vice versa.
+        var fracX = info.x / VIEWBOX_W;
+        var fracY = info.y / VIEWBOX_H;
+
+        var overlayX, overlayY;
+
+        if (fracX > 0.5) {
+            // Agent is on the right — place overlay to the left of center
+            overlayX = areaW / 2 - overlayW - gap;
+        } else {
+            // Agent is on the left — place overlay to the right of center
+            overlayX = areaW / 2 + gap;
+        }
+
+        if (fracY < 0.35) {
+            // Agent is near the top — place overlay below center
+            overlayY = areaH / 2 + 20;
+        } else {
+            // Agent is in the middle or bottom — place overlay above center
+            overlayY = areaH / 2 - overlayH / 2;
+        }
 
         // Clamp to viewport
-        overlayX = Math.min(overlayX, areaW - 400);
-        overlayY = Math.max(20, Math.min(overlayY, areaH - 440));
+        overlayX = Math.max(16, Math.min(overlayX, areaW - overlayW - 16));
+        overlayY = Math.max(16, Math.min(overlayY, areaH - overlayH - 16));
 
         overlay.style.left = overlayX + 'px';
         overlay.style.top = overlayY + 'px';
