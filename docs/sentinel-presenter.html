@@ -1206,6 +1206,7 @@
     var collecting = true;          // true while we're still collecting events from PubNub
     var COLLECTION_WINDOW = 8000;   // ms to wait for events before starting presentation
     var collectionTimer = null;
+    var liveAlertTimeout = null;
 
     // Chapter tracking
     var chapters = [];
@@ -1386,7 +1387,12 @@
         var audio = document.getElementById('ambientAudio');
         if (audio) {
             audio.volume = 0.15;
-            audio.play().catch(function() {}); // ignore if no file
+            audio.play().catch(function(err) {
+                // NotAllowedError = autoplay policy, expected if no user gesture
+                if (err.name !== 'NotAllowedError') {
+                    console.warn('[presenter] Audio failed:', err.name, err.message);
+                }
+            });
         }
 
         // Now connect to PubNub
@@ -1477,7 +1483,10 @@
     function handleMessage(event) {
         var raw = event.message;
         var signal = decodeSignal(raw, event.channel);
-        if (!signal) return;
+        if (!signal) {
+            console.warn('[presenter] Undecipherable message on', event.channel, raw);
+            return;
+        }
 
         stats.signals++;
         updateStats();
@@ -1675,16 +1684,6 @@
     };
 
     // Convert agent node SVG coords to screen position after zoom
-    function agentScreenPos(agentName, areaW, areaH, zoom) {
-        var info = AGENTS[agentName];
-        if (!info) return null;
-        var fracX = info.x / VIEWBOX_W;
-        var fracY = info.y / VIEWBOX_H;
-        // After zoom, the focused agent is centered. Other agents are offset.
-        var screenX = areaW / 2 + (fracX * areaW - areaW / 2) * zoom.scale + zoom.panX;
-        var screenY = areaH / 2 + (fracY * areaH - areaH / 2) * zoom.scale + zoom.panY;
-        return { x: screenX, y: screenY };
-    }
 
     function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
         return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
@@ -2012,21 +2011,20 @@
             }
         }
 
-        // Alert from sentinel
+        // Alert from sentinel — quarantine takes priority over generic alert
         if (kind === 'alert') {
             stats.alerts++;
             updateStats();
-            var sev = (payload.severity || '').toLowerCase();
-            if (sev === 'critical' || sev === 'high') {
-                addChapter('Sentinel Alert');
+            if (payload.action === 'quarantine') {
+                stats.quarantine++;
+                updateStats();
+                addChapter('Quarantine Issued');
+            } else {
+                var sev = (payload.severity || '').toLowerCase();
+                if (sev === 'critical' || sev === 'high') {
+                    addChapter('Sentinel Alert');
+                }
             }
-        }
-
-        // Quarantine
-        if (kind === 'alert' && payload.action === 'quarantine') {
-            stats.quarantine++;
-            updateStats();
-            addChapter('Quarantine Issued');
         }
     }
 
@@ -2277,8 +2275,8 @@
                 animateSignalLine(sender, 'sentinel-commander', 'var(--red)');
             }
             document.getElementById('statusDot').classList.add('live');
-            clearTimeout(window._liveTimeout);
-            window._liveTimeout = setTimeout(function() {
+            clearTimeout(liveAlertTimeout);
+            liveAlertTimeout = setTimeout(function() {
                 document.getElementById('statusDot').classList.remove('live');
             }, 5000);
         }
@@ -2303,7 +2301,7 @@
         var s = String(elapsed % 60).padStart(2, '0');
         document.getElementById('timestampCounter').textContent = h + ':' + m + ':' + s;
     }
-    setInterval(updateTimestamp, 1000);
+    var timestampIntervalId = setInterval(updateTimestamp, 1000);
 
     // ── Speed Controls ──
     document.querySelectorAll('.btn-speed').forEach(function(btn) {
@@ -2373,7 +2371,9 @@
             case 'f':
             case 'F':
                 if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
+                    document.documentElement.requestFullscreen().catch(function(err) {
+                        console.warn('[presenter] Fullscreen denied:', err.message);
+                    });
                 } else {
                     document.exitFullscreen();
                 }
@@ -2433,6 +2433,7 @@
     }
 
     function skipToNextAgent() {
+        if (agentOrder.length === 0 || sceneIndex >= agentOrder.length) return;
         // Skip remaining events in current scene
         var agentName = agentOrder[sceneIndex];
         var scene = agentScenes[agentName];
