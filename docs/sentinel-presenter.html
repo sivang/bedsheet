@@ -1322,6 +1322,13 @@
         'Network Startup':
             'Seven autonomous agents are coming online across the globe \u2014 ' +
             'three workers, two security sentinels, an action gateway, and a commander.',
+        'Skill Acquisition':
+            'The Skill Acquirer browses ClawHub, the package registry, looking for new capabilities. ' +
+            'It installs verified skills but refuses the malicious data_exfiltrator \u2014 ' +
+            'the Supply Chain Sentinel watches every install.',
+        'Malicious Install Blocked':
+            'The rogue Skill Acquirer attempts to install a known-malicious package. ' +
+            'The Gateway blocks it at the trust boundary \u2014 the agent never receives the payload.',
         'Rogue Burst':
             'An agent has gone rogue \u2014 firing dozens of rapid requests in a burst, ' +
             'far exceeding its normal operating pattern.',
@@ -1382,11 +1389,31 @@
         setTimeout(function() { card.classList.remove('visible'); }, 2500);
     }
 
+    var skillAcquirerChapterShown = false;
+    var maliciousBlockChapterShown = false;
+
     function detectChapter(signal) {
         var payload = signal.payload || {};
         var sender = signal.sender || '';
         var kind = signal.kind || '';
         var eventType = payload.event_type || '';
+
+        // Skill Acquirer: first tool call from skill-acquirer triggers chapter
+        if (sender === 'skill-acquirer' && eventType === 'tool_call' && !skillAcquirerChapterShown) {
+            skillAcquirerChapterShown = true;
+            addChapter('Skill Acquisition');
+        }
+
+        // Skill Acquirer: malicious install blocked
+        if (sender === 'skill-acquirer' && eventType === 'tool_result') {
+            var result = payload.result || '';
+            if ((result.indexOf('MALICIOUS') !== -1 || result.indexOf('blocked') !== -1 ||
+                 result.indexOf('denied') !== -1 || result.indexOf('data_exfiltrator') !== -1)
+                && !maliciousBlockChapterShown) {
+                maliciousBlockChapterShown = true;
+                addChapter('Malicious Install Blocked');
+            }
+        }
 
         // Rogue burst: 3+ consecutive tool_calls from same agent
         if (eventType === 'tool_call') {
