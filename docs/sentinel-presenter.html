@@ -1398,9 +1398,14 @@
         // Reset collection timer — keep waiting while events are still arriving
         if (collecting) {
             if (collectionTimer) clearTimeout(collectionTimer);
+            var agentCount = agentOrder.length;
+            var eventCount = countTotalSceneEvents();
+            console.log('[presenter] Collecting: ' + eventCount + ' LLM events from ' + agentCount + ' agents');
+            updateAgentList();
             collectionTimer = setTimeout(function() {
                 collecting = false;
                 totalEventEstimate = countTotalSceneEvents();
+                console.log('[presenter] Collection done. Total: ' + totalEventEstimate + ' events from ' + agentOrder.length + ' agents');
                 startScenePlayback();
             }, COLLECTION_WINDOW);
         }
@@ -1817,11 +1822,20 @@
 
     function startScenePlayback() {
         if (playbackRunning) return;
-        if (agentOrder.length === 0) return;
+        if (agentOrder.length === 0) {
+            console.log('[presenter] No agent scenes collected — nothing to play');
+            return;
+        }
         playbackRunning = true;
-        sceneIndex = 0;
-        sceneEventIndex = 0;
-        beginScene();
+        console.log('[presenter] Starting scene playback. Agents:', agentOrder.join(', '));
+        updateAgentList();
+
+        // Don't auto-start — wait for director input or auto-play
+        if (!paused) {
+            sceneIndex = 0;
+            sceneEventIndex = 0;
+            beginScene();
+        }
     }
 
     function beginScene() {
@@ -1829,20 +1843,70 @@
             // All scenes done — loop from the beginning
             sceneIndex = 0;
             sceneEventIndex = 0;
-            // Brief pause at overview before restarting
             currentFocus = null;
             hideFocusOverlay();
             zoomToOverview();
+            updateAgentList();
+            document.getElementById('chapterName').textContent = 'All scenes complete \u2014 looping';
             setTimeout(beginScene, 3000 / playbackSpeed);
             return;
         }
 
         sceneEventIndex = 0;
         var agentName = agentOrder[sceneIndex];
+        var sceneEvents = agentScenes[agentName] || [];
+        console.log('[presenter] Scene ' + (sceneIndex + 1) + '/' + agentOrder.length +
+            ': ' + agentName + ' (' + sceneEvents.length + ' events)');
+        updateAgentList();
         transitionToAgent(agentName);
 
         // Wait for the zoom transition to complete before showing events
-        setTimeout(playNextSceneEvent, 1000);
+        setTimeout(playNextSceneEvent, 1200);
+    }
+
+    // Director mode: jump to a specific agent's scene by number (1-based)
+    function jumpToScene(num) {
+        if (num < 1 || num > agentOrder.length) return;
+
+        // Stop current playback
+        sceneIndex = num - 1;
+        sceneEventIndex = 0;
+        playbackRunning = true;
+
+        var agentName = agentOrder[sceneIndex];
+        console.log('[presenter] Director: jumping to scene ' + num + ' (' + agentName + ')');
+
+        // Clear the focus overlay for fresh start
+        hideFocusOverlay();
+        updateAgentList();
+        transitionToAgent(agentName);
+
+        setTimeout(function() {
+            showFocusOverlay(agentName);
+            if (!paused) {
+                setTimeout(playNextSceneEvent, 500);
+            }
+        }, 1000);
+    }
+
+    // Show which agents are available and which is active
+    function updateAgentList() {
+        var el = document.getElementById('chapterName');
+        if (agentOrder.length === 0) {
+            el.textContent = 'Collecting events...';
+            return;
+        }
+        var parts = [];
+        for (var i = 0; i < agentOrder.length; i++) {
+            var name = agentOrder[i];
+            var count = (agentScenes[name] || []).length;
+            if (i === sceneIndex && playbackRunning) {
+                parts.push('[' + (i + 1) + ':' + name + ']');
+            } else {
+                parts.push((i + 1) + ':' + name);
+            }
+        }
+        el.textContent = parts.join('  ');
     }
 
     function playNextSceneEvent() {
@@ -2008,11 +2072,22 @@
                 }
                 break;
 
-            case '1': playbackSpeed = 0.5; updateSpeedUI(); break;
-            case '2': playbackSpeed = 1; updateSpeedUI(); break;
-            case '3': playbackSpeed = 2; updateSpeedUI(); break;
-            case '4': playbackSpeed = 5; updateSpeedUI(); break;
-            case '5': playbackSpeed = 10; updateSpeedUI(); break;
+            // Bare number keys = director mode (jump to agent scene)
+            // Shift+number = speed control
+            case '1': case '2': case '3': case '4': case '5':
+            case '6': case '7': case '8': case '9':
+                if (e.shiftKey) {
+                    // Speed: Shift+1=0.5x, Shift+2=1x, Shift+3=2x, Shift+4=5x, Shift+5=10x
+                    var speeds = { '1': 0.5, '2': 1, '3': 2, '4': 5, '5': 10 };
+                    if (speeds[e.key]) {
+                        playbackSpeed = speeds[e.key];
+                        updateSpeedUI();
+                    }
+                } else {
+                    // Director: jump to scene N
+                    jumpToScene(parseInt(e.key));
+                }
+                break;
 
             case 'f':
             case 'F':
