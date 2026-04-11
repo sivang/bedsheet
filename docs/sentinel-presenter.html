@@ -637,9 +637,12 @@
         }
 
         /* ── Chapter Title Card ── */
+        /* Chapter card: top third of screen — above commentary */
         .chapter-card {
             position: fixed;
-            inset: 0;
+            top: 8%;
+            left: 0;
+            right: 0;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -671,23 +674,29 @@
         }
 
         /* ── Commentary Subtitle Bar ── */
+        /* Commentary: bottom area, above timeline bar — never overlaps chapter card or focus overlay */
         .commentary-bar {
             position: fixed;
-            top: 50%;
+            bottom: 72px;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             max-width: 640px;
             width: 75%;
             background: rgba(10, 14, 23, 0.88);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(0, 200, 255, 0.2);
             border-radius: 10px;
-            padding: 28px 36px;
+            padding: 24px 32px;
             text-align: left;
             z-index: 45;
             opacity: 0;
             transition: opacity 0.6s ease;
             pointer-events: none;
+        }
+
+        /* In cinematic mode, move up since timeline bar is hidden */
+        .app.cinematic ~ .commentary-bar {
+            bottom: 32px;
         }
 
         .commentary-bar.visible { opacity: 1; }
@@ -744,7 +753,7 @@
         /* ── Agent Transition Label ── */
         .transition-label {
             position: fixed;
-            bottom: 60px;
+            top: 20%;
             left: 50%;
             transform: translateX(-50%);
             font-family: var(--font-mono);
@@ -1704,8 +1713,8 @@
 
         // Show chapter title card and commentary
         showChapterCard(name);
-        // Show commentary slightly after the chapter card appears
-        setTimeout(function() { showCommentary(name); }, 1200);
+        // Commentary starts after chapter card fades out (2.5s + 0.5s buffer)
+        setTimeout(function() { showCommentary(name); }, 3000);
     }
 
     function showChapterCard(text) {
