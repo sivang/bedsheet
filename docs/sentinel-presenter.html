@@ -1257,6 +1257,13 @@
         var errorEl = document.getElementById('connectionError');
         var btn = document.getElementById('connectBtn');
 
+        if (typeof PubNub === 'undefined') {
+            errorEl.textContent = 'PubNub SDK failed to load. Check network or firewall.';
+            btn.disabled = false;
+            btn.textContent = 'Connect';
+            return;
+        }
+
         if (!key.startsWith('sub-c-')) {
             errorEl.textContent = 'Key must start with "sub-c-"';
             return;
@@ -1428,10 +1435,33 @@
             document.getElementById('statusText').textContent = 'Connected';
             startTime = Date.now();
             addChapter('Network Startup');
-            // Scene playback starts after COLLECTION_WINDOW ms of no new events
-            // Map event drain runs alongside
-            setTimeout(drainMapEvents, 3000);
+
+            // Start a safety timer: if no events arrive within 15s, warn the user
+            setTimeout(function() {
+                if (collecting && agentOrder.length === 0) {
+                    console.warn('[presenter] No events received after 15s. Is the sentinel network running?');
+                    document.getElementById('chapterName').textContent = 'No events received \u2014 is the sentinel network running?';
+                }
+            }, 15000);
+
+        } else if (statusEvent.category === 'PNAccessDeniedCategory') {
+            showConnectionError('Access denied \u2014 check your subscribe key');
+        } else if (statusEvent.category === 'PNNetworkDownCategory' ||
+                   statusEvent.category === 'PNNetworkIssuesCategory') {
+            showConnectionError('Network error \u2014 check your connection');
+        } else if (statusEvent.category === 'PNTimeoutCategory') {
+            showConnectionError('Connection timed out \u2014 try again');
+        } else if (statusEvent.error) {
+            console.error('[presenter] PubNub status error:', statusEvent.category, statusEvent);
+            showConnectionError('Connection failed: ' + statusEvent.category);
         }
+    }
+
+    function showConnectionError(msg) {
+        document.getElementById('connectionError').textContent = msg;
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('connectBtn').textContent = 'Connect';
+        document.getElementById('connectionOverlay').classList.remove('hidden');
     }
 
     function handlePresence(event) {
@@ -2039,6 +2069,9 @@
         console.log('[presenter] Starting scene playback. Agents:', agentOrder.join(', '));
         updateAgentList();
 
+        // Start map event drain now that playbackRunning is true
+        drainMapEvents();
+
         // Don't auto-start — wait for director input or auto-play
         if (!paused) {
             sceneIndex = 0;
@@ -2203,7 +2236,9 @@
                 if (target && AGENTS[target]) {
                     animateSignalLine(agentName, target, 'var(--cyan)');
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.warn('[presenter] Failed to parse tool_call for signal line:', e.message);
+            }
         }
 
         // Gateway tools: worker talks to gateway
