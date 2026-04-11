@@ -295,6 +295,21 @@
             <a href="#screen-studio">Screen Studio Tips</a>
             <a href="#workflow">Recording Workflow</a>
 
+            <div class="section-label">Features</div>
+            <a href="#director">Director Mode</a>
+            <a href="#intro-crawl">Intro Crawl</a>
+            <a href="#commentary">Scene Commentary</a>
+            <a href="#briefings">Agent Briefings</a>
+            <a href="#signal-lines">Signal Lines</a>
+            <a href="#ambient">Ambient Audio</a>
+
+            <div class="section-label">JS Architecture</div>
+            <a href="#js-overview">Code Overview</a>
+            <a href="#js-scene-engine">Scene Engine</a>
+            <a href="#js-typewriter">Typewriter Effect</a>
+            <a href="#js-collision">Collision Avoidance</a>
+            <a href="#js-pubnub">PubNub Integration</a>
+
             <div class="section-label">Reference</div>
             <a href="#files">Files</a>
             <a href="#troubleshooting">Troubleshooting</a>
@@ -467,45 +482,52 @@ cd examples/agent-sentinel
             <!-- Keyboard -->
             <h2 id="keyboard">Keyboard Shortcuts</h2>
 
+            <h3>Director Controls</h3>
             <table>
                 <thead>
-                    <tr><th>Key</th><th>Action</th><th>Works in Cinematic?</th></tr>
+                    <tr><th>Key</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     <tr>
+                        <td><span class="key">1</span> - <span class="key">9</span></td>
+                        <td>Jump to agent scene N (director mode)</td>
+                    </tr>
+                    <tr>
                         <td><span class="key">Space</span></td>
                         <td>Pause / resume auto-play</td>
-                        <td>Yes</td>
                     </tr>
                     <tr>
                         <td><span class="key">&rarr;</span></td>
-                        <td>Step to next event</td>
-                        <td>Yes</td>
+                        <td>Step to next event (one at a time)</td>
                     </tr>
                     <tr>
                         <td><span class="key">Shift</span> + <span class="key">&rarr;</span></td>
-                        <td>Skip to next agent transition</td>
-                        <td>Yes</td>
+                        <td>Skip to next agent scene</td>
                     </tr>
+                </tbody>
+            </table>
+
+            <h3>Speed &amp; Display</h3>
+            <table>
+                <thead>
+                    <tr><th>Key</th><th>Action</th></tr>
+                </thead>
+                <tbody>
                     <tr>
-                        <td><span class="key">1</span> - <span class="key">5</span></td>
+                        <td><span class="key">Shift</span> + <span class="key">1</span>-<span class="key">5</span></td>
                         <td>Set speed (0.5x, 1x, 2x, 5x, 10x)</td>
-                        <td>Yes</td>
                     </tr>
                     <tr>
                         <td><span class="key">F</span></td>
                         <td>Toggle fullscreen</td>
-                        <td>Yes</td>
                     </tr>
                     <tr>
                         <td><span class="key">C</span></td>
                         <td>Toggle cinematic mode</td>
-                        <td>Yes (exits cinematic)</td>
                     </tr>
                     <tr>
                         <td><span class="key">T</span></td>
                         <td>Toggle timestamp counter</td>
-                        <td>Yes</td>
                     </tr>
                     <tr>
                         <td><span class="key">Esc</span></td>
@@ -668,6 +690,330 @@ ls -la recordings/</code></pre>
                 <li>Adjust speed with <span class="key">1</span>-<span class="key">5</span> as needed</li>
                 <li>Skip boring sections with <span class="key">Shift</span>+<span class="key">&rarr;</span></li>
             </ul>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- FEATURES -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="director">Director Mode</h2>
+            <p>
+                Director mode gives you manual control over scene progression. Instead of auto-playing
+                through agents sequentially, you press a number key to jump to any agent's scene.
+            </p>
+            <p>
+                When the presenter collects events from PubNub, it groups them by agent and assigns each
+                a number (1-based, in order of first appearance). The timeline bar shows the agent list:
+            </p>
+<pre><code>1:web-researcher  [2:scheduler]  3:skill-acquirer  4:behavior-sentinel  ...</code></pre>
+            <p>
+                Press <span class="key">2</span> to jump to the scheduler's scene. The map zooms to its node,
+                the briefing types out, and its LLM events play. Press <span class="key">5</span> to jump to
+                a different agent at any time.
+            </p>
+            <div class="callout tip">
+                <strong>Tip</strong>
+                Start paused (<span class="key">Space</span>), then use number keys to jump between
+                agents in whatever order tells the best story. You're the director.
+            </div>
+
+            <h2 id="intro-crawl">Intro Crawl</h2>
+            <p>
+                The presenter opens with a classified-terminal-style intro overlaid on the map.
+                Text types out character by character in green monospace with a blinking cursor,
+                setting the scene before the demo begins.
+            </p>
+            <p>The intro covers:</p>
+            <ul>
+                <li>The world of autonomous AI agents and the threats they face</li>
+                <li>The OpenClaw crisis of 2026 as a turning point</li>
+                <li>The sentinel network as the response</li>
+            </ul>
+            <p>
+                Press <span class="key">Space</span> or click <strong>Begin Monitoring</strong> to dismiss.
+                PubNub connection starts only after dismissal, so the demo doesn't begin while the
+                audience is still reading.
+            </p>
+
+            <h2 id="commentary">Scene Commentary</h2>
+            <p>
+                Each chapter triggers a commentary overlay &mdash; a military-style typed briefing that explains
+                what's happening to the audience. The commentary appears in an "INTELLIGENCE BRIEFING" panel
+                at the bottom of the screen, typed out with a green blinking cursor.
+            </p>
+            <p>Chapters with commentary:</p>
+            <table>
+                <thead><tr><th>Chapter</th><th>Trigger</th></tr></thead>
+                <tbody>
+                    <tr><td>Network Startup</td><td>PubNub connection</td></tr>
+                    <tr><td>Skill Acquisition</td><td>First tool call from skill-acquirer</td></tr>
+                    <tr><td>Malicious Install Blocked</td><td>Blocked malicious package result</td></tr>
+                    <tr><td>Rogue Burst</td><td>3+ consecutive tool_calls from one agent</td></tr>
+                    <tr><td>Gateway Block</td><td>"Rate exceeded" or "Action denied" in result</td></tr>
+                    <tr><td>Sentinel Alert</td><td>Critical/high alert from a sentinel</td></tr>
+                    <tr><td>Quarantine Issued</td><td>Commander issues quarantine</td></tr>
+                </tbody>
+            </table>
+            <p>
+                Commentary appears 3 seconds after the chapter title card fades, preventing visual overlap.
+                It fades out 3 seconds after typing completes.
+            </p>
+
+            <h2 id="briefings">Agent Briefings</h2>
+            <p>
+                When a scene focuses on an agent, a separate <strong>Asset Briefing</strong> window types out
+                a military-style dossier covering:
+            </p>
+            <ul>
+                <li><strong>ASSET:</strong> Name and region</li>
+                <li><strong>ROLE:</strong> What the agent does</li>
+                <li><strong>MISSION:</strong> Operational objective</li>
+                <li><strong>PROTECTS AGAINST:</strong> What threats this agent counters</li>
+                <li><strong>FUTURE OPS:</strong> Planned capabilities (missile defense, civilian protection)</li>
+            </ul>
+            <p>
+                The briefing window is positioned separately from the LLM activity window using
+                collision avoidance (see <a href="#js-collision">Collision Avoidance</a>), so they
+                never overlap each other or the agent node.
+            </p>
+
+            <h2 id="signal-lines">Signal Lines</h2>
+            <p>
+                Animated dashed lines show communication between agents on the map. In the scene-based
+                presenter, signal lines are triggered in two ways:
+            </p>
+            <ol>
+                <li><strong>PubNub signals:</strong> request/response/alert signals from the event buffer
+                    animate lines between sender and target (same as the dashboard).</li>
+                <li><strong>LLM tool calls:</strong> when an agent's scene shows a <code>tool_call</code> event,
+                    the presenter detects inter-agent communication:
+                    <ul>
+                        <li><code>request_remote_agent</code> &rarr; line from caller to target agent (cyan)</li>
+                        <li>Gateway tools (<code>search_web</code>, <code>install_skill</code>, etc.) &rarr; line from agent to action-gateway (amber)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2 id="ambient">Ambient Audio</h2>
+            <p>
+                Drop a sci-fi ambient drone MP3 as <code>docs/ambient.mp3</code> and it auto-plays at 15% volume
+                when the intro is dismissed. If the file doesn't exist, audio is silently skipped.
+            </p>
+            <p>
+                <strong>Finding audio:</strong> Search "sci-fi ambient drone royalty free" on
+                <a href="https://freesound.org" style="color:var(--cyan)">Freesound.org</a> or
+                <a href="https://pixabay.com/music" style="color:var(--cyan)">Pixabay</a>.
+                Alternatively, use Gemini with Lyra to generate a custom track.
+            </p>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- JS ARCHITECTURE -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="js-overview">JavaScript Architecture Overview</h2>
+            <p>
+                The presenter is a single self-contained HTML file (~2000 lines) with inline CSS and JavaScript.
+                No build step, no modules, no frameworks. This matches the project convention (the dashboard
+                is structured the same way). The JS is organized into these sections:
+            </p>
+<pre><code class="language-javascript">// 1. Agent Registry &amp; Constants
+var AGENTS = { ... };       // agent positions, roles, regions
+var CHANNELS = [ ... ];     // PubNub channels to subscribe to
+var ROLE_COLORS = { ... };  // CSS colors per role
+var AGENT_BRIEFINGS = { ... }; // military-style dossiers
+var CHAPTER_COMMENTARY = { ... }; // narration per chapter
+
+// 2. PubNub Connection
+connectToPubNub()          // subscribe to channels
+handleMessage()            // decode signals, collect into scenes
+handlePresence()           // track agent online status
+
+// 3. Scene Engine
+startScenePlayback()       // begin after collection window
+beginScene()               // zoom to agent, show briefing
+playNextSceneEvent()       // drain events one at a time
+jumpToScene(n)             // director mode: jump to scene N
+skipToNextAgent()          // Shift+Right: skip current scene
+
+// 4. Map Animations
+zoomToAgent(name)          // CSS transform zoom + pan
+pulseNode() / animateSignalLine() / animateBroadcast()
+presentMapEffects()        // route signal to correct animation
+animateLinesFromToolCall() // detect inter-agent calls in LLM events
+
+// 5. Overlay Positioning
+findPanelPosition()        // collision-avoiding placement
+positionBothOverlays()     // place briefing + focus, avoid each other
+
+// 6. Visual Effects
+typeText()                 // typewriter effect (intro)
+showCommentary()           // typed commentary with auto-dismiss
+showBriefingOverlay()      // typed agent dossier
+showChapterCard()          // chapter title fade in/out
+animateIntro()             // intro sequence orchestration</code></pre>
+
+            <h2 id="js-scene-engine">Scene Engine (How Playback Works)</h2>
+            <p>
+                The scene engine is the core of the presenter. Unlike the dashboard (which renders events
+                as they arrive), the presenter <strong>collects first, then plays back</strong>.
+            </p>
+<pre><code class="language-javascript">// Phase 1: COLLECTION
+// PubNub events arrive and are sorted into per-agent buckets.
+// A timer resets on each event; after 8s of silence, collection ends.
+
+function handleMessage(event) {
+    var signal = decodeSignal(event.message);
+
+    // LLM events go into per-agent scenes
+    if (signal.kind === 'event') {
+        agentScenes[sender].push(signal);  // grouped by agent
+        agentOrder.push(sender);           // first-seen order
+    }
+
+    // Non-LLM events go to the map animation buffer
+    eventBuffer.push(signal);
+
+    // Reset collection timer (8s window)
+    clearTimeout(collectionTimer);
+    collectionTimer = setTimeout(startScenePlayback, 8000);
+}
+
+// Phase 2: SCENE PLAYBACK
+// Plays one agent's events at a time, in order of first appearance.
+
+function beginScene() {
+    var agent = agentOrder[sceneIndex];
+    transitionToAgent(agent);      // zoom map, show briefing
+    setTimeout(playNextSceneEvent, 1200);  // wait for zoom
+}
+
+function playNextSceneEvent() {
+    var signal = agentScenes[agent][sceneEventIndex++];
+    detectChapter(signal);         // check for chapter boundaries
+    buildEventCard(signal);        // show in focus overlay
+    animateLinesFromToolCall(signal); // draw signal lines
+    setTimeout(playNextSceneEvent, 800 / playbackSpeed);
+}
+
+// When scene finishes: sceneIndex++, beginScene() for next agent
+// When all done: loop back to scene 0</code></pre>
+
+            <div class="callout">
+                <strong>Why collect first?</strong>
+                PubNub delivers events from all agents interleaved. Without collection, focus would
+                thrash between agents every few hundred milliseconds. By collecting into buckets first,
+                each agent gets an uninterrupted scene.
+            </div>
+
+            <h2 id="js-typewriter">Typewriter Effect</h2>
+            <p>
+                The typewriter effect is used in three places: the intro crawl, the commentary overlay,
+                and the agent briefings. All use the same pattern:
+            </p>
+<pre><code class="language-javascript">function typeText(element, text, callback) {
+    var i = 0;
+    element.textContent = '';
+
+    // Add blinking cursor
+    var cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    element.appendChild(cursor);
+
+    // Type one character at a time
+    var interval = setInterval(function() {
+        if (i < text.length) {
+            // Insert character BEFORE the cursor
+            element.insertBefore(
+                document.createTextNode(text[i]),
+                cursor
+            );
+            i++;
+        } else {
+            clearInterval(interval);
+            // Remove cursor after brief pause
+            setTimeout(function() { cursor.remove(); }, 600);
+            if (callback) callback();
+        }
+    }, 25);  // ms per character
+}</code></pre>
+            <p>
+                The cursor is a <code>&lt;span class="cursor"&gt;</code> styled as a blinking green block
+                using CSS <code>animation: blink-cursor 0.7s step-end infinite</code>. Characters are
+                inserted as text nodes <em>before</em> the cursor element, so the cursor stays at the end.
+            </p>
+            <p>
+                Typing speeds vary by context: intro uses 25ms/char (deliberate), commentary uses 30ms/char
+                (brisk), briefings use 18ms/char (fast, since they're longer).
+            </p>
+
+            <h2 id="js-collision">Collision Avoidance</h2>
+            <p>
+                Two overlay panels (briefing + activity) need to be positioned near the focused agent
+                without covering: (a) the agent node itself, (b) each other. The algorithm:
+            </p>
+<pre><code class="language-javascript">function findPanelPosition(areaW, areaH, panelW, panelH,
+                           fracX, fracY, avoidRects) {
+    // Try 8 candidate positions around center
+    var candidates = [
+        right, left, below, above,
+        top-right corner, top-left corner,
+        bottom-right corner, bottom-left corner
+    ];
+
+    // Reorder based on agent's map position
+    // (right-side agents prefer left placement, etc.)
+
+    // Agent node is at screen center after zoom
+    var nodeRect = { x: center-30, y: center-30, w: 60, h: 60 };
+    var allAvoid = [nodeRect].concat(avoidRects);
+
+    // Pick first candidate that doesn't overlap anything
+    for (candidate of candidates) {
+        if (!overlapsAny(candidate, allAvoid)) {
+            return candidate;
+        }
+    }
+    return candidates[0]; // fallback
+}
+
+// Usage: position briefing first, then focus avoids briefing
+var briefPos = findPanelPosition(..., []);
+var focusPos = findPanelPosition(..., [briefingRect]);</code></pre>
+            <p>
+                The <code>rectsOverlap()</code> function is a standard AABB (axis-aligned bounding box)
+                collision test. The briefing is positioned first, then the focus overlay uses
+                the briefing's rect as an additional avoidance zone.
+            </p>
+
+            <h2 id="js-pubnub">PubNub Integration</h2>
+            <p>
+                The presenter connects to PubNub identically to the dashboard &mdash; same channels, same
+                signal decoding. The key difference is what happens after decoding:
+            </p>
+            <table>
+                <thead><tr><th>Dashboard</th><th>Presenter</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>Renders events immediately as they arrive</td>
+                        <td>Collects events into per-agent buckets, then plays scene-by-scene</td>
+                    </tr>
+                    <tr>
+                        <td>All agents visible simultaneously</td>
+                        <td>One agent at a time, with zoom focus</td>
+                    </tr>
+                    <tr>
+                        <td>No playback control</td>
+                        <td>Pause, step, speed, director mode</td>
+                    </tr>
+                    <tr>
+                        <td>userId: <code>dashboard-observer</code></td>
+                        <td>userId: <code>presenter-observer</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                The compact key map (<code>k &rarr; kind, s &rarr; sender, p &rarr; payload</code>) is shared
+                with the dashboard and matches <code>bedsheet/sense/serialization.py</code>.
+            </p>
 
             <!-- Files -->
             <h2 id="files">Files</h2>
