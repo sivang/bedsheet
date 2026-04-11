@@ -532,7 +532,6 @@ cd examples/agent-sentinel
                     <tr>
                         <td><span class="key">Esc</span></td>
                         <td>Exit fullscreen / return to overview</td>
-                        <td>Yes</td>
                     </tr>
                 </tbody>
             </table>
@@ -546,7 +545,7 @@ cd examples/agent-sentinel
                 <li>Start <strong>paused</strong> (press <span class="key">Space</span>)</li>
                 <li>Use <span class="key">&rarr;</span> to step through events as you narrate</li>
                 <li>Use <span class="key">Shift</span>+<span class="key">&rarr;</span> to jump to the next agent when ready</li>
-                <li>Speed keys <span class="key">1</span>-<span class="key">5</span> if you want to let it auto-play at a specific pace</li>
+                <li><span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span> to set speed, or bare <span class="key">1</span>-<span class="key">9</span> to jump to a specific agent's scene</li>
             </ol>
 
             <h3>For Screen Recordings</h3>
@@ -555,7 +554,7 @@ cd examples/agent-sentinel
                 <li>Press <span class="key">F</span> for fullscreen</li>
                 <li>Start Screen Studio recording</li>
                 <li>Press <span class="key">Space</span> to begin auto-play</li>
-                <li>Use speed keys to control pacing (start at <span class="key">2</span> = 1x, adjust as needed)</li>
+                <li>Use <span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span> for speed (<span class="key">Shift</span>+<span class="key">2</span> = 1x). Bare number keys jump to agent scenes.</li>
                 <li>The presenter handles focus transitions and chapter cards automatically</li>
             </ol>
 
@@ -611,6 +610,14 @@ cd examples/agent-sentinel
                         <td>PubNub connection established</td>
                     </tr>
                     <tr>
+                        <td>Skill Acquisition</td>
+                        <td>First <code>tool_call</code> from skill-acquirer</td>
+                    </tr>
+                    <tr>
+                        <td>Malicious Install Blocked</td>
+                        <td><code>tool_result</code> containing "MALICIOUS", "blocked", or "data_exfiltrator"</td>
+                    </tr>
+                    <tr>
                         <td>Rogue Burst</td>
                         <td>3+ consecutive <code>tool_call</code> events from same agent</td>
                     </tr>
@@ -620,11 +627,11 @@ cd examples/agent-sentinel
                     </tr>
                     <tr>
                         <td>Sentinel Alert</td>
-                        <td>Critical/high severity alert from a sentinel agent</td>
+                        <td>Critical/high severity <code>alert</code> signal</td>
                     </tr>
                     <tr>
                         <td>Quarantine Issued</td>
-                        <td>Commander issues <code>quarantine</code> action</td>
+                        <td><code>alert</code> signal with <code>action: quarantine</code></td>
                     </tr>
                 </tbody>
             </table>
@@ -687,7 +694,7 @@ ls -la recordings/</code></pre>
             <h3>Step 4: During recording</h3>
             <ul>
                 <li>Let it auto-play, or step manually with <span class="key">&rarr;</span></li>
-                <li>Adjust speed with <span class="key">1</span>-<span class="key">5</span> as needed</li>
+                <li>Adjust speed with <span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span></li>
                 <li>Skip boring sections with <span class="key">Shift</span>+<span class="key">&rarr;</span></li>
             </ul>
 
@@ -729,7 +736,7 @@ ls -la recordings/</code></pre>
                 <li>The sentinel network as the response</li>
             </ul>
             <p>
-                Press <span class="key">Space</span> or click <strong>Begin Monitoring</strong> to dismiss.
+                Press <span class="key">Space</span>, <span class="key">Enter</span>, or click <strong>Begin Monitoring</strong> to dismiss.
                 PubNub connection starts only after dismissal, so the demo doesn't begin while the
                 audience is still reading.
             </p>
@@ -754,7 +761,7 @@ ls -la recordings/</code></pre>
                 </tbody>
             </table>
             <p>
-                Commentary appears 3 seconds after the chapter title card fades, preventing visual overlap.
+                Commentary begins 3 seconds after the chapter is triggered (approximately 0.5 seconds after the chapter title card fades), preventing visual overlap.
                 It fades out 3 seconds after typing completes.
             </p>
 
@@ -768,7 +775,7 @@ ls -la recordings/</code></pre>
                 <li><strong>ROLE:</strong> What the agent does</li>
                 <li><strong>MISSION:</strong> Operational objective</li>
                 <li><strong>PROTECTS AGAINST:</strong> What threats this agent counters</li>
-                <li><strong>FUTURE OPS:</strong> Planned capabilities (missile defense, civilian protection)</li>
+                <li><strong>FUTURE OPS:</strong> Planned capabilities (operational agents) or <strong>RISK PROFILE:</strong> Rogue behavior probability (worker agents)</li>
             </ul>
             <p>
                 The briefing window is positioned separately from the LLM activity window using
@@ -811,7 +818,7 @@ ls -la recordings/</code></pre>
 
             <h2 id="js-overview">JavaScript Architecture Overview</h2>
             <p>
-                The presenter is a single self-contained HTML file (~2000 lines) with inline CSS and JavaScript.
+                The presenter is a single self-contained HTML file (~2400 lines) with inline CSS and JavaScript.
                 No build step, no modules, no frameworks. This matches the project convention (the dashboard
                 is structured the same way). The JS is organized into these sections:
             </p>
