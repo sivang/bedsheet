@@ -552,6 +552,42 @@
             opacity: 0.6;
         }
 
+        /* ── Commentary Subtitle Bar ── */
+        .commentary-bar {
+            position: fixed;
+            bottom: 72px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 700px;
+            width: 80%;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            border-radius: 8px;
+            padding: 14px 24px;
+            text-align: center;
+            z-index: 45;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+
+        .commentary-bar.visible { opacity: 1; }
+
+        .commentary-bar-text {
+            font-family: var(--font-sans);
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-primary);
+            line-height: 1.5;
+            letter-spacing: 0.3px;
+        }
+
+        /* In cinematic mode, move commentary above where timeline bar was */
+        .app.cinematic ~ .commentary-bar {
+            bottom: 40px;
+        }
+
         /* ── Cinematic Mode ── */
         .app.cinematic .topbar { display: none; }
         .app.cinematic .timeline-bar { display: none; }
@@ -851,6 +887,11 @@
             <div class="chapter-card-text" id="chapterCardText"></div>
             <span class="chapter-card-divider"></span>
         </div>
+    </div>
+
+    <!-- Commentary Subtitle Bar -->
+    <div class="commentary-bar" id="commentaryBar">
+        <div class="commentary-bar-text" id="commentaryText"></div>
     </div>
 
     <!-- Transition Label -->
@@ -1274,6 +1315,50 @@
     }
 
     // ── Chapter Detection ──
+    // ── Scene Commentary ──
+    // Each chapter has narration text that explains what's happening to the audience.
+    // Future: feed these strings to TTS (Web Speech API or Edge TTS) for voiceover.
+    var CHAPTER_COMMENTARY = {
+        'Network Startup':
+            'Seven autonomous agents are coming online across the globe \u2014 ' +
+            'three workers, two security sentinels, an action gateway, and a commander.',
+        'Rogue Burst':
+            'An agent has gone rogue \u2014 firing dozens of rapid requests in a burst, ' +
+            'far exceeding its normal operating pattern.',
+        'Gateway Block':
+            'The Action Gateway detects the flood and enforces its rate limit. ' +
+            'Every subsequent request from the rogue agent is denied.',
+        'Sentinel Alert':
+            'The Behavior Sentinel analyzes the activity logs and confirms the anomaly. ' +
+            'A critical threat alert is raised to the Commander.',
+        'Quarantine Issued':
+            'The Commander correlates evidence from multiple sentinels and issues a quarantine order. ' +
+            'The rogue agent is isolated from the network.',
+    };
+
+    var commentaryTimeout = null;
+
+    function showCommentary(chapterName) {
+        var text = CHAPTER_COMMENTARY[chapterName];
+        if (!text) return;
+
+        var bar = document.getElementById('commentaryBar');
+        document.getElementById('commentaryText').textContent = text;
+
+        // Fade in
+        bar.classList.add('visible');
+
+        // Clear any previous timeout
+        if (commentaryTimeout) clearTimeout(commentaryTimeout);
+
+        // Fade out after enough time to read (~100ms per word)
+        var words = text.split(' ').length;
+        var displayTime = Math.max(4000, words * 250);
+        commentaryTimeout = setTimeout(function() {
+            bar.classList.remove('visible');
+        }, displayTime);
+    }
+
     function addChapter(name) {
         var chapter = {
             name: name,
@@ -1284,8 +1369,10 @@
         currentChapter = chapter;
         document.getElementById('chapterName').textContent = name;
 
-        // Show chapter title card
+        // Show chapter title card and commentary
         showChapterCard(name);
+        // Show commentary slightly after the chapter card appears
+        setTimeout(function() { showCommentary(name); }, 1200);
     }
 
     function showChapterCard(text) {
