@@ -332,6 +332,74 @@
             line-height: 1.8;
         }
 
+        /* ── Briefing Window (separate from focus overlay) ── */
+        .briefing-overlay {
+            position: absolute;
+            width: 360px;
+            max-height: 320px;
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            z-index: 6;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 200, 255, 0.1);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            pointer-events: none;
+        }
+
+        .briefing-overlay.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .briefing-header {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .briefing-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .briefing-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+            min-height: 0;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.7;
+            color: var(--green);
+            white-space: pre-wrap;
+        }
+
+        .briefing-body::-webkit-scrollbar { width: 4px; }
+        .briefing-body::-webkit-scrollbar-track { background: transparent; }
+        .briefing-body::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+        .briefing-body .cursor {
+            display: inline-block;
+            width: 7px;
+            height: 13px;
+            background: var(--green);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
         /* ── Event Cards (identical to dashboard) ── */
         .llm-event {
             padding: 8px 12px;
@@ -1007,7 +1075,15 @@
                 </svg>
             </div>
 
-            <!-- Focus Overlay Panel (positioned dynamically near active agent) -->
+            <!-- Briefing Window (agent dossier — positioned separately) -->
+            <div class="briefing-overlay" id="briefingOverlay">
+                <div class="briefing-header">
+                    <span class="briefing-label">// asset briefing</span>
+                </div>
+                <div class="briefing-body" id="briefingBody"></div>
+            </div>
+
+            <!-- Focus Overlay Panel (agent LLM activity — positioned separately) -->
             <div class="focus-overlay" id="focusOverlay">
                 <div class="focus-overlay-header">
                     <div class="focus-overlay-dot" id="focusDot"></div>
@@ -1584,55 +1660,81 @@
         return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
     }
 
-    function positionFocusOverlay(agentName) {
+    // Find a position for a panel that avoids the agent node and any existing rects
+    function findPanelPosition(areaW, areaH, panelW, panelH, fracX, fracY, avoidRects) {
+        var gap = 50;
+        var candidates = [
+            { x: areaW / 2 + gap, y: areaH / 2 - panelH / 2 },              // right
+            { x: areaW / 2 - panelW - gap, y: areaH / 2 - panelH / 2 },     // left
+            { x: areaW / 2 - panelW / 2, y: areaH / 2 + gap },              // below
+            { x: areaW / 2 - panelW / 2, y: areaH / 2 - panelH - gap },     // above
+            { x: areaW - panelW - 20, y: 60 },                                // top-right corner
+            { x: 20, y: 60 },                                                 // top-left corner
+            { x: areaW - panelW - 20, y: areaH - panelH - 70 },              // bottom-right
+            { x: 20, y: areaH - panelH - 70 },                                // bottom-left
+        ];
+
+        // Prefer based on agent position
+        if (fracX > 0.5) {
+            candidates = [candidates[1], candidates[0], candidates[5], candidates[4], candidates[2], candidates[3], candidates[7], candidates[6]];
+        }
+        if (fracY < 0.3) {
+            candidates = [candidates[2], candidates[0], candidates[1], candidates[6], candidates[7], candidates[3], candidates[4], candidates[5]];
+        }
+
+        // Agent node is at center after zoom
+        var nodeRect = { x: areaW / 2 - 30, y: areaH / 2 - 30, w: 60, h: 60 };
+        var allAvoid = [nodeRect].concat(avoidRects || []);
+
+        for (var i = 0; i < candidates.length; i++) {
+            var cx = Math.max(16, Math.min(candidates[i].x, areaW - panelW - 16));
+            var cy = Math.max(16, Math.min(candidates[i].y, areaH - panelH - 16));
+            var collides = false;
+            for (var j = 0; j < allAvoid.length; j++) {
+                var r = allAvoid[j];
+                if (rectsOverlap(cx, cy, panelW, panelH, r.x, r.y, r.w, r.h)) {
+                    collides = true;
+                    break;
+                }
+            }
+            if (!collides) return { x: cx, y: cy };
+        }
+        // Fallback: first candidate clamped
+        return {
+            x: Math.max(16, Math.min(candidates[0].x, areaW - panelW - 16)),
+            y: Math.max(16, Math.min(candidates[0].y, areaH - panelH - 16))
+        };
+    }
+
+    // Position both briefing and focus windows, avoiding each other and the agent node
+    var lastBriefingRect = null;
+
+    function positionBothOverlays(agentName) {
         var info = AGENTS[agentName];
         if (!info) return;
 
         var mapArea = document.getElementById('mapArea');
-        var overlay = document.getElementById('focusOverlay');
         var areaW = mapArea.offsetWidth;
         var areaH = mapArea.offsetHeight;
-        var overlayW = 380;
-        var overlayH = 420;
-        var gap = 60;
-
         var fracX = info.x / VIEWBOX_W;
         var fracY = info.y / VIEWBOX_H;
 
-        // Try 4 candidate positions: right, left, below, above center
-        var candidates = [
-            { x: areaW / 2 + gap, y: areaH / 2 - overlayH / 2 },           // right
-            { x: areaW / 2 - overlayW - gap, y: areaH / 2 - overlayH / 2 }, // left
-            { x: areaW / 2 - overlayW / 2, y: areaH / 2 + gap },            // below
-            { x: areaW / 2 - overlayW / 2, y: areaH / 2 - overlayH - gap }, // above
-        ];
+        // Position briefing first
+        var briefW = 360, briefH = 320;
+        var briefPos = findPanelPosition(areaW, areaH, briefW, briefH, fracX, fracY, []);
+        lastBriefingRect = { x: briefPos.x, y: briefPos.y, w: briefW, h: briefH };
 
-        // Prefer right for left-side agents, left for right-side agents
-        if (fracX > 0.5) {
-            candidates = [candidates[1], candidates[0], candidates[2], candidates[3]];
-        }
-        if (fracY < 0.3) {
-            // Top agents: prefer below
-            candidates = [candidates[2], candidates[0], candidates[1], candidates[3]];
-        }
+        var briefEl = document.getElementById('briefingOverlay');
+        briefEl.style.left = briefPos.x + 'px';
+        briefEl.style.top = briefPos.y + 'px';
 
-        // The focused agent node is at screen center after zoom
-        var focusedNodeRect = { x: areaW / 2 - 30, y: areaH / 2 - 30, w: 60, h: 60 };
+        // Position focus overlay, avoiding the briefing
+        var focusW = 380, focusH = 420;
+        var focusPos = findPanelPosition(areaW, areaH, focusW, focusH, fracX, fracY, [lastBriefingRect]);
 
-        var bestPos = candidates[0]; // fallback
-        for (var i = 0; i < candidates.length; i++) {
-            var cx = Math.max(16, Math.min(candidates[i].x, areaW - overlayW - 16));
-            var cy = Math.max(16, Math.min(candidates[i].y, areaH - overlayH - 16));
-
-            // Check if this position overlaps the focused agent node
-            if (!rectsOverlap(cx, cy, overlayW, overlayH, focusedNodeRect.x, focusedNodeRect.y, focusedNodeRect.w, focusedNodeRect.h)) {
-                bestPos = { x: cx, y: cy };
-                break;
-            }
-        }
-
-        overlay.style.left = bestPos.x + 'px';
-        overlay.style.top = bestPos.y + 'px';
+        var overlay = document.getElementById('focusOverlay');
+        overlay.style.left = focusPos.x + 'px';
+        overlay.style.top = focusPos.y + 'px';
 
         // Set header info
         var rc = ROLE_COLORS[info.role] || ROLE_COLORS.worker;
@@ -1643,63 +1745,58 @@
         roleEl.textContent = info.role;
         roleEl.style.background = rc.bg;
         roleEl.style.color = rc.hex;
-
         overlay.style.borderColor = rc.hex;
     }
 
-    // Type the agent briefing into the focus overlay before showing events
+    // Type the agent briefing in the separate briefing window
     var briefingTypingInterval = null;
 
+    function showBriefingOverlay(agentName) {
+        var briefing = AGENT_BRIEFINGS[agentName];
+        if (!briefing) return;
+
+        var overlay = document.getElementById('briefingOverlay');
+        var body = document.getElementById('briefingBody');
+        body.textContent = '';
+        overlay.classList.add('visible');
+
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
+
+        var idx = 0;
+        if (briefingTypingInterval) clearInterval(briefingTypingInterval);
+        briefingTypingInterval = setInterval(function() {
+            if (idx < briefing.length) {
+                body.insertBefore(document.createTextNode(briefing[idx]), cursor);
+                idx++;
+                body.scrollTop = body.scrollHeight;
+            } else {
+                clearInterval(briefingTypingInterval);
+                briefingTypingInterval = null;
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+            }
+        }, 18);
+    }
+
+    function hideBriefingOverlay() {
+        if (briefingTypingInterval) { clearInterval(briefingTypingInterval); briefingTypingInterval = null; }
+        document.getElementById('briefingOverlay').classList.remove('visible');
+    }
+
     function showFocusOverlay(agentName) {
-        positionFocusOverlay(agentName);
+        positionBothOverlays(agentName);
+        showBriefingOverlay(agentName);
+
         var overlay = document.getElementById('focusOverlay');
         var body = document.getElementById('focusBody');
         body.textContent = '';
         overlay.classList.add('visible');
-
-        // Type the agent briefing first
-        var briefing = AGENT_BRIEFINGS[agentName];
-        if (briefing) {
-            var briefingEl = document.createElement('div');
-            briefingEl.className = 'llm-event animate-in';
-            briefingEl.style.borderLeftColor = 'var(--cyan)';
-            briefingEl.style.fontFamily = 'var(--font-mono)';
-            briefingEl.style.fontSize = '11px';
-            briefingEl.style.lineHeight = '1.7';
-            briefingEl.style.color = 'var(--green)';
-            briefingEl.style.whiteSpace = 'pre-wrap';
-            body.appendChild(briefingEl);
-
-            var cursor = document.createElement('span');
-            cursor.className = 'cursor';
-            cursor.style.display = 'inline-block';
-            cursor.style.width = '7px';
-            cursor.style.height = '13px';
-            cursor.style.background = 'var(--green)';
-            cursor.style.verticalAlign = 'text-bottom';
-            cursor.style.animation = 'blink-cursor 0.7s step-end infinite';
-            briefingEl.appendChild(cursor);
-
-            var idx = 0;
-            if (briefingTypingInterval) clearInterval(briefingTypingInterval);
-            briefingTypingInterval = setInterval(function() {
-                if (idx < briefing.length) {
-                    briefingEl.insertBefore(document.createTextNode(briefing[idx]), cursor);
-                    idx++;
-                    body.scrollTop = body.scrollHeight;
-                } else {
-                    clearInterval(briefingTypingInterval);
-                    briefingTypingInterval = null;
-                    setTimeout(function() {
-                        if (cursor.parentNode) cursor.remove();
-                    }, 600);
-                }
-            }, 18); // fast typing for briefing
-        }
     }
 
     function hideFocusOverlay() {
         document.getElementById('focusOverlay').classList.remove('visible');
+        hideBriefingOverlay();
     }
 
     // ── Event Card Builder (from dashboard, adapted) ──
@@ -2053,8 +2150,9 @@
             body.removeChild(body.firstChild);
         }
 
-        // Animate on map
+        // Animate on map + inter-agent signal lines
         presentMapEffects(signal);
+        animateLinesFromToolCall(signal, agentName);
 
         presentedEvents.push(signal);
         updateTimeline();
@@ -2063,21 +2161,57 @@
         setTimeout(playNextSceneEvent, delay);
     }
 
-    // Play non-LLM events from the buffer for map animations (heartbeats, signals, alerts)
+    // Play non-LLM events from the buffer for map animations (heartbeats, signal lines, alerts)
+    // Drains one at a time with spacing for visual effect
     function drainMapEvents() {
+        if (!playbackRunning) return;
+
+        // Find next non-LLM event in buffer
+        var signal = null;
         while (eventBuffer.length > 0) {
-            var signal = eventBuffer[0];
-            if (signal.kind === 'event') {
-                // LLM events are handled by scene playback, skip
-                eventBuffer.shift();
+            if (eventBuffer[0].kind === 'event') {
+                eventBuffer.shift(); // LLM events handled by scene playback
                 continue;
             }
-            eventBuffer.shift();
+            signal = eventBuffer.shift();
+            break;
+        }
+
+        if (signal) {
             presentMapEffects(signal);
             detectChapter(signal);
+            // Space out map events for visual effect
+            setTimeout(drainMapEvents, 800 / playbackSpeed);
+        } else {
+            // Check again later for new events
+            setTimeout(drainMapEvents, 1000);
         }
-        if (playbackRunning) {
-            setTimeout(drainMapEvents, 2000);
+    }
+
+    // Also animate signal lines from LLM tool_call events (e.g., commander → sentinel)
+    function animateLinesFromToolCall(signal, agentName) {
+        var payload = signal.payload || {};
+        if (payload.event_type !== 'tool_call') return;
+        var toolName = payload.tool_name || '';
+        var toolInput = payload.tool_input || '';
+
+        // request_remote_agent: commander talks to another agent
+        if (toolName === 'request_remote_agent') {
+            try {
+                var input = typeof toolInput === 'string' ? JSON.parse(toolInput) : toolInput;
+                var target = input.agent_name;
+                if (target && AGENTS[target]) {
+                    animateSignalLine(agentName, target, 'var(--cyan)');
+                }
+            } catch(e) {}
+        }
+
+        // Gateway tools: worker talks to gateway
+        if (toolName === 'search_web' || toolName === 'get_search_summary' ||
+            toolName === 'read_calendar' || toolName === 'list_available_skills' ||
+            toolName === 'install_skill' || toolName === 'check_activity_log' ||
+            toolName === 'audit_installed_skills') {
+            animateSignalLine(agentName, 'action-gateway', 'var(--amber)');
         }
     }
 
@@ -2258,6 +2392,7 @@
             body.removeChild(body.firstChild);
         }
         presentMapEffects(signal);
+        animateLinesFromToolCall(signal, agentName);
         presentedEvents.push(signal);
         updateTimeline();
     }
