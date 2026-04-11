@@ -1642,10 +1642,72 @@
         }
     }
 
-    // ── Focus Transition ──
-    function transitionToAgent(agentName) {
-        if (agentName === currentFocus) return;
+    // ── Focus Transition (sticky focus with cooldown) ──
+    // Once an agent has the stage, it keeps it until no events arrive for FOCUS_HOLD_MS.
+    // Events from other agents are queued silently and shown when focus releases.
+    var FOCUS_HOLD_MS = 3000;  // hold focus for 3s after last event from current agent
+    var focusReleaseTimer = null;
+    var pendingFocusEvents = {}; // { agentName: [signal, ...] } — events while another agent has focus
 
+    function requestFocus(agentName) {
+        // Same agent — just refresh the hold timer
+        if (agentName === currentFocus) {
+            refreshFocusHold();
+            return true; // caller can show the event
+        }
+
+        // No current focus — take it immediately
+        if (!currentFocus) {
+            doTransition(agentName);
+            return true;
+        }
+
+        // Different agent wants focus but current agent is holding — queue silently
+        if (!pendingFocusEvents[agentName]) {
+            pendingFocusEvents[agentName] = [];
+        }
+        return false; // caller should NOT show the event in the overlay
+    }
+
+    function refreshFocusHold() {
+        if (focusReleaseTimer) clearTimeout(focusReleaseTimer);
+        focusReleaseTimer = setTimeout(releaseFocus, FOCUS_HOLD_MS);
+    }
+
+    function releaseFocus() {
+        focusReleaseTimer = null;
+
+        // Find the agent with the most pending events and give them the stage
+        var nextAgent = null;
+        var maxEvents = 0;
+        for (var name in pendingFocusEvents) {
+            if (pendingFocusEvents[name].length > maxEvents) {
+                maxEvents = pendingFocusEvents[name].length;
+                nextAgent = name;
+            }
+        }
+
+        if (nextAgent) {
+            var queued = pendingFocusEvents[nextAgent];
+            delete pendingFocusEvents[nextAgent];
+            doTransition(nextAgent);
+
+            // Replay queued events into the focus overlay
+            var body = document.getElementById('focusBody');
+            for (var i = 0; i < queued.length; i++) {
+                body.appendChild(buildEventCard(queued[i]));
+            }
+            body.scrollTop = body.scrollHeight;
+            refreshFocusHold();
+        } else {
+            // No pending events — return to overview
+            currentFocus = null;
+            hideFocusOverlay();
+            zoomToOverview();
+        }
+    }
+
+    function doTransition(agentName) {
         var prevFocus = currentFocus;
         currentFocus = agentName;
 
@@ -1665,6 +1727,8 @@
                 showFocusOverlay(agentName);
             }, 500);
         }, 200);
+
+        refreshFocusHold();
     }
 
     // ── Playback Engine: Drain Loop ──
@@ -1734,16 +1798,22 @@
         // For LLM events, focus on the sender and show in overlay
         if (kind === 'event' && sender) {
             pulseNode(sender, 'var(--purple)');
-            transitionToAgent(sender);
 
-            // Add event card to focus overlay
-            var body = document.getElementById('focusBody');
-            body.appendChild(buildEventCard(signal));
-            body.scrollTop = body.scrollHeight;
+            var gotFocus = requestFocus(sender);
 
-            // Cap at 30 visible cards
-            while (body.children.length > 30) {
-                body.removeChild(body.firstChild);
+            if (gotFocus) {
+                // This agent has the stage — show the event in the overlay
+                var body = document.getElementById('focusBody');
+                body.appendChild(buildEventCard(signal));
+                body.scrollTop = body.scrollHeight;
+
+                // Cap at 30 visible cards
+                while (body.children.length > 30) {
+                    body.removeChild(body.firstChild);
+                }
+            } else {
+                // Another agent has the stage — queue this event for later
+                pendingFocusEvents[sender].push(signal);
             }
         }
     }
@@ -1873,19 +1943,32 @@
     }
 
     function skipToNextAgent() {
+        // Force-release current focus and let the next agent take the stage
+        if (focusReleaseTimer) clearTimeout(focusReleaseTimer);
+        focusReleaseTimer = null;
+
+        // Drain remaining events from current agent silently
         while (eventBuffer.length > 0) {
             var signal = eventBuffer[0];
-            var payload = signal.payload || {};
             var sender = signal.sender;
-            // If this event is from a different agent than current focus, stop
             if (signal.kind === 'event' && sender && sender !== currentFocus) {
                 break;
             }
-            // Otherwise consume it
             eventBuffer.shift();
-            presentEvent(signal);
             presentedEvents.push(signal);
         }
+
+        // Release focus — this will pick the next agent from pending queue or buffer
+        currentFocus = null;
+        releaseFocus();
+
+        // If releaseFocus didn't find a pending agent, try the next event in buffer
+        if (!currentFocus && eventBuffer.length > 0) {
+            var next = eventBuffer.shift();
+            presentEvent(next);
+            presentedEvents.push(next);
+        }
+
         updateTimeline();
     }
 
