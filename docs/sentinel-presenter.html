@@ -673,17 +673,17 @@
         /* ── Commentary Subtitle Bar ── */
         .commentary-bar {
             position: fixed;
-            bottom: 72px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            max-width: 700px;
-            width: 80%;
-            background: rgba(10, 14, 23, 0.85);
-            backdrop-filter: blur(6px);
-            border: 1px solid rgba(0, 200, 255, 0.15);
-            border-radius: 8px;
-            padding: 14px 24px;
-            text-align: center;
+            transform: translate(-50%, -50%);
+            max-width: 640px;
+            width: 75%;
+            background: rgba(10, 14, 23, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            border-radius: 10px;
+            padding: 28px 36px;
+            text-align: left;
             z-index: 45;
             opacity: 0;
             transition: opacity 0.6s ease;
@@ -692,18 +692,33 @@
 
         .commentary-bar.visible { opacity: 1; }
 
-        .commentary-bar-text {
-            font-family: var(--font-sans);
-            font-size: 16px;
-            font-weight: 400;
-            color: var(--text-primary);
-            line-height: 1.5;
-            letter-spacing: 0.3px;
+        .commentary-bar-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
         }
 
-        /* In cinematic mode, move commentary above where timeline bar was */
-        .app.cinematic ~ .commentary-bar {
-            bottom: 40px;
+        .commentary-bar-text {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--green);
+            line-height: 1.7;
+            letter-spacing: 0.3px;
+            min-height: 60px;
+        }
+
+        .commentary-bar-text .cursor {
+            display: inline-block;
+            width: 9px;
+            height: 18px;
+            background: var(--green);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
         }
 
         /* ── Cinematic Mode ── */
@@ -1028,8 +1043,9 @@
         </div>
     </div>
 
-    <!-- Commentary Subtitle Bar -->
+    <!-- Commentary Overlay -->
     <div class="commentary-bar" id="commentaryBar">
+        <div class="commentary-bar-label">// intelligence briefing</div>
         <div class="commentary-bar-text" id="commentaryText"></div>
     </div>
 
@@ -1634,25 +1650,46 @@
 
     var commentaryTimeout = null;
 
+    var commentaryTypingInterval = null;
+
     function showCommentary(chapterName) {
         var text = CHAPTER_COMMENTARY[chapterName];
         if (!text) return;
 
         var bar = document.getElementById('commentaryBar');
-        document.getElementById('commentaryText').textContent = text;
+        var el = document.getElementById('commentaryText');
 
-        // Fade in
-        bar.classList.add('visible');
-
-        // Clear any previous timeout
+        // Clear any previous typing/timeout
+        if (commentaryTypingInterval) clearInterval(commentaryTypingInterval);
         if (commentaryTimeout) clearTimeout(commentaryTimeout);
 
-        // Fade out after enough time to read — capped at 8s to prevent lingering
-        var words = text.split(' ').length;
-        var displayTime = Math.min(8000, Math.max(4000, words * 200));
-        commentaryTimeout = setTimeout(function() {
-            bar.classList.remove('visible');
-        }, displayTime);
+        // Reset and show
+        el.textContent = '';
+        bar.classList.add('visible');
+
+        // Type it out character by character
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        el.appendChild(cursor);
+
+        var i = 0;
+        commentaryTypingInterval = setInterval(function() {
+            if (i < text.length) {
+                el.insertBefore(document.createTextNode(text[i]), cursor);
+                i++;
+            } else {
+                clearInterval(commentaryTypingInterval);
+                commentaryTypingInterval = null;
+                // Remove cursor after typing done
+                setTimeout(function() {
+                    if (cursor.parentNode) cursor.remove();
+                }, 800);
+                // Fade out 3s after typing finishes
+                commentaryTimeout = setTimeout(function() {
+                    bar.classList.remove('visible');
+                }, 3000);
+            }
+        }, 30); // faster than intro typing — commentary should feel brisk
     }
 
     function addChapter(name) {
