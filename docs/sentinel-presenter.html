@@ -1324,23 +1324,29 @@
             'three workers, two security sentinels, an action gateway, and a commander.',
         'Skill Acquisition':
             'The Skill Acquirer browses ClawHub, the package registry, looking for new capabilities. ' +
-            'It installs verified skills but refuses the malicious data_exfiltrator \u2014 ' +
-            'the Supply Chain Sentinel watches every install.',
+            'It installs verified skills while the Supply Chain Sentinel watches every install, ' +
+            'verifying SHA-256 hashes against the trusted registry.',
         'Malicious Install Blocked':
             'The rogue Skill Acquirer attempts to install a known-malicious package. ' +
-            'The Gateway blocks it at the trust boundary \u2014 the agent never receives the payload.',
+            'The Gateway blocks it at the trust boundary \u2014 the agent never receives the payload. ' +
+            'If a malicious skill slips through and attempts to exfiltrate data, ' +
+            'the Supply Chain Sentinel will detect the hash mismatch and alert the Commander.',
         'Rogue Burst':
             'An agent has gone rogue \u2014 firing dozens of rapid requests in a burst, ' +
-            'far exceeding its normal operating pattern.',
+            'mimicking a DDoS pattern. The Behavior Sentinel monitors action rates across the network ' +
+            'and will flag any agent exceeding 10 actions per minute as anomalous.',
         'Gateway Block':
             'The Action Gateway detects the flood and enforces its rate limit. ' +
-            'Every subsequent request from the rogue agent is denied.',
+            'Every subsequent request from the rogue agent is denied. ' +
+            'The gateway ledger is tamper-proof \u2014 sentinels can trust its audit trail.',
         'Sentinel Alert':
-            'The Behavior Sentinel analyzes the activity logs and confirms the anomaly. ' +
-            'A critical threat alert is raised to the Commander.',
+            'The Behavior Sentinel has analyzed the gateway ledger and confirmed the anomaly. ' +
+            'A critical threat alert is raised to the Commander. Whether it is a DDoS-like burst ' +
+            'or a malicious skill attempting to copy sensitive data \u2014 the sentinels will catch it.',
         'Quarantine Issued':
-            'The Commander correlates evidence from multiple sentinels and issues a quarantine order. ' +
-            'The rogue agent is isolated from the network.',
+            'The Commander correlates evidence from both the Behavior Sentinel and the Supply Chain Sentinel. ' +
+            'With confirmation from multiple sources, it issues a quarantine order \u2014 ' +
+            'the compromised agent is isolated from the network and can no longer execute actions.',
     };
 
     var commentaryTimeout = null;
