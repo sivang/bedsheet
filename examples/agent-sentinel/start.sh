@@ -8,6 +8,8 @@
 #   ./start.sh --replay 0.1   Replay with delay between tokens (seconds)
 #   ./start.sh --no-dash      Launch without dashboard server
 #   ./start.sh --quiet        Suppress LLM event output (only show key events)
+#   ./start.sh --present      Cinematic presenter mode (implies --replay 0.3)
+#   ./start.sh --present --cinematic  Start in cinematic mode (no UI chrome)
 #
 # Flags can be combined: ./start.sh --record --no-dash --quiet
 
@@ -37,6 +39,8 @@ RECORD=false
 REPLAY=false
 REPLAY_DELAY="0.0"
 QUIET=false
+PRESENT=false
+CINEMATIC=false
 while [ $# -gt 0 ]; do
     case $1 in
         --no-dash) NO_DASH=true ;;
@@ -50,6 +54,15 @@ while [ $# -gt 0 ]; do
                 shift
             fi
             ;;
+        --present)
+            PRESENT=true
+            # Implies replay mode with default 0.3s delay (if not already set)
+            if [ "$REPLAY" = false ]; then
+                REPLAY=true
+                REPLAY_DELAY="0.3"
+            fi
+            ;;
+        --cinematic) CINEMATIC=true ;;
     esac
     shift
 done
@@ -65,7 +78,9 @@ echo -e "${CYAN}  ╔═══════════════════�
 echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel${NC} — AI Agent Security Monitoring   ${CYAN}║${NC}"
 echo -e "${CYAN}  ║${NC}   ${DIM}Powered by Bedsheet + PubNub + Gemini${NC}          ${CYAN}║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════════════════╝${NC}"
-if [ "$RECORD" = true ]; then
+if [ "$PRESENT" = true ]; then
+    echo -e "   ${CYAN}▶ PRESENTER MODE${NC} — cinematic demo playback"
+elif [ "$RECORD" = true ]; then
     echo -e "   ${YELLOW}● RECORDING MODE${NC} — saving to recordings/"
 elif [ "$REPLAY" = true ]; then
     echo -e "   ${GREEN}▶ REPLAY MODE${NC} — reading from recordings/ (delay: ${REPLAY_DELAY}s)"
@@ -205,11 +220,23 @@ if [ "$NO_DASH" = false ]; then
     DASH_PID=$!
     sleep 1
 
-    if kill -0 "$DASH_PID" 2>/dev/null; then
-        echo -e "${GREEN}  Dashboard ready${NC}"
-        echo -e "${BLUE}  http://localhost:${DASHBOARD_PORT}/agent-sentinel-dashboard.html${NC}"
+    # Choose presenter or dashboard page
+    if [ "$PRESENT" = true ]; then
+        DASH_PAGE="sentinel-presenter.html"
+        if [ "$CINEMATIC" = true ]; then
+            DASH_PAGE="sentinel-presenter.html#cinematic"
+        fi
+        DASH_LABEL="Presenter"
     else
-        echo -e "${RED}  Dashboard failed to start — check /tmp/sentinel-dashboard.log${NC}"
+        DASH_PAGE="agent-sentinel-dashboard.html"
+        DASH_LABEL="Dashboard"
+    fi
+
+    if kill -0 "$DASH_PID" 2>/dev/null; then
+        echo -e "${GREEN}  ${DASH_LABEL} ready${NC}"
+        echo -e "${BLUE}  http://localhost:${DASHBOARD_PORT}/${DASH_PAGE}${NC}"
+    else
+        echo -e "${RED}  ${DASH_LABEL} failed to start — check /tmp/sentinel-dashboard.log${NC}"
     fi
     echo ""
 fi
@@ -276,13 +303,15 @@ done
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  All systems online${NC}"
-if [ "$RECORD" = true ]; then
+if [ "$PRESENT" = true ]; then
+    echo -e "${CYAN}  Mode:       PRESENTER (cinematic demo playback)${NC}"
+elif [ "$RECORD" = true ]; then
     echo -e "${YELLOW}  Mode:       RECORDING to recordings/${NC}"
 elif [ "$REPLAY" = true ]; then
     echo -e "${GREEN}  Mode:       REPLAY from recordings/ (delay: ${REPLAY_DELAY}s)${NC}"
 fi
 if [ "$NO_DASH" = false ]; then
-    echo -e "${BLUE}  Dashboard:  http://localhost:${DASHBOARD_PORT}/agent-sentinel-dashboard.html${NC}"
+    echo -e "${BLUE}  ${DASH_LABEL:-Dashboard}:  http://localhost:${DASHBOARD_PORT}/${DASH_PAGE:-agent-sentinel-dashboard.html}${NC}"
 fi
 if [ "$REPLAY" != true ]; then
     echo -e "${BLUE}  PubNub key: ${PUBNUB_SUBSCRIBE_KEY:0:20}...${NC}"
