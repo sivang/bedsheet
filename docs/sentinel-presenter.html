@@ -518,6 +518,101 @@
         .btn-speed:hover { border-color: var(--border-glow); color: var(--text-secondary); }
         .btn-speed.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 212, 255, 0.08); }
 
+        /* ── Intro Crawl ── */
+        .intro-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-deep);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 1.5s ease;
+        }
+
+        .intro-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .intro-overlay.hidden { display: none; }
+
+        .intro-crawl {
+            max-width: 560px;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .intro-title {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: intro-fade-in 1.5s ease forwards;
+        }
+
+        .intro-line {
+            font-family: var(--font-sans);
+            font-size: 20px;
+            font-weight: 300;
+            color: var(--text-primary);
+            line-height: 1.8;
+            margin-bottom: 24px;
+            opacity: 0;
+        }
+
+        .intro-line.dim {
+            color: var(--text-secondary);
+            font-size: 17px;
+        }
+
+        .intro-line.accent {
+            color: var(--cyan);
+            font-weight: 400;
+            font-style: italic;
+        }
+
+        .intro-proceed {
+            margin-top: 40px;
+            opacity: 0;
+        }
+
+        .intro-proceed button {
+            background: none;
+            border: 1px solid var(--cyan);
+            border-radius: 4px;
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 10px 32px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .intro-proceed button:hover {
+            background: rgba(0, 212, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+        }
+
+        .intro-skip {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes intro-fade-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* ── Chapter Title Card ── */
         .chapter-card {
             position: fixed;
@@ -722,6 +817,37 @@
     <script src="sentinel-config.js"></script>
 </head>
 <body>
+    <!-- Intro Crawl -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-crawl">
+            <div class="intro-title" id="introTitle">Bedsheet Sentinel Network</div>
+            <div class="intro-line" id="introLine1">
+                In our times, autonomous AI agents operate across global infrastructure
+                with unprecedented power and autonomy.
+            </div>
+            <div class="intro-line" id="introLine2">
+                They face threats from every direction &mdash; poisoned models,
+                compromised supply chains, and rogue behavior from within.
+            </div>
+            <div class="intro-line dim" id="introLine3">
+                In the aftermath of the OpenClaw crisis of 2026, a new generation
+                of security sentinels was deployed to watch the watchers.
+            </div>
+            <div class="intro-line accent" id="introLine4">
+                This is the story of how they work.
+            </div>
+            <div class="intro-proceed" id="introProceed">
+                <button id="introStartBtn">Begin</button>
+                <div class="intro-skip">or press Space</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Audio (sci-fi drone — provide your own file as ambient.mp3 in docs/) -->
+    <audio id="ambientAudio" loop preload="auto">
+        <source src="ambient.mp3" type="audio/mpeg">
+    </audio>
+
     <!-- Connection Overlay -->
     <div class="connection-overlay hidden" id="connectionOverlay">
         <div class="connection-panel">
@@ -1045,8 +1171,52 @@
         if (e.key === 'Enter') connectToPubNub();
     });
 
-    // Auto-connect from config + handle #cinematic hash
-    (function() {
+    // ── Intro Crawl Animation ──
+    var introShown = false;
+
+    function animateIntro() {
+        var lines = [
+            { el: 'introTitle', delay: 0 },
+            { el: 'introLine1', delay: 1200 },
+            { el: 'introLine2', delay: 3200 },
+            { el: 'introLine3', delay: 5200 },
+            { el: 'introLine4', delay: 7200 },
+            { el: 'introProceed', delay: 8800 },
+        ];
+
+        lines.forEach(function(item) {
+            setTimeout(function() {
+                var el = document.getElementById(item.el);
+                if (el) {
+                    el.style.animation = 'intro-fade-in 1.2s ease forwards';
+                    el.style.animationDelay = '0s';
+                }
+            }, item.delay);
+        });
+    }
+
+    function dismissIntro() {
+        if (introShown) return;
+        introShown = true;
+
+        var overlay = document.getElementById('introOverlay');
+        overlay.classList.add('fade-out');
+        setTimeout(function() {
+            overlay.classList.add('hidden');
+        }, 1600);
+
+        // Start ambient audio (requires user interaction to play)
+        var audio = document.getElementById('ambientAudio');
+        if (audio) {
+            audio.volume = 0.15;
+            audio.play().catch(function() {}); // ignore if no file
+        }
+
+        // Now connect to PubNub
+        proceedToConnect();
+    }
+
+    function proceedToConnect() {
         var input = document.getElementById('subscribeKeyInput');
         var cfg = window.SENTINEL_CONFIG;
         if (cfg && cfg.subscribeKey) {
@@ -1057,12 +1227,27 @@
         } else {
             document.getElementById('connectionOverlay').classList.remove('hidden');
         }
+    }
 
+    // Intro event handlers
+    document.getElementById('introStartBtn').addEventListener('click', dismissIntro);
+    document.addEventListener('keydown', function introKeyHandler(e) {
+        if (!introShown && (e.key === ' ' || e.key === 'Enter')) {
+            e.preventDefault();
+            dismissIntro();
+            document.removeEventListener('keydown', introKeyHandler);
+        }
+    });
+
+    // Auto-start intro animation + handle #cinematic hash
+    (function() {
         // Auto-enter cinematic mode if #cinematic in URL
         if (window.location.hash === '#cinematic') {
             cinematicMode = true;
             document.getElementById('app').classList.add('cinematic');
         }
+
+        animateIntro();
     })();
 
     // ── PubNub Handlers ──
