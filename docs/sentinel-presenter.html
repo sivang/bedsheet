@@ -1087,7 +1087,7 @@
     var onlineAgents = new Set();
 
     // Playback state
-    var eventBuffer = [];           // Incoming PubNub events queued here
+    var eventBuffer = [];           // Incoming PubNub events queued here (raw from PubNub)
     var presentedEvents = [];       // Events already shown (for timeline progress)
     var totalEventEstimate = 50;    // Updated as events arrive
     var playbackSpeed = 1;
@@ -1096,6 +1096,15 @@
     var cinematicMode = false;
     var showTimestamp = false;
     var startTime = null;
+
+    // Scene-based playback: events grouped by agent, played one agent at a time
+    var agentScenes = {};           // { agentName: [signal, ...] } — collected from PubNub
+    var agentOrder = [];            // order agents first appeared
+    var sceneIndex = 0;             // which agent scene we're currently playing
+    var sceneEventIndex = 0;        // which event within the current scene
+    var collecting = true;          // true while we're still collecting events from PubNub
+    var COLLECTION_WINDOW = 8000;   // ms to wait for events before starting presentation
+    var collectionTimer = null;
 
     // Chapter tracking
     var chapters = [];
@@ -1318,7 +1327,9 @@
             document.getElementById('statusText').textContent = 'Connected';
             startTime = Date.now();
             addChapter('Network Startup');
-            startDrainLoop();
+            // Scene playback starts after COLLECTION_WINDOW ms of no new events
+            // Map event drain runs alongside
+            setTimeout(drainMapEvents, 3000);
         }
     }
 
@@ -1345,10 +1356,37 @@
             setAgentOnline(sender);
         }
 
-        // Buffer all events — the drain loop will present them
         signal._receivedAt = Date.now();
+
+        // Collect LLM events into per-agent scenes
+        if (signal.kind === 'event' && sender) {
+            if (!agentScenes[sender]) {
+                agentScenes[sender] = [];
+                agentOrder.push(sender);
+            }
+            agentScenes[sender].push(signal);
+        }
+
+        // Also buffer non-LLM events (signals, alerts, etc.) for map animations
         eventBuffer.push(signal);
-        totalEventEstimate = presentedEvents.length + eventBuffer.length;
+
+        // Reset collection timer — keep waiting while events are still arriving
+        if (collecting) {
+            if (collectionTimer) clearTimeout(collectionTimer);
+            collectionTimer = setTimeout(function() {
+                collecting = false;
+                totalEventEstimate = countTotalSceneEvents();
+                startScenePlayback();
+            }, COLLECTION_WINDOW);
+        }
+    }
+
+    function countTotalSceneEvents() {
+        var total = 0;
+        for (var name in agentScenes) {
+            total += agentScenes[name].length;
+        }
+        return total;
     }
 
     // ── Agent Online Status ──
@@ -1609,9 +1647,9 @@
         // Clear any previous timeout
         if (commentaryTimeout) clearTimeout(commentaryTimeout);
 
-        // Fade out after enough time to read (~100ms per word)
+        // Fade out after enough time to read — capped at 8s to prevent lingering
         var words = text.split(' ').length;
-        var displayTime = Math.max(4000, words * 250);
+        var displayTime = Math.min(8000, Math.max(4000, words * 200));
         commentaryTimeout = setTimeout(function() {
             bar.classList.remove('visible');
         }, displayTime);
@@ -1702,72 +1740,10 @@
         }
     }
 
-    // ── Focus Transition (sticky focus with cooldown) ──
-    // Once an agent has the stage, it keeps it until no events arrive for FOCUS_HOLD_MS.
-    // Events from other agents are queued silently and shown when focus releases.
-    var FOCUS_HOLD_MS = 3000;  // hold focus for 3s after last event from current agent
-    var focusReleaseTimer = null;
-    var pendingFocusEvents = {}; // { agentName: [signal, ...] } — events while another agent has focus
+    // ── Focus Transition (scene-based: one agent at a time) ──
+    function transitionToAgent(agentName) {
+        if (agentName === currentFocus) return;
 
-    function requestFocus(agentName) {
-        // Same agent — just refresh the hold timer
-        if (agentName === currentFocus) {
-            refreshFocusHold();
-            return true; // caller can show the event
-        }
-
-        // No current focus — take it immediately
-        if (!currentFocus) {
-            doTransition(agentName);
-            return true;
-        }
-
-        // Different agent wants focus but current agent is holding — queue silently
-        if (!pendingFocusEvents[agentName]) {
-            pendingFocusEvents[agentName] = [];
-        }
-        return false; // caller should NOT show the event in the overlay
-    }
-
-    function refreshFocusHold() {
-        if (focusReleaseTimer) clearTimeout(focusReleaseTimer);
-        focusReleaseTimer = setTimeout(releaseFocus, FOCUS_HOLD_MS);
-    }
-
-    function releaseFocus() {
-        focusReleaseTimer = null;
-
-        // Find the agent with the most pending events and give them the stage
-        var nextAgent = null;
-        var maxEvents = 0;
-        for (var name in pendingFocusEvents) {
-            if (pendingFocusEvents[name].length > maxEvents) {
-                maxEvents = pendingFocusEvents[name].length;
-                nextAgent = name;
-            }
-        }
-
-        if (nextAgent) {
-            var queued = pendingFocusEvents[nextAgent];
-            delete pendingFocusEvents[nextAgent];
-            doTransition(nextAgent);
-
-            // Replay queued events into the focus overlay
-            var body = document.getElementById('focusBody');
-            for (var i = 0; i < queued.length; i++) {
-                body.appendChild(buildEventCard(queued[i]));
-            }
-            body.scrollTop = body.scrollHeight;
-            refreshFocusHold();
-        } else {
-            // No pending events — return to overview
-            currentFocus = null;
-            hideFocusOverlay();
-            zoomToOverview();
-        }
-    }
-
-    function doTransition(agentName) {
         var prevFocus = currentFocus;
         currentFocus = agentName;
 
@@ -1787,46 +1763,108 @@
                 showFocusOverlay(agentName);
             }, 500);
         }, 200);
-
-        refreshFocusHold();
     }
 
-    // ── Playback Engine: Drain Loop ──
+    // ── Playback Engine: Scene-based (one agent at a time) ──
     var BASE_DELAY = 800; // ms between events at 1x speed
-    var drainRunning = false;
+    var playbackRunning = false;
 
-    function startDrainLoop() {
-        if (drainRunning) return;
-        drainRunning = true;
-        drainNext();
+    function startScenePlayback() {
+        if (playbackRunning) return;
+        if (agentOrder.length === 0) return;
+        playbackRunning = true;
+        sceneIndex = 0;
+        sceneEventIndex = 0;
+        beginScene();
     }
 
-    function drainNext() {
-        if (!drainRunning) return;
-
-        if (paused || eventBuffer.length === 0) {
-            setTimeout(drainNext, 100);
+    function beginScene() {
+        if (sceneIndex >= agentOrder.length) {
+            // All scenes done — loop from the beginning
+            sceneIndex = 0;
+            sceneEventIndex = 0;
+            // Brief pause at overview before restarting
+            currentFocus = null;
+            hideFocusOverlay();
+            zoomToOverview();
+            setTimeout(beginScene, 3000 / playbackSpeed);
             return;
         }
 
-        var signal = eventBuffer.shift();
-        presentEvent(signal);
-        presentedEvents.push(signal);
-        updateTimeline();
+        sceneEventIndex = 0;
+        var agentName = agentOrder[sceneIndex];
+        transitionToAgent(agentName);
 
-        var delay = BASE_DELAY / playbackSpeed;
-        setTimeout(drainNext, delay);
+        // Wait for the zoom transition to complete before showing events
+        setTimeout(playNextSceneEvent, 1000);
     }
 
-    function presentEvent(signal) {
-        var sender = signal.sender;
-        var kind = signal.kind;
-        var payload = signal.payload || {};
+    function playNextSceneEvent() {
+        if (!playbackRunning) return;
+
+        if (paused) {
+            setTimeout(playNextSceneEvent, 100);
+            return;
+        }
+
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+
+        if (!scene || sceneEventIndex >= scene.length) {
+            // Scene finished — pause briefly then move to next agent
+            sceneIndex++;
+            setTimeout(beginScene, 1500 / playbackSpeed);
+            return;
+        }
+
+        var signal = scene[sceneEventIndex];
+        sceneEventIndex++;
 
         // Detect chapters
         detectChapter(signal);
 
-        // Handle signal animations on map
+        // Show event card in the focus overlay
+        var body = document.getElementById('focusBody');
+        body.appendChild(buildEventCard(signal));
+        body.scrollTop = body.scrollHeight;
+        while (body.children.length > 30) {
+            body.removeChild(body.firstChild);
+        }
+
+        // Animate on map
+        presentMapEffects(signal);
+
+        presentedEvents.push(signal);
+        updateTimeline();
+
+        var delay = BASE_DELAY / playbackSpeed;
+        setTimeout(playNextSceneEvent, delay);
+    }
+
+    // Play non-LLM events from the buffer for map animations (heartbeats, signals, alerts)
+    function drainMapEvents() {
+        while (eventBuffer.length > 0) {
+            var signal = eventBuffer[0];
+            if (signal.kind === 'event') {
+                // LLM events are handled by scene playback, skip
+                eventBuffer.shift();
+                continue;
+            }
+            eventBuffer.shift();
+            presentMapEffects(signal);
+            detectChapter(signal);
+        }
+        if (playbackRunning) {
+            setTimeout(drainMapEvents, 2000);
+        }
+    }
+
+    // Map-only effects (heartbeats, signal lines, alerts) — no focus changes
+    function presentMapEffects(signal) {
+        var sender = signal.sender;
+        var kind = signal.kind;
+        var payload = signal.payload || {};
+
         if (kind === 'heartbeat' && sender) {
             pulseNode(sender, 'var(--green)');
         }
@@ -1847,34 +1885,14 @@
             } else {
                 animateSignalLine(sender, 'sentinel-commander', 'var(--red)');
             }
-            // Live indicator
             document.getElementById('statusDot').classList.add('live');
             clearTimeout(window._liveTimeout);
             window._liveTimeout = setTimeout(function() {
                 document.getElementById('statusDot').classList.remove('live');
             }, 5000);
         }
-
-        // For LLM events, focus on the sender and show in overlay
         if (kind === 'event' && sender) {
             pulseNode(sender, 'var(--purple)');
-
-            var gotFocus = requestFocus(sender);
-
-            if (gotFocus) {
-                // This agent has the stage — show the event in the overlay
-                var body = document.getElementById('focusBody');
-                body.appendChild(buildEventCard(signal));
-                body.scrollTop = body.scrollHeight;
-
-                // Cap at 30 visible cards
-                while (body.children.length > 30) {
-                    body.removeChild(body.firstChild);
-                }
-            } else {
-                // Another agent has the stage — queue this event for later
-                pendingFocusEvents[sender].push(signal);
-            }
         }
     }
 
@@ -1914,12 +1932,7 @@
     });
 
     document.getElementById('btnStep').addEventListener('click', function() {
-        if (eventBuffer.length > 0) {
-            var signal = eventBuffer.shift();
-            presentEvent(signal);
-            presentedEvents.push(signal);
-            updateTimeline();
-        }
+        stepOneEvent();
     });
 
     // ── Keyboard Controls ──
@@ -1937,16 +1950,9 @@
 
             case 'ArrowRight':
                 if (e.shiftKey) {
-                    // Skip to next agent transition
                     skipToNextAgent();
                 } else {
-                    // Step one event
-                    if (eventBuffer.length > 0) {
-                        var signal = eventBuffer.shift();
-                        presentEvent(signal);
-                        presentedEvents.push(signal);
-                        updateTimeline();
-                    }
+                    stepOneEvent();
                 }
                 break;
 
@@ -2002,34 +2008,42 @@
         document.getElementById('speedLabel').textContent = 'Speed: ' + playbackSpeed + 'x';
     }
 
-    function skipToNextAgent() {
-        // Force-release current focus and let the next agent take the stage
-        if (focusReleaseTimer) clearTimeout(focusReleaseTimer);
-        focusReleaseTimer = null;
+    function stepOneEvent() {
+        if (sceneIndex >= agentOrder.length) return;
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+        if (!scene || sceneEventIndex >= scene.length) return;
 
-        // Drain remaining events from current agent silently
-        while (eventBuffer.length > 0) {
-            var signal = eventBuffer[0];
-            var sender = signal.sender;
-            if (signal.kind === 'event' && sender && sender !== currentFocus) {
-                break;
-            }
-            eventBuffer.shift();
-            presentedEvents.push(signal);
+        var signal = scene[sceneEventIndex];
+        sceneEventIndex++;
+        detectChapter(signal);
+
+        var body = document.getElementById('focusBody');
+        body.appendChild(buildEventCard(signal));
+        body.scrollTop = body.scrollHeight;
+        while (body.children.length > 30) {
+            body.removeChild(body.firstChild);
         }
-
-        // Release focus — this will pick the next agent from pending queue or buffer
-        currentFocus = null;
-        releaseFocus();
-
-        // If releaseFocus didn't find a pending agent, try the next event in buffer
-        if (!currentFocus && eventBuffer.length > 0) {
-            var next = eventBuffer.shift();
-            presentEvent(next);
-            presentedEvents.push(next);
-        }
-
+        presentMapEffects(signal);
+        presentedEvents.push(signal);
         updateTimeline();
+    }
+
+    function skipToNextAgent() {
+        // Skip remaining events in current scene
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+        if (scene) {
+            // Count skipped events for timeline
+            while (sceneEventIndex < scene.length) {
+                presentedEvents.push(scene[sceneEventIndex]);
+                sceneEventIndex++;
+            }
+        }
+        // Move to next scene
+        sceneIndex++;
+        updateTimeline();
+        beginScene();
     }
 
     </script>
