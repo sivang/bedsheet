@@ -1522,6 +1522,68 @@
     }
 
     // ── Focus Overlay Positioning ──
+    // ── Per-Agent Briefings (military style) ──
+    var AGENT_BRIEFINGS = {
+        'action-gateway':
+            'ASSET: Action Gateway // us-central1\n' +
+            'ROLE: Central trust boundary. All tool executions are proxied through this node.\n' +
+            'MISSION: Enforce rate limits, maintain tamper-proof audit ledger, deny unauthorized actions.\n' +
+            'PROTECTS AGAINST: DDoS-pattern floods, unauthorized tool execution, audit trail manipulation.\n' +
+            'FUTURE OPS: Coordinate emergency resource allocation during infrastructure attacks.',
+        'web-researcher':
+            'ASSET: Web Researcher // us-east1\n' +
+            'ROLE: Intelligence gathering. Searches the open web for threat data and situational awareness.\n' +
+            'MISSION: Collect real-time intelligence on security threats, vulnerabilities, and emerging risks.\n' +
+            'PROTECTS AGAINST: Information blindspots, delayed threat awareness, unknown attack vectors.\n' +
+            'RISK PROFILE: 15% probability of rogue behavior \u2014 rapid-fire search floods that mimic DDoS.',
+        'scheduler':
+            'ASSET: Scheduler // europe-west1\n' +
+            'ROLE: Operations coordinator. Manages task scheduling and calendar-driven workflows.\n' +
+            'MISSION: Ensure time-critical operations execute on schedule across global infrastructure.\n' +
+            'PROTECTS AGAINST: Missed response windows, coordination failures, cascading delays.\n' +
+            'FUTURE OPS: Civilian evacuation scheduling and emergency response coordination.',
+        'skill-acquirer':
+            'ASSET: Skill Acquirer // asia-northeast1\n' +
+            'ROLE: Capability expansion. Browses and installs verified skills from ClawHub registry.\n' +
+            'MISSION: Expand agent capabilities while blocking malicious packages at the trust boundary.\n' +
+            'PROTECTS AGAINST: Supply chain attacks, trojan skills, data exfiltration payloads.\n' +
+            'RISK PROFILE: 15% probability of rogue install attempt \u2014 tries to load known-malicious code.',
+        'behavior-sentinel':
+            'ASSET: Behavior Sentinel // us-west1\n' +
+            'ROLE: Anomaly detection. Monitors action rates across all agents via the gateway ledger.\n' +
+            'MISSION: Identify agents exhibiting abnormal behavior patterns \u2014 floods, bursts, or erratic output.\n' +
+            'PROTECTS AGAINST: Rogue agents, compromised workers, DDoS-pattern attacks from within.\n' +
+            'FUTURE OPS: Detect coordinated multi-agent attacks during missile strike scenarios.',
+        'supply-chain-sentinel':
+            'ASSET: Supply Chain Sentinel // asia-southeast1\n' +
+            'ROLE: Integrity verification. Audits installed skills via SHA-256 hash comparison.\n' +
+            'MISSION: Detect tampered, replaced, or malicious packages that bypass initial screening.\n' +
+            'PROTECTS AGAINST: Post-install tampering, hash mismatches, sleeper payloads activated after deployment.\n' +
+            'FUTURE OPS: Verify integrity of civilian protection protocols before emergency activation.',
+        'sentinel-commander':
+            'ASSET: Sentinel Commander // europe-west2\n' +
+            'ROLE: Threat correlation and response. Correlates alerts from all sentinels.\n' +
+            'MISSION: Assess multi-source threat intelligence and issue quarantine orders for confirmed compromises.\n' +
+            'PROTECTS AGAINST: False positives from single-source alerts, uncoordinated responses, delayed quarantine.\n' +
+            'FUTURE OPS: Command civilian protection operations \u2014 coordinate agent swarm for missile defense and evacuation.',
+    };
+
+    // Convert agent node SVG coords to screen position after zoom
+    function agentScreenPos(agentName, areaW, areaH, zoom) {
+        var info = AGENTS[agentName];
+        if (!info) return null;
+        var fracX = info.x / VIEWBOX_W;
+        var fracY = info.y / VIEWBOX_H;
+        // After zoom, the focused agent is centered. Other agents are offset.
+        var screenX = areaW / 2 + (fracX * areaW - areaW / 2) * zoom.scale + zoom.panX;
+        var screenY = areaH / 2 + (fracY * areaH - areaH / 2) * zoom.scale + zoom.panY;
+        return { x: screenX, y: screenY };
+    }
+
+    function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+
     function positionFocusOverlay(agentName) {
         var info = AGENTS[agentName];
         if (!info) return;
@@ -1532,37 +1594,45 @@
         var areaH = mapArea.offsetHeight;
         var overlayW = 380;
         var overlayH = 420;
-        var gap = 60; // distance from center (where the zoomed node sits)
+        var gap = 60;
 
-        // Agent's fractional position in the SVG determines which side to place the overlay.
-        // If agent is on the right half of the map, place overlay to the left of center, and vice versa.
         var fracX = info.x / VIEWBOX_W;
         var fracY = info.y / VIEWBOX_H;
 
-        var overlayX, overlayY;
+        // Try 4 candidate positions: right, left, below, above center
+        var candidates = [
+            { x: areaW / 2 + gap, y: areaH / 2 - overlayH / 2 },           // right
+            { x: areaW / 2 - overlayW - gap, y: areaH / 2 - overlayH / 2 }, // left
+            { x: areaW / 2 - overlayW / 2, y: areaH / 2 + gap },            // below
+            { x: areaW / 2 - overlayW / 2, y: areaH / 2 - overlayH - gap }, // above
+        ];
 
+        // Prefer right for left-side agents, left for right-side agents
         if (fracX > 0.5) {
-            // Agent is on the right — place overlay to the left of center
-            overlayX = areaW / 2 - overlayW - gap;
-        } else {
-            // Agent is on the left — place overlay to the right of center
-            overlayX = areaW / 2 + gap;
+            candidates = [candidates[1], candidates[0], candidates[2], candidates[3]];
+        }
+        if (fracY < 0.3) {
+            // Top agents: prefer below
+            candidates = [candidates[2], candidates[0], candidates[1], candidates[3]];
         }
 
-        if (fracY < 0.35) {
-            // Agent is near the top — place overlay below center
-            overlayY = areaH / 2 + 20;
-        } else {
-            // Agent is in the middle or bottom — place overlay above center
-            overlayY = areaH / 2 - overlayH / 2;
+        // The focused agent node is at screen center after zoom
+        var focusedNodeRect = { x: areaW / 2 - 30, y: areaH / 2 - 30, w: 60, h: 60 };
+
+        var bestPos = candidates[0]; // fallback
+        for (var i = 0; i < candidates.length; i++) {
+            var cx = Math.max(16, Math.min(candidates[i].x, areaW - overlayW - 16));
+            var cy = Math.max(16, Math.min(candidates[i].y, areaH - overlayH - 16));
+
+            // Check if this position overlaps the focused agent node
+            if (!rectsOverlap(cx, cy, overlayW, overlayH, focusedNodeRect.x, focusedNodeRect.y, focusedNodeRect.w, focusedNodeRect.h)) {
+                bestPos = { x: cx, y: cy };
+                break;
+            }
         }
 
-        // Clamp to viewport
-        overlayX = Math.max(16, Math.min(overlayX, areaW - overlayW - 16));
-        overlayY = Math.max(16, Math.min(overlayY, areaH - overlayH - 16));
-
-        overlay.style.left = overlayX + 'px';
-        overlay.style.top = overlayY + 'px';
+        overlay.style.left = bestPos.x + 'px';
+        overlay.style.top = bestPos.y + 'px';
 
         // Set header info
         var rc = ROLE_COLORS[info.role] || ROLE_COLORS.worker;
@@ -1577,13 +1647,55 @@
         overlay.style.borderColor = rc.hex;
     }
 
+    // Type the agent briefing into the focus overlay before showing events
+    var briefingTypingInterval = null;
+
     function showFocusOverlay(agentName) {
         positionFocusOverlay(agentName);
         var overlay = document.getElementById('focusOverlay');
-        // Clear previous events
         var body = document.getElementById('focusBody');
         body.textContent = '';
         overlay.classList.add('visible');
+
+        // Type the agent briefing first
+        var briefing = AGENT_BRIEFINGS[agentName];
+        if (briefing) {
+            var briefingEl = document.createElement('div');
+            briefingEl.className = 'llm-event animate-in';
+            briefingEl.style.borderLeftColor = 'var(--cyan)';
+            briefingEl.style.fontFamily = 'var(--font-mono)';
+            briefingEl.style.fontSize = '11px';
+            briefingEl.style.lineHeight = '1.7';
+            briefingEl.style.color = 'var(--green)';
+            briefingEl.style.whiteSpace = 'pre-wrap';
+            body.appendChild(briefingEl);
+
+            var cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            cursor.style.display = 'inline-block';
+            cursor.style.width = '7px';
+            cursor.style.height = '13px';
+            cursor.style.background = 'var(--green)';
+            cursor.style.verticalAlign = 'text-bottom';
+            cursor.style.animation = 'blink-cursor 0.7s step-end infinite';
+            briefingEl.appendChild(cursor);
+
+            var idx = 0;
+            if (briefingTypingInterval) clearInterval(briefingTypingInterval);
+            briefingTypingInterval = setInterval(function() {
+                if (idx < briefing.length) {
+                    briefingEl.insertBefore(document.createTextNode(briefing[idx]), cursor);
+                    idx++;
+                    body.scrollTop = body.scrollHeight;
+                } else {
+                    clearInterval(briefingTypingInterval);
+                    briefingTypingInterval = null;
+                    setTimeout(function() {
+                        if (cursor.parentNode) cursor.remove();
+                    }, 600);
+                }
+            }, 18); // fast typing for briefing
+        }
     }
 
     function hideFocusOverlay() {
