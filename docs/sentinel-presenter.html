@@ -1366,7 +1366,6 @@
         var interval = setInterval(function() {
             if (i < text.length) {
                 el.insertBefore(document.createTextNode(text[i]), cursorSpan);
-                if (text[i] !== ' ') playKeystroke();
                 i++;
             } else {
                 clearInterval(interval);
@@ -1839,7 +1838,6 @@
         briefingTypingInterval = setInterval(function() {
             if (idx < briefing.length) {
                 body.insertBefore(document.createTextNode(briefing[idx]), cursor);
-                if (briefing[idx] !== ' ') playKeystroke();
                 idx++;
                 body.scrollTop = body.scrollHeight;
             } else {
