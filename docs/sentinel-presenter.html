@@ -1315,6 +1315,60 @@
 
     var introTypingSpeed = 25; // ms per character
 
+    // ── Keystroke Sound Synthesizer (Web Audio API) ──
+    // Generates a short click/tick sound that mimics a mechanical terminal key.
+    // No audio files needed — pure synthesis.
+    var audioCtx = null;
+
+    function initAudioCtx() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                console.warn('[presenter] Web Audio API not available:', e.message);
+            }
+        }
+        return audioCtx;
+    }
+
+    function playKeystroke() {
+        var ctx = initAudioCtx();
+        if (!ctx) return;
+
+        // Short noise burst shaped to sound like a key click
+        var duration = 0.04; // 40ms — crisp and short
+        var now = ctx.currentTime;
+
+        // White noise source (buffer of random samples)
+        var bufferSize = Math.floor(ctx.sampleRate * duration);
+        var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        var data = buffer.getChannelData(0);
+        for (var i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.3;
+        }
+
+        var noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        // Bandpass filter — gives it a "click" tone rather than pure static
+        var filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 3000 + Math.random() * 2000; // slight variation per keystroke
+        filter.Q.value = 0.8;
+
+        // Quick volume envelope — sharp attack, fast decay
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.08, now);           // quiet — ambient, not distracting
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start(now);
+        noise.stop(now + duration);
+    }
+
     function typeText(el, text, callback) {
         var i = 0;
         el.style.opacity = '1';
@@ -1326,6 +1380,7 @@
         var interval = setInterval(function() {
             if (i < text.length) {
                 el.insertBefore(document.createTextNode(text[i]), cursorSpan);
+                if (text[i] !== ' ') playKeystroke();
                 i++;
             } else {
                 clearInterval(interval);
@@ -1798,6 +1853,7 @@
         briefingTypingInterval = setInterval(function() {
             if (idx < briefing.length) {
                 body.insertBefore(document.createTextNode(briefing[idx]), cursor);
+                if (briefing[idx] !== ' ') playKeystroke();
                 idx++;
                 body.scrollTop = body.scrollHeight;
             } else {
@@ -1928,6 +1984,7 @@
         commentaryTypingInterval = setInterval(function() {
             if (i < text.length) {
                 el.insertBefore(document.createTextNode(text[i]), cursor);
+                if (text[i] !== ' ') playKeystroke();
                 i++;
             } else {
                 clearInterval(commentaryTypingInterval);
