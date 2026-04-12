@@ -310,6 +310,16 @@
             <a href="#js-collision">Collision Avoidance</a>
             <a href="#js-pubnub">PubNub Integration</a>
 
+            <div class="section-label">Lessons Learned</div>
+            <a href="#lessons">Overview</a>
+            <a href="#lesson-error-paths">Error Paths</a>
+            <a href="#lesson-empty-catch">Empty Catch</a>
+            <a href="#lesson-init-order">Init Order</a>
+            <a href="#lesson-cascade">Else-If Cascade</a>
+            <a href="#lesson-cdn-guard">CDN Guards</a>
+            <a href="#lesson-promise-rejection">Promise Rejection</a>
+            <a href="#lesson-architectural">Architectural Pivot</a>
+
             <div class="section-label">Reference</div>
             <a href="#files">Files</a>
             <a href="#troubleshooting">Troubleshooting</a>
@@ -1021,6 +1031,178 @@ var focusPos = findPanelPosition(..., [briefingRect]);</code></pre>
                 The compact key map (<code>k &rarr; kind, s &rarr; sender, p &rarr; payload</code>) is shared
                 with the dashboard and matches <code>bedsheet/sense/serialization.py</code>.
             </p>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- LESSONS LEARNED -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="lessons">Lessons Learned</h2>
+            <p>
+                This section documents bugs found during code review and the patterns behind them.
+                These are common JavaScript pitfalls that apply broadly, not just to this presenter.
+            </p>
+
+            <h3 id="lesson-error-paths">Always Handle the Error Path</h3>
+            <p><strong>Bug:</strong> <code>handleStatus</code> only handled <code>PNConnectedCategory</code>.
+                When PubNub returned an error (bad key, network down, timeout), the user saw "Connecting..."
+                forever with no feedback.</p>
+            <p><strong>Pattern:</strong> Every async connection (PubNub, WebSocket, fetch, etc.) has
+                two outcomes: success and failure. If you only handle success, every failure becomes
+                a silent hang. The fix is to handle known error categories explicitly and add a
+                catch-all for unknown errors:</p>
+<pre><code class="language-javascript">function handleStatus(statusEvent) {
+    if (statusEvent.category === 'PNConnectedCategory') {
+        // Happy path
+    } else if (statusEvent.category === 'PNAccessDeniedCategory') {
+        showError('Access denied');
+    } else if (statusEvent.category === 'PNNetworkDownCategory') {
+        showError('Network error');
+    } else if (statusEvent.error) {
+        // Catch-all: log the category for diagnostics
+        console.error('Unknown error:', statusEvent.category);
+        showError('Failed: ' + statusEvent.category);
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> If a function receives a status/result object, ask: "What categories
+                can this be?" and handle each one. If you can't enumerate them, add a catch-all that
+                at least logs and surfaces the category name.</p>
+
+            <h3 id="lesson-empty-catch">Never Use Empty Catch Blocks</h3>
+            <p><strong>Bug:</strong> <code>catch(e) {}</code> in <code>animateLinesFromToolCall</code>
+                silently swallowed JSON parse errors, null reference errors, and SVG manipulation failures.
+                Signal lines between agents failed invisibly during demos.</p>
+            <p><strong>Pattern:</strong> <code>catch(e) {}</code> is never acceptable. It suppresses
+                ALL errors, not just the one you intended to handle. Even if you think the error is
+                harmless, you lose all diagnostic information when something unexpected goes wrong.</p>
+<pre><code class="language-javascript">// BAD: every error vanishes into the void
+try { riskyCode(); } catch(e) {}
+
+// GOOD: at minimum, log with context
+try { riskyCode(); } catch(e) {
+    console.warn('[context] Failed:', e.message);
+}
+
+// BETTER: handle expected errors, re-throw unexpected ones
+try { JSON.parse(input); } catch(e) {
+    if (e instanceof SyntaxError) {
+        console.warn('Malformed input:', input);
+    } else {
+        throw e;  // unexpected error, don't swallow
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> Every <code>catch</code> block needs at least a <code>console.warn</code>
+                with enough context to diagnose the problem. The comment "// ignore" is not a valid reason
+                to suppress errors &mdash; write <em>what</em> you're ignoring and <em>why</em>.</p>
+
+            <h3 id="lesson-init-order">Initialization Order Between Async Systems</h3>
+            <p><strong>Bug:</strong> <code>drainMapEvents</code> was called 3 seconds after PubNub connected,
+                but <code>playbackRunning</code> was only set to <code>true</code> after the 8-second
+                collection window. So the drain function ran once, saw <code>playbackRunning === false</code>,
+                and exited forever. Map animations were completely dead.</p>
+            <p><strong>Pattern:</strong> When system A depends on system B's state, don't start A
+                alongside B and hope the timing works. Start A <em>from within</em> B, at the point
+                where the dependency is guaranteed to be satisfied:</p>
+<pre><code class="language-javascript">// BAD: race condition — drainMapEvents might run before
+// playbackRunning is true
+connectToPubNub();
+setTimeout(drainMapEvents, 3000);  // might run too early
+setTimeout(startScenePlayback, 8000);  // sets playbackRunning
+
+// GOOD: start the dependent function from where its
+// precondition is guaranteed
+function startScenePlayback() {
+    playbackRunning = true;
+    drainMapEvents();  // now playbackRunning is definitely true
+    beginScene();
+}</code></pre>
+            <p><strong>Rule:</strong> If function A checks a flag that function B sets, start A from
+                inside B, after the flag is set. Never rely on timeout ordering.</p>
+
+            <h3 id="lesson-cascade">Use else-if for Mutually Exclusive Conditions</h3>
+            <p><strong>Bug:</strong> A quarantine signal has <code>kind: 'alert'</code>, <code>severity: 'critical'</code>,
+                AND <code>action: 'quarantine'</code>. Two separate <code>if</code> blocks both matched:
+                first "Sentinel Alert" was shown, then immediately overwritten by "Quarantine Issued".
+                The audience never saw the first card.</p>
+            <p><strong>Pattern:</strong> When multiple conditions can match the same input, and only
+                one should fire, use <code>else if</code>. Put the more specific condition first:</p>
+<pre><code class="language-javascript">// BAD: both conditions fire on the same signal
+if (kind === 'alert' && severity === 'critical') {
+    showChapter('Sentinel Alert');
+}
+if (kind === 'alert' && action === 'quarantine') {
+    showChapter('Quarantine');  // immediately overwrites above
+}
+
+// GOOD: quarantine is more specific, check it first
+if (kind === 'alert') {
+    if (action === 'quarantine') {
+        showChapter('Quarantine');
+    } else if (severity === 'critical') {
+        showChapter('Sentinel Alert');
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> When two conditions can both match the same data, ask: "Should
+                both fire, or only one?" If only one, use <code>else if</code> with the more specific
+                condition first.</p>
+
+            <h3 id="lesson-cdn-guard">Guard External Dependencies</h3>
+            <p><strong>Bug:</strong> PubNub SDK loaded from a CDN. If the CDN is blocked (firewall,
+                DNS, outage), <code>new PubNub()</code> throws <code>ReferenceError: PubNub is not defined</code>.
+                The try/catch caught it, but the error message was cryptic.</p>
+            <p><strong>Pattern:</strong> Before using a global that comes from an external <code>&lt;script&gt;</code>,
+                check if it loaded. Give a clear, actionable error message:</p>
+<pre><code class="language-javascript">// Before using any CDN-loaded library
+if (typeof PubNub === 'undefined') {
+    showError('PubNub SDK failed to load. Check network or firewall.');
+    return;
+}
+
+// Same pattern for any external dependency
+if (typeof Chart === 'undefined') { ... }
+if (typeof hljs === 'undefined') { ... }</code></pre>
+            <p><strong>Rule:</strong> <code>typeof X === 'undefined'</code> before the first use of any
+                global from a CDN. The error message should name the library and suggest a cause
+                (network, firewall) &mdash; not just say "X is not defined".</p>
+
+            <h3 id="lesson-promise-rejection">Handle Promise Rejections</h3>
+            <p><strong>Bug:</strong> <code>requestFullscreen()</code> returns a Promise that can reject
+                (browser policy, iframe restrictions). The rejection was unhandled, producing a console warning.</p>
+            <p><strong>Pattern:</strong> Browser APIs that return Promises (fullscreen, clipboard,
+                notifications, audio play) can reject for policy reasons. Always add <code>.catch()</code>:</p>
+<pre><code class="language-javascript">// BAD: unhandled rejection warning in console
+document.documentElement.requestFullscreen();
+
+// GOOD: catch and log
+document.documentElement.requestFullscreen().catch(function(err) {
+    console.warn('Fullscreen denied:', err.message);
+});
+
+// Same for audio, clipboard, notifications...
+audio.play().catch(function(err) {
+    if (err.name !== 'NotAllowedError') {  // expected for autoplay
+        console.warn('Audio failed:', err.name);
+    }
+});</code></pre>
+            <p><strong>Rule:</strong> Every <code>.then()</code> needs a <code>.catch()</code>, and every
+                <code>await</code> needs a <code>try/catch</code>. For browser APIs, filter expected
+                rejections (like <code>NotAllowedError</code> for autoplay) from unexpected ones.</p>
+
+            <h3 id="lesson-architectural">Architectural Pivot: Reactive to Scene-Based</h3>
+            <p>
+                The biggest change during development was moving from <strong>reactive playback</strong>
+                (show events as they arrive from PubNub) to <strong>scene-based playback</strong>
+                (collect events, group by agent, play one agent at a time).
+            </p>
+            <p><strong>Why the pivot:</strong> PubNub delivers events from all 7 agents interleaved.
+                In reactive mode, focus thrashed between agents every few hundred milliseconds &mdash;
+                the map zoomed to agent A, then immediately to agent B, then back. Unwatchable.</p>
+            <p><strong>The fix:</strong> Collect all events for 8 seconds into per-agent buckets
+                (<code>agentScenes</code>), then play them sequentially. Each agent gets an uninterrupted
+                "scene" with full focus.</p>
+            <p><strong>Lesson:</strong> When you change the architecture, audit ALL code that depended
+                on the old model. The <code>drainMapEvents</code> timing bug existed because it was
+                wired up during the reactive phase and never re-wired after the pivot. Every architectural
+                change leaves orphaned assumptions &mdash; grep for them.</p>
 
             <!-- Files -->
             <h2 id="files">Files</h2>
