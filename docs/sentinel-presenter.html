@@ -1335,38 +1335,24 @@
         var ctx = initAudioCtx();
         if (!ctx) return;
 
-        // Short noise burst shaped to sound like a key click
-        var duration = 0.04; // 40ms — crisp and short
+        // Morse-style tick: a very short sine wave ping at ~800Hz
+        // Classic telegraph/teletype sound — sharp, clean, tonal
+        var duration = 0.012; // 12ms — shorter than morse dit (~60ms), feels rapid
         var now = ctx.currentTime;
 
-        // White noise source (buffer of random samples)
-        var bufferSize = Math.floor(ctx.sampleRate * duration);
-        var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        var data = buffer.getChannelData(0);
-        for (var i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * 0.3;
-        }
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 780 + Math.random() * 40; // ~800Hz with slight variation
 
-        var noise = ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        // Bandpass filter — gives it a "click" tone rather than pure static
-        var filter = ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 3000 + Math.random() * 2000; // slight variation per keystroke
-        filter.Q.value = 0.8;
-
-        // Quick volume envelope — sharp attack, fast decay
         var gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.08, now);           // quiet — ambient, not distracting
+        gain.gain.setValueAtTime(0.12, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-        noise.connect(filter);
-        filter.connect(gain);
+        osc.connect(gain);
         gain.connect(ctx.destination);
 
-        noise.start(now);
-        noise.stop(now + duration);
+        osc.start(now);
+        osc.stop(now + duration);
     }
 
     function typeText(el, text, callback) {
