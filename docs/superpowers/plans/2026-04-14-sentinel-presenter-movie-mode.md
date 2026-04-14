@@ -115,7 +115,7 @@ git commit -m "feat(presenter): add movie mode flag and dispatch scaffold"
 
 - [ ] **Step 1: Find a home**
 
-Place just below the existing `animateBroadcast` function (grep `function animateBroadcast`).
+Place just below the existing `animateBroadcast` function at **line 1629**.
 
 - [ ] **Step 2: Implement**
 
@@ -134,15 +134,29 @@ Place just below the existing `animateBroadcast` function (grep `function animat
         document.querySelectorAll('.broadcast-ring').forEach(function(r) {
             r.classList.remove('active');
         });
-        // Focus / briefing overlays
+        // Focus / briefing overlays + commentary + chapter card
         currentFocus = null;
         var fo = document.getElementById('focusOverlay');
         var bo = document.getElementById('briefingOverlay');
+        var cm = document.getElementById('movieCommentary');
+        var cc = document.getElementById('movieChapterCard');
         if (fo) fo.classList.remove('visible');
         if (bo) bo.classList.remove('visible');
-        // Stats
+        if (cm) cm.classList.remove('visible');
+        if (cc) cc.classList.remove('visible');
+        // Clear the focus body children (event cards from previous plays)
+        var fb = document.getElementById('focusBody');
+        if (fb) while (fb.firstChild) fb.removeChild(fb.firstChild);
+        // Stats + counters visible in the overview bar
         stats.signals = 0; stats.alerts = 0; stats.quarantine = 0;
-        updateStats();
+        if (typeof updateStats === 'function') updateStats();
+        // Scene-collection state from live/replay paths (present but unused in movie)
+        if (typeof onlineAgents !== 'undefined' && onlineAgents.clear) onlineAgents.clear();
+        if (typeof agentScenes === 'object') {
+            for (var k in agentScenes) if (agentScenes.hasOwnProperty(k)) delete agentScenes[k];
+        }
+        if (typeof agentOrder !== 'undefined' && agentOrder.length) agentOrder.length = 0;
+        if (typeof presentedEvents !== 'undefined' && presentedEvents.length) presentedEvents.length = 0;
     }
 ```
 
@@ -169,9 +183,28 @@ git commit -m "feat(presenter): add resetPresenterVisuals primitive"
 
 **Files:** Modify `docs/sentinel-presenter.html`
 
-Per spec §3.1.1 — extend existing `zoomToAgent` and `zoomToOverview` to accept an optional duration. The CSS default on `.map-viewport` is 0.8s; movie cues may override (e.g. Chapter 8's 3000ms slow pull).
+Per spec §3.1.1 — extend existing `zoomToAgent` (line 1665) and `zoomToOverview` (line 1701) to accept an optional duration. The CSS default on `.map-viewport` is 0.8s (line 150); movie cues may override (e.g. Chapter 8's 3000ms slow pull).
 
-- [ ] **Step 1: Extend `zoomToAgent`**
+- [ ] **Step 1: Add `applyTransitionOverride` helper just above `zoomToAgent` (~line 1665)**
+
+```js
+    // Set a one-shot CSS transition-duration override on an element; restore on transitionend
+    // or after a safety timeout so subsequent transitions use the stylesheet default.
+    function applyTransitionOverride(el, durationMs) {
+        el.style.transitionDuration = durationMs + 'ms';
+        var cleared = false;
+        var clear = function() {
+            if (cleared) return;
+            cleared = true;
+            el.style.transitionDuration = '';
+            el.removeEventListener('transitionend', clear);
+        };
+        el.addEventListener('transitionend', clear);
+        setTimeout(clear, durationMs + 100);
+    }
+```
+
+- [ ] **Step 2: Extend `zoomToAgent`**
 
 Replace the current function signature. Just above the `viewport.style.transform = ...` line, add the override guard:
 
@@ -201,7 +234,7 @@ Replace the current function signature. Just above the `viewport.style.transform
     }
 ```
 
-- [ ] **Step 2: Same for `zoomToOverview`**
+- [ ] **Step 3: Same for `zoomToOverview`**
 
 ```js
     function zoomToOverview(opts) {
@@ -212,27 +245,6 @@ Replace the current function signature. Just above the `viewport.style.transform
         viewport.style.transform = 'translate(0px, 0px) scale(1)';
         applyPinCounterScale(1);
         document.querySelectorAll('.agent-node').forEach(function(n) { n.classList.remove('dimmed', 'focused'); });
-    }
-```
-
-- [ ] **Step 3: Add `applyTransitionOverride` helper**
-
-Just above the zoom functions:
-
-```js
-    // Set a one-shot CSS transition-duration override on an element; restore on transitionend
-    // or after a safety timeout so subsequent transitions use the stylesheet default.
-    function applyTransitionOverride(el, durationMs) {
-        el.style.transitionDuration = durationMs + 'ms';
-        var cleared = false;
-        var clear = function() {
-            if (cleared) return;
-            cleared = true;
-            el.style.transitionDuration = '';
-            el.removeEventListener('transitionend', clear);
-        };
-        el.addEventListener('transitionend', clear);
-        setTimeout(clear, durationMs + 100);
     }
 ```
 
@@ -448,6 +460,27 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
         resetPresenterVisuals();
         this.playChapter(idx);
     };
+
+    // Speed change mid-chapter: tear down pending timers, recompute remaining offsets
+    // against chapterStart under the new speed, and re-schedule. Offset math uses
+    // wall-clock elapsed, so slowing down mid-chapter doesn't skip cues that haven't fired.
+    MovieEngine.prototype.setSpeed = function(newSpeed) {
+        if (newSpeed <= 0) return;
+        var now = Date.now();
+        var elapsedOrig = (now - this.chapterStart) * this.speed; // elapsed in "t-space"
+        this.cancelAll();
+        this.speed = newSpeed;
+        // Re-anchor chapterStart so that elapsedOrig corresponds to the same t on the new timeline
+        this.chapterStart = now - elapsedOrig / newSpeed;
+        var chapter = this.script[this.chapterIdx];
+        if (!chapter) return;
+        var self = this;
+        chapter.cues.forEach(function(cue) {
+            var due = cue.t - elapsedOrig;
+            if (due <= 0) return; // already fired
+            self.scheduleCue(cue, due);
+        });
+    };
 ```
 
 - [ ] **Step 2: Add `runCue` dispatcher (same script block)**
@@ -463,10 +496,23 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
                 else zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
                 break;
             case 'signal':
-                // Render LLM event card via existing handleSignal side-effect
-                handleSignal(cue.signal);
-                // Additionally drive map primitives directly (bypass drainMapEvents pacing)
+                // (1) Render LLM event card (if applicable) in the focus overlay.
+                //     NOTE: handleMessage(event) at line 1531 has side effects we don't want
+                //     in movie mode (scene collection, eventBuffer, 'collecting' timer).
+                //     We reach INTO the path's key step: buildEventCard(signal) at line 1913
+                //     and append to #focusBody directly — same DOM outcome, no queueing.
+                if (cue.signal && cue.signal.kind === 'event' && cue.signal.payload) {
+                    var body = document.getElementById('focusBody');
+                    if (body) {
+                        body.appendChild(buildEventCard(cue.signal));
+                        body.scrollTop = body.scrollHeight;
+                        while (body.children.length > 30) body.removeChild(body.firstChild);
+                    }
+                }
+                // (2) Drive map primitives directly (bypass 800ms drainMapEvents pacing)
                 driveMapEffectForSignal(cue.signal);
+                // (3) Keep stats counter consistent for overview bar
+                if (cue.signal) { stats.signals++; if (typeof updateStats === 'function') updateStats(); }
                 break;
             case 'commentary':
                 showCommentary(cue.text, cue.hold_ms || 4000);
@@ -480,7 +526,21 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
             case 'reset':
                 var scope = cue.scope || 'all';
                 if (scope === 'all') resetPresenterVisuals();
-                // 'agents' and 'lines' can be added if needed; all-scope is enough for now
+                // Scopes 'agents' and 'lines' are deferred per spec §3.2 — 'all' covers every
+                // use case through Chapter 8. If a future chapter needs a narrower reset,
+                // add branches here and update validTypes in lintMovieScript.
+                break;
+            case 'movie-pitch-start':
+                showPitch(PITCH_LINES);
+                break;
+            case 'movie-pitch-end':
+                hidePitch();
+                break;
+            case 'movie-arch-start':
+                showArchDiagram('Two planes. One listens. The other acts. The line between is one-way.');
+                break;
+            case 'movie-arch-end':
+                hideArchDiagram();
                 break;
             default:
                 console.warn('[movie] unknown cue type:', cue.type);
@@ -529,7 +589,10 @@ git commit -m "feat(presenter): add MovieEngine class and cue dispatcher"
     // the movie plays best-effort past malformed cues.
     function lintMovieScript(script) {
         var errors = 0;
-        var validTypes = ['chapter-card', 'spotlight', 'signal', 'commentary', 'line', 'reset'];
+        var validTypes = [
+            'chapter-card', 'spotlight', 'signal', 'commentary', 'line', 'reset',
+            'movie-pitch-start', 'movie-pitch-end', 'movie-arch-start', 'movie-arch-end'
+        ];
         var validScopes = ['all', 'agents', 'lines'];
         script.forEach(function(chapter, ci) {
             var lastT = 0;
@@ -619,30 +682,33 @@ Near the bottom of the `<script>` block, just before any `DOMContentLoaded` list
     }
 ```
 
-- [ ] **Step 2: Wire the mode branch on boot**
+- [ ] **Step 2: Branch `dismissIntro()` on mode**
 
-Find the existing PubNub init call (grep for `pubnub.subscribe` or `initPubNub` or the replay entry point). Wrap it:
+The intro crawl is shown on page load and dismissed by the user (Space/Enter/click). `dismissIntro()` is at **line 1424** of `sentinel-presenter.html`. At its end it currently calls `proceedToConnect()` (which subscribes to PubNub at line 1286 via `connectToPubNub`).
+
+Replace the `proceedToConnect()` call at the bottom of `dismissIntro()` with:
 
 ```js
-    if (PRESENTER_MODE === 'movie') {
-        startMovieMode();
-    } else if (PRESENTER_MODE === 'replay' || PRESENTER_MODE === 'live') {
-        // existing init path unchanged
-        initExistingMode();
-    }
+        if (PRESENTER_MODE === 'movie') {
+            startMovieMode();
+        } else {
+            proceedToConnect();
+        }
 ```
 
-If there's no single init function, guard the existing init calls with `if (PRESENTER_MODE !== 'movie') { ... }`.
+This preserves the exact user-paced intro-crawl UX — user presses Space/Enter, crawl fades, then either PubNub connects (live/replay) or the movie starts (movie mode).
 
 - [ ] **Step 3: Add `detectChapter` guard (per spec §4 risk)**
 
-Grep `function detectChapter`. At the top of that function, add:
+`detectChapter` is at **line 2055**. At the top of the function, add:
 
 ```js
     function detectChapter(signal) {
         if (PRESENTER_MODE === 'movie') return;
         // existing body unchanged
 ```
+
+(Note: `detectChapter` is only called from `drainMapEvents` at line 2295, which movie mode never runs — so this guard is defence-in-depth, not strictly required, but keeps the contract explicit per the spec.)
 
 - [ ] **Step 4: Verify**
 
@@ -748,6 +814,11 @@ Replace `var MOVIE_SCRIPT = [];` with:
                 { t: 3700,  type: 'signal', signal: { kind: 'heartbeat', sender: 'behavior-sentinel',     payload: {}, correlation_id: 'c1-hb-bs' } },
                 { t: 4000,  type: 'signal', signal: { kind: 'heartbeat', sender: 'supply-chain-sentinel', payload: {}, correlation_id: 'c1-hb-ss' } },
                 { t: 4300,  type: 'signal', signal: { kind: 'heartbeat', sender: 'sentinel-commander',    payload: {}, correlation_id: 'c1-hb-cmd' } },
+                // Quick tool_call probe — exercises driveMapEffectForSignal's tool_call branch
+                // and the signal-line animation to the gateway. Keeps Phase 2 verification honest.
+                { t: 6000,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway',
+                    payload: { event_type: 'tool_call', tool_name: 'ping', tool_input: {} },
+                    correlation_id: 'c1-probe' } },
                 // Dwell
                 { t: 10000, type: 'commentary', text: 'All nodes green. System nominal.', hold_ms: 4000 },
             ],
@@ -757,13 +828,16 @@ Replace `var MOVIE_SCRIPT = [];` with:
 
 - [ ] **Step 2: Verify**
 
-Reload `?mode=movie`. Expect:
+Reload `?mode=movie`. Dismiss the intro crawl (Space/Enter). Expect:
 - Chapter card "Chapter 1 / Network Startup" shows for ~1.8s.
 - Overview zoom.
 - Commentary types in at bottom.
 - Seven agents light up green (pulse) in sequence.
+- **At ~6s**, web-researcher pulses again with a signal line animating toward action-gateway (the `tool_call` probe).
 - No console errors.
 - After ~14s, presenter advances to next chapter (which is the empty placeholder; console shows chapter 2 not found).
+
+If the tool_call probe does not animate a line, the `driveMapEffectForSignal` tool_call branch has a bug — fix before proceeding to Phase 3 (all subsequent chapters depend on it).
 
 - [ ] **Step 3: Commit**
 
@@ -1117,39 +1191,22 @@ Then replace the chapter-0 placeholder in `MOVIE_SCRIPT` with:
             id: 'intro',
             title: 'Intro',
             subtitle: 'Agent Sentinel',
+            // Note: the existing intro crawl is user-dismissed (Space/Enter/button) BEFORE
+            // startMovieMode() is called. So chapter 0 begins AFTER the crawl — no 8s wait here.
             cues: [
-                // Existing intro crawl already auto-plays on load (see existing code); we just wait it out.
                 { t: 0,     type: 'spotlight', agent: null },
-                { t: 8000,  type: 'commentary', text: '', hold_ms: 0 }, // no-op placeholder to mark boundary
-                // Custom cue that calls showPitch — we'll need a new cue type OR fire at wiring layer
-                { t: 8100,  type: 'movie-pitch-start', hold_ms: 25000 },
-                { t: 33100, type: 'movie-pitch-end' },
-                { t: 33200, type: 'movie-arch-start' },
-                { t: 37200, type: 'movie-arch-end' },
+                { t: 100,   type: 'movie-pitch-start' },
+                // Pitch runs ~25s via showPitch's typing cadence; end cue hides it.
+                { t: 25100, type: 'movie-pitch-end' },
+                { t: 25400, type: 'movie-arch-start' },
+                { t: 29400, type: 'movie-arch-end' },
             ],
         },
 ```
 
-- [ ] **Step 2: Extend `runCue` with the three new pseudo-cue types**
+- [ ] **Step 2: Confirm `runCue` and `lintMovieScript` already handle the four overlay cues**
 
-Add these cases to the `switch` in `runCue`:
-
-```js
-            case 'movie-pitch-start':
-                showPitch(PITCH_LINES);
-                break;
-            case 'movie-pitch-end':
-                hidePitch();
-                break;
-            case 'movie-arch-start':
-                showArchDiagram('Two planes. One listens. The other acts. The line between is one-way.');
-                break;
-            case 'movie-arch-end':
-                hideArchDiagram();
-                break;
-```
-
-Also add these three to the `validTypes` array in `lintMovieScript`.
+Task 1.5 already includes `movie-pitch-start`/`-end` and `movie-arch-start`/`-end` cases in `runCue`, and Task 1.6's `validTypes` already lists them. Those cases reference `showPitch`/`hidePitch`/`showArchDiagram`/`hideArchDiagram` which you created in Tasks 4.1 and 4.2 — so Chapter 0 just needs the cues in `MOVIE_SCRIPT`. No JS changes in this task.
 
 - [ ] **Step 3: Verify**
 
@@ -1178,9 +1235,29 @@ git commit -m "feat(presenter): wire movie chapter 0 — intro, pitch, architect
 
 ## Task 5.2 — Verify speed controls
 
-- [ ] Start movie, press `Shift+3` (or whatever maps to 2x, per existing code) mid-chapter
-- [ ] Expect: remaining cues in the current chapter re-schedule under new speed
-- [ ] If they don't, update `MovieEngine` with a `setSpeed(speed)` method that `cancelAll()`s and re-schedules remaining cues with recomputed offsets. Commit.
+`MovieEngine.setSpeed(newSpeed)` was already implemented in Task 1.5. Phase 5 just wires it into the existing keydown handler (if not already). Grep for `playbackSpeed = ` in the keydown handler to find where Shift+1–5 is handled; the existing code already sets `playbackSpeed` but in movie mode that variable isn't wired to the MovieEngine.
+
+- [ ] **Step 1: Hook Shift+1–5 → `movieEngine.setSpeed`** in movie mode, inside the existing keydown handler's shift branch:
+
+```js
+    if (e.shiftKey && e.key >= '1' && e.key <= '5' && PRESENTER_MODE === 'movie' && movieEngine) {
+        var speedMap = { '1': 0.5, '2': 1, '3': 1.5, '4': 2, '5': 3 };
+        movieEngine.setSpeed(speedMap[e.key]);
+        e.preventDefault();
+        return;
+    }
+```
+
+- [ ] **Step 2: Start movie, press `Shift+4` mid-chapter**
+
+Expect: remaining cues in the current chapter play at 2× speed. Console: no errors.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/sentinel-presenter.html
+git commit -m "feat(presenter): wire shift+1-5 speed controls to MovieEngine"
+```
 
 ## Task 5.3 — Chapter-jump sequence test
 

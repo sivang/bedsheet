@@ -50,36 +50,49 @@ Movie mode exists because:
 
 #### 3.1.1 Renderer primitives required
 
-Movie mode relies on a small set of renderer entry points, some existing, some new:
+Movie mode relies on a small set of renderer entry points, some existing, some new. Line numbers refer to `docs/sentinel-presenter.html` at HEAD of `feature/sentinel-presenter`.
 
 | Primitive | Status | Purpose |
 |---|---|---|
-| `zoomToAgent(name, {durationMs?})` | **extend existing** — add optional duration override (current 0.8s via CSS transition on `.map-viewport`, line 150). Implementation: set `mapViewport.style.transitionDuration = durationMs + 'ms'` immediately before the transform assignment, and restore the empty string (`= ''`) once the `transitionend` event fires or after `durationMs + 100ms` fallback — so subsequent non-movie zooms use the CSS default. | spotlight move |
-| `zoomToOverview({durationMs?})` | **extend existing** — same override mechanic as `zoomToAgent`. Used by Ch 8's slow pull (3000ms). | overview move |
-| `pulseNode(agent)` | existing | agent pulse |
-| `animateSignalLine(from, to, color)` | existing | `line` cue |
-| `animateBroadcast(agent)` | existing | gateway rate-block ring |
-| `setAgentOnline(agent)` / `setAgentQuarantined(agent)` | existing | agent status changes |
-| `showBriefingOverlay(agent, text?)` | extend — accept optional explicit text to override `AGENT_BRIEFINGS[agent]` | chapter briefing |
+| `zoomToAgent(name, {durationMs?})` (line 1665) | **extend existing** — add optional duration override (current 0.8s via CSS transition on `.map-viewport`, line 150). Implementation: set `mapViewport.style.transitionDuration = durationMs + 'ms'` immediately before the transform assignment, and restore the empty string (`= ''`) once the `transitionend` event fires or after `durationMs + 100ms` fallback. | spotlight move |
+| `zoomToOverview({durationMs?})` (line 1701) | **extend existing** — same override mechanic as `zoomToAgent`. Used by Ch 8's slow pull (3000ms). | overview move |
+| `pulseNode(agent)` (line 1601) | existing | agent pulse |
+| `animateSignalLine(from, to, color)` (line 1613) | existing | `line` cue |
+| `animateBroadcast(agent)` (line 1629) | existing | gateway rate-block ring |
+| `setAgentOnline(agent)` (line 1586) | existing | online state |
+| Quarantine state | inline `classList.add('quarantined')` (see line 2355 for the existing pattern) | not a dedicated function; `driveMapEffectForSignal` applies the class directly for `kind: 'quarantine'` signals |
+| `buildEventCard(signal)` (line 1913) | existing | constructs the `<div>` card for LLM events; movie mode's `signal` cue appends it to `#focusBody` directly (NOT via `handleMessage`, which has side effects we don't want — scene collection, `eventBuffer` push, `collecting` timer) |
 | `showCommentary(text, holdMs)` | **new** | transient commentary panel |
 | `showChapterCard(title, subtitle, holdMs)` | **new** | full-screen chapter card |
-| `resetPresenterVisuals()` | **new** | clears: `.quarantined`/`.focused`/`.dimmed` classes, all `<line>` children of `#signalLines`, active `broadcast-ring` rings, `currentFocus`, `stats`, pending node-pulse classes |
+| `showPitch(lines, onComplete?)` / `hidePitch()` | **new** | typed Bedsheet pitch panel (Ch 0) |
+| `showArchDiagram(caption, onComplete?)` / `hideArchDiagram()` | **new** | animated architecture diagram (Ch 0) |
+| `resetPresenterVisuals()` | **new** | clears: `.quarantined`/`.focused`/`.dimmed`/`.online` classes, all `<line>` children of `#signalLines`, active `broadcast-ring` rings, `currentFocus`, `stats`, `onlineAgents` set, `agentScenes`/`agentOrder`/`presentedEvents` state, pending node-pulse classes |
+| `driveMapEffectForSignal(signal)` | **new** | dispatches to `pulseNode`/`animateBroadcast`/`animateSignalLine` based on signal kind and payload, bypassing the 800ms `drainMapEvents` pacing |
 | `MovieEngine.scheduleCue(cue)` | **new** | internal; wraps setTimeout with registered handle so `MovieEngine.cancelAll()` can tear them down on restart/pause |
+| `MovieEngine.setSpeed(newSpeed)` | **new** | clears `pendingTimers`, recomputes remaining offsets under `newSpeed`, re-schedules |
+
+**On entry integration:** the existing `dismissIntro()` handler (line 1424) currently calls `proceedToConnect()` at the end, which goes to PubNub. In movie mode, `dismissIntro()` must branch to `startMovieMode()` instead — the intro crawl still gates movie start (user-paced), which is the same UX as live/replay.
 
 ### 3.2 Script schema
 
 The movie is a list of chapters. Each chapter is a list of time-stamped cues. Timestamps are relative to chapter start (ms).
 
-**Six cue types:**
+**Ten cue types** — six core, four Chapter-0-only overlay cues:
 
 | Type            | Purpose                                                    | Payload                                                         |
 | --------------- | ---------------------------------------------------------- | --------------------------------------------------------------- |
 | `chapter-card`  | Full-screen title card opening a chapter                   | `title`, `subtitle`, `hold_ms`                                  |
 | `spotlight`     | Zoom to an agent (or overview)                             | `agent: 'name' \| null`, `duration_ms?` (default 800)          |
-| `signal`        | Emit a synthetic PubNub signal (LLM event card + primitives)| `signal: { kind, sender, target, payload, correlation_id }`    |
+| `signal`        | Emit a synthetic signal: event card + map effect           | `signal: { kind, sender, target, payload, correlation_id }`    |
 | `commentary`    | Type text into the commentary panel                        | `text`, `hold_ms`                                               |
 | `line`          | Animate signal line between two agents                     | `from`, `to`, `color?` (hex or CSS var; default = sender role colour from `ROLE_COLORS`) |
-| `reset`         | Clear visual state (quarantines, focus, lines, stats)       | `scope: 'all' \| 'agents' \| 'lines'` (default `'all'`)         |
+| `reset`         | Clear visual state                                         | `scope: 'all'` (default; `'agents'` and `'lines'` **deferred** — not used by any Phase 2–3 chapter; `'all'` is sufficient for Ch 0–8) |
+| `movie-pitch-start` | Show the pitch panel and begin typing Bedsheet copy    | (none; reads `PITCH_LINES` constant)                            |
+| `movie-pitch-end`   | Hide the pitch panel                                   | (none)                                                          |
+| `movie-arch-start`  | Reveal architecture diagram with draw-in animation + caption | (none; caption constant in implementation)              |
+| `movie-arch-end`    | Hide architecture diagram                              | (none)                                                          |
+
+**Why the four overlay cues are schema-level, not ad-hoc:** every timed visual effect in the movie must flow through `MovieEngine.scheduleCue()` so that pause, speed-change, restart, and chapter-jump all tear them down correctly. Calling `showPitch()` directly from chapter-0 bootstrap would bypass the timer registry and leak through mode transitions.
 
 **`spotlight` semantics:**
 - `agent: 'web-researcher'` → `zoomToAgent('web-researcher', {durationMs})`, sets `currentFocus`, applies `.focused`/`.dimmed` classes, invokes `positionBothOverlays` + `showBriefingOverlay`.
@@ -336,7 +349,8 @@ Manual, visual, per phase. This is cinematic/timing work; automated tests cannot
 ## 7. Revision history
 
 - **v1 (fd16dd8)** — initial design. Reviewed by spec-document-reviewer subagent; issues found.
-- **v3 (this revision)** — v2 APPROVED by reviewer; polished 3 minor items before user review: transition-duration override mechanic spelled out, `lintMovieScript` rules enumerated, boot-time-immutable mode clarified.
+- **v4 (this revision)** — during plan-review, reviewer caught that `handleSignal` and `setAgentQuarantined` don't exist in the code. Fixed §3.1.1 primitives table to reflect real code: `buildEventCard(signal)` is the actual event-card entry point; quarantine is applied inline via `classList.add('quarantined')`. Added `driveMapEffectForSignal`, `showPitch`/`hidePitch`, `showArchDiagram`/`hideArchDiagram` as named primitives. Extended `resetPresenterVisuals` scope to include `onlineAgents`/`agentScenes`/`agentOrder`/`presentedEvents`. Added `MovieEngine.setSpeed` to the primitives table. Amended §3.2 cue schema from 6 → 10 types by promoting `movie-pitch-start/-end` and `movie-arch-start/-end` to first-class cues (so all timed overlays flow through the MovieEngine timer registry). Clarified that `reset` scopes `'agents'` and `'lines'` are explicitly deferred (not used by Ch 0–8). Added note that `dismissIntro()` branches to `startMovieMode()` in movie mode (the intro crawl still gates movie start, user-paced).
+- **v3 (8eb1f0a)** — v2 APPROVED by reviewer; polished 3 minor items before user review: transition-duration override mechanic spelled out, `lintMovieScript` rules enumerated, boot-time-immutable mode clarified.
 - **v2 (aeecb8e)** — addresses 4 critical + 7 important issues from v1 review:
   - §3.1 — added renderer-primitive table; named keybinding override for `1`–`9` jump-to-chapter vs jump-to-scene; explicit bypass of `detectChapter`/`CHAPTER_COMMENTARY`/`drainMapEvents`.
   - §3.2 — added `reset` cue type (6th); fully specified `spotlight null` and slow-pull `duration_ms`; fully specified `line` colour resolution; expanded `MovieEngine` with timer registry + speed-change contract + chapter-jump contract; added §3.2.1 visual-state reset.
