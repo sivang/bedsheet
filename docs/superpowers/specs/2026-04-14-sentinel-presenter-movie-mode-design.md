@@ -155,11 +155,11 @@ The movie is a list of chapters. Each chapter is a list of time-stamped cues. Ti
 
 Total target runtime: ~2:36.
 
-#### Chapter 0 — Intro + pitch + architecture (~37s)
+#### Chapter 0 — Intro + pitch + architecture (~44s scripted; plus user-paced intro crawl)
 
-- **0.0–8.0s** — existing classified-terminal crawl (`// CLASSIFIED — SENTINEL NETWORK ...`), unchanged.
-- **8.0–33.0s** — Bedsheet/Sixth Sense pitch, typed in the presenter's existing terminal style. Copy is final and reproduced verbatim in §3.4.
-- **33.0–37.0s** — architecture diagram animates in (see §3.5), final caption types: *"Two planes. One listens. The other acts. The line between is one-way."*
+- **Intro crawl** (existing, unchanged): user-paced — Space/Enter/button dismisses. Not part of chapter-0 cue timeline.
+- **0.0–37.5s** — Bedsheet/Sixth Sense pitch, typed via `showPitch` at 22ms/char + variable inter-line gaps. Copy is final, reproduced verbatim in §3.4. Total runtime 37.5s for the 1270-char script.
+- **38.0–43.8s** — architecture diagram animates in (see §3.5); final caption types: *"Two planes. One listens. The other acts. The line between is one-way."*
 
 #### Chapter 1 — Network Startup (~15s)
 
@@ -219,7 +219,7 @@ Total target runtime: ~2:36.
 - Commentary: *"System stable. One compromised agent removed. Six still on mission."*
 - Events demoed: closing `heartbeat` signals from the remaining six.
 
-Total: intro 37s + chapters 1–8 (15+20+20+15+10+15+15+10 = 120s) = ~2:37.
+Total: chapter 0 44s scripted + chapters 1–8 (15+20+20+15+10+15+15+10 = 120s) = ~2:44. Plus user-paced intro crawl on top.
 
 ### 3.4 Pitch copy (locked, verbatim)
 
@@ -349,7 +349,8 @@ Manual, visual, per phase. This is cinematic/timing work; automated tests cannot
 ## 7. Revision history
 
 - **v1 (fd16dd8)** — initial design. Reviewed by spec-document-reviewer subagent; issues found.
-- **v5 (this revision)** — second round of plan-review fixes (spec unchanged, plan fixed 6 issues): spotlight cue now calls `showFocusOverlay`/`hideFocusOverlay` so event cards render visibly; `animateSignalLine` color resolution in `driveMapEffectForSignal` no longer passes null; Chapter 0 timing re-paced (pitch-end t=30500, arch-end t=36500) to match actual typing math; `reset` cue logs a deferred-scope warning so linter and runtime don't drift silently; `MovieEngine.setSpeed` re-schedules the chapter-advance timer (previously dropped).
+- **v6 (this revision)** — third plan-review round. Reviewer caught that PITCH_LINES is actually 1270 chars, not 950 as earlier notes claimed. Pitch real runtime is 37.5s (27.9s typing at 22ms/char + 9.6s of inter-line gaps). Plan Task 4.3 cues re-paced: pitch-end t=38000, arch-start t=38300, arch-end t=43800. Chapter 0 scripted total revised from ~37s to ~44s. Movie total ~2:44 (still within 2–3 min target).
+- **v5 (1bab925)** — second round of plan-review fixes (spec unchanged, plan fixed 6 issues): spotlight cue now calls `showFocusOverlay`/`hideFocusOverlay` so event cards render visibly; `animateSignalLine` color resolution in `driveMapEffectForSignal` no longer passes null; Chapter 0 timing re-paced (pitch-end t=30500, arch-end t=36500) to match actual typing math; `reset` cue logs a deferred-scope warning so linter and runtime don't drift silently; `MovieEngine.setSpeed` re-schedules the chapter-advance timer (previously dropped).
 - **v4 (927bbbb)** — during plan-review, reviewer caught that `handleSignal` and `setAgentQuarantined` don't exist in the code. Fixed §3.1.1 primitives table to reflect real code: `buildEventCard(signal)` is the actual event-card entry point; quarantine is applied inline via `classList.add('quarantined')`. Added `driveMapEffectForSignal`, `showPitch`/`hidePitch`, `showArchDiagram`/`hideArchDiagram` as named primitives. Extended `resetPresenterVisuals` scope to include `onlineAgents`/`agentScenes`/`agentOrder`/`presentedEvents`. Added `MovieEngine.setSpeed` to the primitives table. Amended §3.2 cue schema from 6 → 10 types by promoting `movie-pitch-start/-end` and `movie-arch-start/-end` to first-class cues (so all timed overlays flow through the MovieEngine timer registry). Clarified that `reset` scopes `'agents'` and `'lines'` are explicitly deferred (not used by Ch 0–8). Added note that `dismissIntro()` branches to `startMovieMode()` in movie mode (the intro crawl still gates movie start, user-paced).
 - **v3 (8eb1f0a)** — v2 APPROVED by reviewer; polished 3 minor items before user review: transition-duration override mechanic spelled out, `lintMovieScript` rules enumerated, boot-time-immutable mode clarified.
 - **v2 (aeecb8e)** — addresses 4 critical + 7 important issues from v1 review:

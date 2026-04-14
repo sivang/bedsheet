@@ -1218,15 +1218,16 @@ Then replace the chapter-0 placeholder in `MOVIE_SCRIPT` with:
             subtitle: 'Agent Sentinel',
             // Note: the existing intro crawl is user-dismissed (Space/Enter/button) BEFORE
             // startMovieMode() is called. So chapter 0 begins AFTER the crawl — no 8s wait here.
-            // Timing math: PITCH_LINES ≈ 950 chars × 22ms/char ≈ 21s typing + 9s inter-line
-            // gaps = ~30s. Arch caption ≈ 75 chars × 30ms + 2.8s pre-wait = ~5.1s. Pad end
-            // hold by ~500ms so users register the final frame.
+            // Timing math (verified by char count): PITCH_LINES is 16 lines / 1270 chars.
+            // Typing at 22ms/char = 27.9s + 9.6s of inter-line gaps = 37.5s real runtime.
+            // Arch caption ≈ 75 chars × 30ms + 2.8s pre-wait = ~5.1s, plus small hold.
+            // Cue timing below gives pitch full 37.5s window before hiding + hand-off.
             cues: [
                 { t: 0,     type: 'spotlight', agent: null },
                 { t: 100,   type: 'movie-pitch-start' },
-                { t: 30500, type: 'movie-pitch-end' },
-                { t: 30800, type: 'movie-arch-start' },
-                { t: 36500, type: 'movie-arch-end' },
+                { t: 38000, type: 'movie-pitch-end' },
+                { t: 38300, type: 'movie-arch-start' },
+                { t: 43800, type: 'movie-arch-end' },
             ],
         },
 ```
