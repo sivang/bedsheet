@@ -462,8 +462,9 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
     };
 
     // Speed change mid-chapter: tear down pending timers, recompute remaining offsets
-    // against chapterStart under the new speed, and re-schedule. Offset math uses
-    // wall-clock elapsed, so slowing down mid-chapter doesn't skip cues that haven't fired.
+    // against chapterStart under the new speed, and re-schedule (cues + chapter-advance).
+    // Offset math uses wall-clock elapsed, so slowing down mid-chapter doesn't skip cues
+    // that haven't fired.
     MovieEngine.prototype.setSpeed = function(newSpeed) {
         if (newSpeed <= 0) return;
         var now = Date.now();
@@ -480,6 +481,18 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
             if (due <= 0) return; // already fired
             self.scheduleCue(cue, due);
         });
+        // Re-schedule the chapter-advance timer (it was cancelled by cancelAll)
+        var lastEnd = chapter.cues.reduce(function(max, c) {
+            return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+        }, 0);
+        var advanceDue = lastEnd - elapsedOrig;
+        if (advanceDue > 0) {
+            var nh = setTimeout(function() {
+                self.pendingTimers.delete(nh);
+                self.playChapter(self.chapterIdx + 1);
+            }, advanceDue / newSpeed);
+            self.pendingTimers.add(nh);
+        }
     };
 ```
 
@@ -492,8 +505,13 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
                 showChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
                 break;
             case 'spotlight':
-                if (cue.agent === null) zoomToOverview({ durationMs: cue.duration_ms });
-                else zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
+                if (cue.agent === null) {
+                    zoomToOverview({ durationMs: cue.duration_ms });
+                    hideFocusOverlay(); // also hides the briefing (see line 1866)
+                } else {
+                    zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
+                    showFocusOverlay(cue.agent); // makes .focus-overlay visible so event cards actually render
+                }
                 break;
             case 'signal':
                 // (1) Render LLM event card (if applicable) in the focus overlay.
@@ -525,10 +543,14 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
                 break;
             case 'reset':
                 var scope = cue.scope || 'all';
-                if (scope === 'all') resetPresenterVisuals();
-                // Scopes 'agents' and 'lines' are deferred per spec §3.2 — 'all' covers every
-                // use case through Chapter 8. If a future chapter needs a narrower reset,
-                // add branches here and update validTypes in lintMovieScript.
+                if (scope === 'all') {
+                    resetPresenterVisuals();
+                } else {
+                    // Scopes 'agents' and 'lines' are deferred per spec §3.2 — Ch 0–8 don't
+                    // need them. Log a warning so a future author notices the no-op before
+                    // authoring content that depends on partial-scope reset.
+                    console.warn('[movie] reset scope deferred:', scope, '— no-op (see spec §3.2)');
+                }
                 break;
             case 'movie-pitch-start':
                 showPitch(PITCH_LINES);
@@ -562,7 +584,10 @@ git commit -m "feat(presenter): add movie commentary and chapter-card primitives
             animateBroadcast(sender);
         } else if (kind === 'event' && payload.event_type === 'tool_call') {
             pulseNode(sender);
-            if (signal.target) animateSignalLine(sender, signal.target, null);
+            if (signal.target) {
+                var color = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+                animateSignalLine(sender, signal.target, color);
+            }
         } else if (kind === 'heartbeat') {
             pulseNode(sender);
         }
@@ -1193,13 +1218,15 @@ Then replace the chapter-0 placeholder in `MOVIE_SCRIPT` with:
             subtitle: 'Agent Sentinel',
             // Note: the existing intro crawl is user-dismissed (Space/Enter/button) BEFORE
             // startMovieMode() is called. So chapter 0 begins AFTER the crawl — no 8s wait here.
+            // Timing math: PITCH_LINES ≈ 950 chars × 22ms/char ≈ 21s typing + 9s inter-line
+            // gaps = ~30s. Arch caption ≈ 75 chars × 30ms + 2.8s pre-wait = ~5.1s. Pad end
+            // hold by ~500ms so users register the final frame.
             cues: [
                 { t: 0,     type: 'spotlight', agent: null },
                 { t: 100,   type: 'movie-pitch-start' },
-                // Pitch runs ~25s via showPitch's typing cadence; end cue hides it.
-                { t: 25100, type: 'movie-pitch-end' },
-                { t: 25400, type: 'movie-arch-start' },
-                { t: 29400, type: 'movie-arch-end' },
+                { t: 30500, type: 'movie-pitch-end' },
+                { t: 30800, type: 'movie-arch-start' },
+                { t: 36500, type: 'movie-arch-end' },
             ],
         },
 ```
