@@ -2,7 +2,7 @@
 
 ## Current Version: v0.4.8 (released on PyPI, codebase ahead with merged PR #4 work)
 
-**Last Session:** 2026-04-10
+**Last Session:** 2026-04-12
 
 ### Release Status
 
@@ -59,6 +59,51 @@
 | Issue | Description |
 |-------|-------------|
 | [#5](https://github.com/sivang/bedsheet/issues/5) | v0.5.x cleanup: provider-state refactor, recording dataclass, Signal validation, test gaps, heartbeat dead code, Agent internals encapsulation |
+
+---
+
+## Session Summary (2026-04-11/12) — Sentinel Presenter: Cinematic Demo Mode
+
+### What Was Done
+
+1. **Sentinel Presenter** — new cinematic demo presentation page (`docs/sentinel-presenter.html`)
+   - Reuses dashboard visual DNA (CSS vars, world map, SVG agent nodes, signal animations)
+   - Scene-based playback: collects events from PubNub, groups by agent, plays one at a time
+   - Smooth cinematic map zoom to active agent with overlay focus panel
+   - Director mode: press 1-9 to jump to any agent's scene
+   - Military-style typed intro crawl overlaid on the map ("// CLASSIFIED — SENTINEL NETWORK")
+   - Per-agent asset briefings (typed dossier: role, mission, protects against, future ops)
+   - Scene commentary (typed "INTELLIGENCE BRIEFING" explaining each chapter)
+   - Chapter detection: Network Startup, Skill Acquisition, Malicious Install Blocked, Rogue Burst, Gateway Block, Sentinel Alert, Quarantine Issued
+   - Cinematic mode (C key): hides all chrome, movie-style chapter cards
+   - Ambient audio support (drop `docs/ambient.mp3`)
+   - Keyboard: Space, arrows, 1-9 director, Shift+1-5 speed, F fullscreen, C cinematic, T timestamp
+   - Collision-avoiding overlay positioning (briefing + activity panels avoid each other and agent nodes)
+   - Signal lines animate during scene playback (gateway tools + inter-agent requests)
+
+2. **start.sh updated** — `--present` flag (implies --replay), `--cinematic` flag
+
+3. **Comprehensive guide** — `docs/sentinel-presenter-guide.html` with features, JS architecture walkthroughs, recording workflow
+
+4. **Worktree setup** — `.worktrees/` added to gitignore, worktree at `.worktrees/sentinel-presenter/`
+
+### Branch Status
+
+- Branch: `feature/sentinel-presenter` (LOCAL ONLY — not pushed)
+- Worktree: `.worktrees/sentinel-presenter/`
+- 16 commits ahead of main
+- Files: `docs/sentinel-presenter.html` (2422 lines), `docs/sentinel-presenter-guide.html` (1093 lines), `start.sh` (+35 lines)
+- Untracked: `docs/ambient.mp3` (user-provided audio)
+- Modified (unstaged): `examples/agent-sentinel/data/calendar.json` (from test run)
+
+### Known Issues / Next Steps
+
+- **Recordings are short** (49 total events) — need re-recording with billable Gemini key (60-90s window)
+- **sentinel-commander recording** triggers "empty response" error — recording quality, not presenter bug
+- **Overlay positioning** still needs live testing after latest collision avoidance changes
+- **TTS integration** deferred — Web Speech API (zero setup) or Edge TTS (better quality) for voiceover
+- **Mode toggle in dashboard** — test adding presenter as a mode within existing dashboard (future)
+- **Interactive walkthrough mode** — audience C (deferred)
 
 ---
 
