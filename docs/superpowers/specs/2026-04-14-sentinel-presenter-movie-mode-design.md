@@ -40,6 +40,7 @@ Movie mode exists because:
   - `replay` → drive real agents against replayed LLM responses (existing).
   - `movie` → skip PubNub entirely; instantiate `MovieEngine`. MovieEngine calls renderer primitives **directly** (see §3.1.1); it does **not** route through `handleSignal → eventBuffer → drainMapEvents`, because that path paces at 800ms and would coalesce rapid bursts. `handleSignal()` is still used for its LLM-event-card rendering side effect, but map effects are driven by explicit primitive calls per cue.
 - No I/O dependencies: `MOVIE_SCRIPT` is inline JS. Opens cleanly from `file://`.
+- **Mode is boot-time-immutable.** The selected mode (`live` | `replay` | `movie`) is resolved once at page load and never switches at runtime. This prevents coexistence of the wrapped-timer movie path and the unwrapped live/replay paths within the same session.
 - Keyboard overrides in movie mode:
   - `1`–`9` rebinds from `jumpToScene` (agent scenes, used in replay) to **`jumpToChapter`** (chapter 1–8).
   - `Shift+1`–`5` keeps speed control.
@@ -53,8 +54,8 @@ Movie mode relies on a small set of renderer entry points, some existing, some n
 
 | Primitive | Status | Purpose |
 |---|---|---|
-| `zoomToAgent(name, {durationMs?})` | **extend existing** — add optional duration override (current 0.8s via CSS transition) | spotlight move |
-| `zoomToOverview({durationMs?})` | **extend existing** — add duration override for "slow pulls" (Ch 8) | overview move |
+| `zoomToAgent(name, {durationMs?})` | **extend existing** — add optional duration override (current 0.8s via CSS transition on `.map-viewport`, line 150). Implementation: set `mapViewport.style.transitionDuration = durationMs + 'ms'` immediately before the transform assignment, and restore the empty string (`= ''`) once the `transitionend` event fires or after `durationMs + 100ms` fallback — so subsequent non-movie zooms use the CSS default. | spotlight move |
+| `zoomToOverview({durationMs?})` | **extend existing** — same override mechanic as `zoomToAgent`. Used by Ch 8's slow pull (3000ms). | overview move |
 | `pulseNode(agent)` | existing | agent pulse |
 | `animateSignalLine(from, to, color)` | existing | `line` cue |
 | `animateBroadcast(agent)` | existing | gateway rate-block ring |
@@ -290,7 +291,7 @@ Commentary panel (`z: 7`) intentionally sits above both overlays (`z: 5`/`6`) be
 
 Six phases, each terminating in a runnable/verifiable state and its own commit.
 
-1. **Phase 1 — Script infrastructure.** `MovieEngine` class with timer registry, 6 cue executor stubs, `MOVIE_SCRIPT = []`, `?mode=movie` routing, `--movie` flag on `start.sh`, `resetPresenterVisuals()`, `zoomToAgent`/`zoomToOverview` duration override, `showCommentary` + `showChapterCard` primitives, `lintMovieScript()` smoke test (rejects cues referencing unknown agents or undefined cue types). Verify: empty-script movie shows overview, linter passes, `R` key works, chapter jump stubs log correctly.
+1. **Phase 1 — Script infrastructure.** `MovieEngine` class with timer registry, 6 cue executor stubs, `MOVIE_SCRIPT = []`, `?mode=movie` routing, `--movie` flag on `start.sh`, `resetPresenterVisuals()`, `zoomToAgent`/`zoomToOverview` duration override, `showCommentary` + `showChapterCard` primitives. Implement `lintMovieScript()` smoke test with these rules: (a) every cue has a known `type`; (b) every `signal.sender`, `signal.target`, `spotlight.agent` (when non-null), `line.from`, `line.to` is either `null` or a key in `AGENTS`; (c) each cue has the payload required by its type (schema tables in §3.2); (d) `t` values are monotonically non-decreasing within a chapter; (e) `reset.scope`, when present, is one of `'all' | 'agents' | 'lines'`. Linter runs once at startup and logs errors as `console.warn`, not throwing — the movie still plays best-effort if a lone cue is malformed. Verify: empty-script movie shows overview, linter passes, `R` key works, chapter jump stubs log correctly.
 2. **Phase 2 — First chapter.** Author chapter 1 (Network Startup) fully. Wire every cue type end-to-end. Verify: chapter 1 plays start-to-finish with all 7 agents coming online.
 3. **Phase 3 — Chapters 2–8.** Author chapters in narrative order. Verify each chapter individually (jump via `2`–`8` keys) and in full sequence.
 4. **Phase 4 — Chapter 0.** Bedsheet pitch panel + architecture-diagram SVG + intro timing. Verify smooth transition into chapter 1.
@@ -335,7 +336,8 @@ Manual, visual, per phase. This is cinematic/timing work; automated tests cannot
 ## 7. Revision history
 
 - **v1 (fd16dd8)** — initial design. Reviewed by spec-document-reviewer subagent; issues found.
-- **v2 (this revision)** — addresses 4 critical + 7 important issues from review:
+- **v3 (this revision)** — v2 APPROVED by reviewer; polished 3 minor items before user review: transition-duration override mechanic spelled out, `lintMovieScript` rules enumerated, boot-time-immutable mode clarified.
+- **v2 (aeecb8e)** — addresses 4 critical + 7 important issues from v1 review:
   - §3.1 — added renderer-primitive table; named keybinding override for `1`–`9` jump-to-chapter vs jump-to-scene; explicit bypass of `detectChapter`/`CHAPTER_COMMENTARY`/`drainMapEvents`.
   - §3.2 — added `reset` cue type (6th); fully specified `spotlight null` and slow-pull `duration_ms`; fully specified `line` colour resolution; expanded `MovieEngine` with timer registry + speed-change contract + chapter-jump contract; added §3.2.1 visual-state reset.
   - §3.3 — removed `observation` event_type claims from Ch 3 and Ch 5 (label-only in renderer, no visual effect); Ch 8 uses `spotlight null, duration_ms: 3000`; Ch 5 verified `action-gateway` as valid spotlight target.
