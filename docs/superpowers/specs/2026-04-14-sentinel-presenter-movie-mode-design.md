@@ -38,23 +38,60 @@ Movie mode exists because:
 - Branching in the presenter's initialisation path:
   - `live` → subscribe to PubNub channels (existing).
   - `replay` → drive real agents against replayed LLM responses (existing).
-  - `movie` → skip PubNub entirely; instantiate `MovieEngine`, which calls `handleSignal()` directly with synthetic signals.
+  - `movie` → skip PubNub entirely; instantiate `MovieEngine`. MovieEngine calls renderer primitives **directly** (see §3.1.1); it does **not** route through `handleSignal → eventBuffer → drainMapEvents`, because that path paces at 800ms and would coalesce rapid bursts. `handleSignal()` is still used for its LLM-event-card rendering side effect, but map effects are driven by explicit primitive calls per cue.
 - No I/O dependencies: `MOVIE_SCRIPT` is inline JS. Opens cleanly from `file://`.
-- Keyboard: existing shortcuts unchanged. New `R` key restarts from chapter 0. `Shift+1`–`5` speed controls apply in movie mode.
+- Keyboard overrides in movie mode:
+  - `1`–`9` rebinds from `jumpToScene` (agent scenes, used in replay) to **`jumpToChapter`** (chapter 1–8).
+  - `Shift+1`–`5` keeps speed control.
+  - `R` restarts from chapter 0 (cancels all pending timers, calls `resetPresenterVisuals()`, rewinds).
+  - Space/arrows/F/C/T unchanged.
+  - `detectChapter()` and `CHAPTER_COMMENTARY` (the replay-mode chapter-detection path) are bypassed in movie mode — every chapter card is driven by explicit `chapter-card` cues so no duplicated commentary.
+
+#### 3.1.1 Renderer primitives required
+
+Movie mode relies on a small set of renderer entry points, some existing, some new:
+
+| Primitive | Status | Purpose |
+|---|---|---|
+| `zoomToAgent(name, {durationMs?})` | **extend existing** — add optional duration override (current 0.8s via CSS transition) | spotlight move |
+| `zoomToOverview({durationMs?})` | **extend existing** — add duration override for "slow pulls" (Ch 8) | overview move |
+| `pulseNode(agent)` | existing | agent pulse |
+| `animateSignalLine(from, to, color)` | existing | `line` cue |
+| `animateBroadcast(agent)` | existing | gateway rate-block ring |
+| `setAgentOnline(agent)` / `setAgentQuarantined(agent)` | existing | agent status changes |
+| `showBriefingOverlay(agent, text?)` | extend — accept optional explicit text to override `AGENT_BRIEFINGS[agent]` | chapter briefing |
+| `showCommentary(text, holdMs)` | **new** | transient commentary panel |
+| `showChapterCard(title, subtitle, holdMs)` | **new** | full-screen chapter card |
+| `resetPresenterVisuals()` | **new** | clears: `.quarantined`/`.focused`/`.dimmed` classes, all `<line>` children of `#signalLines`, active `broadcast-ring` rings, `currentFocus`, `stats`, pending node-pulse classes |
+| `MovieEngine.scheduleCue(cue)` | **new** | internal; wraps setTimeout with registered handle so `MovieEngine.cancelAll()` can tear them down on restart/pause |
 
 ### 3.2 Script schema
 
 The movie is a list of chapters. Each chapter is a list of time-stamped cues. Timestamps are relative to chapter start (ms).
 
-**Five cue types:**
+**Six cue types:**
 
 | Type            | Purpose                                                    | Payload                                                         |
 | --------------- | ---------------------------------------------------------- | --------------------------------------------------------------- |
 | `chapter-card`  | Full-screen title card opening a chapter                   | `title`, `subtitle`, `hold_ms`                                  |
-| `spotlight`     | Zoom to an agent (null = overview)                         | `agent`                                                         |
-| `signal`        | Emit a synthetic PubNub signal                             | `signal: { kind, sender, target, payload, correlation_id }`     |
-| `commentary`    | Type text into the INTELLIGENCE BRIEFING panel             | `text`, `hold_ms`                                               |
-| `line`          | Animate signal line between two agents                     | `from`, `to`, `color?`                                          |
+| `spotlight`     | Zoom to an agent (or overview)                             | `agent: 'name' \| null`, `duration_ms?` (default 800)          |
+| `signal`        | Emit a synthetic PubNub signal (LLM event card + primitives)| `signal: { kind, sender, target, payload, correlation_id }`    |
+| `commentary`    | Type text into the commentary panel                        | `text`, `hold_ms`                                               |
+| `line`          | Animate signal line between two agents                     | `from`, `to`, `color?` (hex or CSS var; default = sender role colour from `ROLE_COLORS`) |
+| `reset`         | Clear visual state (quarantines, focus, lines, stats)       | `scope: 'all' \| 'agents' \| 'lines'` (default `'all'`)         |
+
+**`spotlight` semantics:**
+- `agent: 'web-researcher'` → `zoomToAgent('web-researcher', {durationMs})`, sets `currentFocus`, applies `.focused`/`.dimmed` classes, invokes `positionBothOverlays` + `showBriefingOverlay`.
+- `agent: null` → `zoomToOverview({durationMs})`, clears `currentFocus`, removes `.focused`/`.dimmed` from all nodes, hides focus + briefing overlays.
+- `duration_ms` applies a CSS `transition-duration` override for that one move (Ch 8's "slow pull" uses 3000ms).
+
+**`signal` semantics:**
+- The signal object is PubNub-shaped so `handleSignal()` can render the LLM event card in the focus overlay.
+- But the map-level visual effect is **additionally** driven by the engine calling the matching primitive directly (`pulseNode` / `animateBroadcast` / `animateSignalLine`) — not by `drainMapEvents`. This bypass is required so Chapter 4's 5-in-2s burst renders at burst rate instead of being paced to 800ms intervals.
+
+**`line` semantics:**
+- Resolves `color`: if present, used verbatim (hex or CSS var); if absent, looks up `ROLE_COLORS[AGENTS[from].role].hex`.
+- Directly calls existing `animateSignalLine(from, to, resolvedColor)`.
 
 **Chapter shape:**
 
@@ -77,15 +114,28 @@ The movie is a list of chapters. Each chapter is a list of time-stamped cues. Ti
 
 **`MovieEngine`:**
 
-- State: `{ chapterIdx, chapterStart, cueIdx, paused, speed }`.
-- `setTimeout`-scheduled cues (millisecond precision matters; rAF sync is not required).
+- State: `{ chapterIdx, chapterStart, cueIdx, paused, speed, pendingTimers: Set<timerId> }`.
+- `setTimeout`-scheduled cues via `scheduleCue()`, which registers each timer id in `pendingTimers` for tear-down.
 - Each cue's `t` is relative to its chapter start. Chapter advances when the last cue's `t + hold_ms` elapses.
-- `playbackSpeed` divides all `t` offsets. Pause preserves remaining offset; resume re-schedules.
-- `R` key resets to chapter 0.
+- **Pause:** records current elapsed position per pending cue, clears all `pendingTimers`, stops. Resume: re-schedules each pending cue with its remaining offset.
+- **Speed change** (Shift+1–5): clears all `pendingTimers`, recomputes remaining offsets under the new speed, re-schedules. Tested in Phase 5.
+- **Restart** (`R` key): clears all `pendingTimers`, calls `resetPresenterVisuals()`, rewinds to chapter 0.
+- **Chapter jump** (1–9 keys in movie mode): clears all `pendingTimers`, calls `resetPresenterVisuals()`, starts the target chapter at t=0. Every chapter must therefore be **self-sufficient** — its opening cues set up whatever agent state it needs (quarantine, online, etc.).
 
-**PubNub-shape invariant:** every `signal` cue produces a signal object identical to what live PubNub delivers. This guarantees `handleSignal()` works without modification and keeps movie mode's renderer path identical to live/replay.
+**PubNub-shape invariant:** every `signal` cue produces a signal object identical to what live PubNub delivers. This keeps the LLM-event-card pathway identical between modes. The map-level animation pathway is **explicitly not reused** — movie mode drives it via the primitives table (§3.1.1) for timing precision.
 
-**Explicitly not in the schema (YAGNI):** conditionals, loops, event templating. The movie is linear and each cue is listed verbatim.
+**Not in the schema (YAGNI):** conditionals, loops, event templating. The movie is linear and each cue is listed verbatim.
+
+#### 3.2.1 Visual-state reset contract
+
+`resetPresenterVisuals()` is the central clean-up primitive called on restart, chapter jump, and on any `reset` cue with `scope: 'all'`. It must clear:
+
+- Per-node classes: `.quarantined`, `.focused`, `.dimmed`, `.online` (movie explicitly re-asserts what's online via `setAgentOnline` cues).
+- All `<line>` children of `#signalLines` (the SVG group for animated lines).
+- All active `broadcast-ring` rings (remove `.active` class and force reflow).
+- `currentFocus = null`; hide focus + briefing overlays.
+- `stats.signals = 0; stats.alerts = 0; stats.quarantine = 0;` and re-render stats bar.
+- Cancel any in-flight `pulseNode` / `animateBroadcast` / `animateSignalLine` timeouts via the MovieEngine timer registry (these primitives are wrapped by MovieEngine when called from cue context; primitives called outside movie mode remain unwrapped).
 
 ### 3.3 Chapters
 
@@ -116,8 +166,8 @@ Total target runtime: ~2:36.
 - Spotlight order: skill-acquirer → supply-chain-sentinel.
 - Skill-acquirer attempts install → supply-chain-sentinel hashes package → SHA-256 mismatch → blocks.
 - Commentary: *"Supply-chain-sentinel doesn't trust anyone. Every skill verified by hash before execution."*
-- Events demoed: `tool_call` (install_skill), `observation` (hash mismatch), `alert` signal kind → commander.
-- First cross-circuit moment: purple `line` cue from sentinel to commander.
+- Events demoed: `tool_call` (install_skill), `tool_result` carrying the hash-mismatch text, `alert` signal kind → commander. Note: `observation` is a label-only event_type in the current renderer; we use `tool_result` with explicit text payload for the mismatch so it renders in the focus overlay.
+- First cross-circuit moment: purple `line` cue from sentinel to commander (`color: 'var(--purple)'`).
 
 #### Chapter 4 — Rogue Burst (~15s)
 
@@ -128,10 +178,10 @@ Total target runtime: ~2:36.
 
 #### Chapter 5 — Gateway Block (~10s)
 
-- Spotlight pull from web-researcher to action-gateway.
-- Gateway detects anomaly, returns `error` (rate limit) on further tool calls; amber broadcast ring fires.
+- `spotlight` cue moves camera from web-researcher to `action-gateway` (verified present in `AGENTS`; has a corresponding SVG node).
+- Gateway's `pulseNode` + `animateBroadcast` fire as each inbound tool_call is rate-blocked; gateway returns `tool_result` with `text: "rate limit exceeded"` + `is_error: true`.
 - Commentary: *"Gateway is deterministic. No LLM. It just counts — and blocks."*
-- Events demoed: gateway `observation`, `error` tool results.
+- Events demoed: `tool_result` with `is_error: true` (renders as error in focus overlay), `animateBroadcast` amber ring.
 
 #### Chapter 6 — Sentinel Alert (~15s)
 
@@ -149,12 +199,13 @@ Total target runtime: ~2:36.
 
 #### Chapter 8 — Stable State Restored (~10s)
 
-- Slow pull to overview.
-- Web-researcher greyed out (quarantined); remaining 6 agents pulse green in unison.
+- Opens with a `spotlight` cue: `{agent: null, duration_ms: 3000}` — slow pull to overview.
+- Web-researcher stays `.quarantined` (red, dimmed) from chapter 7; no `reset` cue here.
+- Remaining 6 agents pulse green in unison via six staggered `pulseNode` signals.
 - Commentary: *"System stable. One compromised agent removed. Six still on mission."*
 - Events demoed: closing `heartbeat` signals from the remaining six.
 
-Total: intro 37s + chapters 1–8 totals 120s = ~2:36.
+Total: intro 37s + chapters 1–8 (15+20+20+15+10+15+15+10 = 120s) = ~2:37.
 
 ### 3.4 Pitch copy (locked, verbatim)
 
@@ -218,12 +269,28 @@ An inline `<svg>` at the end of chapter 0, ~80–100 lines. Uses the presenter's
 - ClawHub registry is mentioned in the pitch copy but kept off the diagram — the diagram must stay focused on the two-plane teaching point.
 - Arrows are strictly one-directional; the visual vocabulary itself communicates the security property.
 - Agent colours match the world map palette for a consistent mental model across the whole movie.
+- Commander is rendered as a **peer** of the sentinels on the control plane (both are LLM agents), not "below" them — aligns with the actual code model. Commander sits slightly right-of-centre on the control-plane row with alert arrows from the sentinels flowing into it.
+
+#### 3.5.1 Z-index layering (movie + presenter)
+
+| Layer | z-index | Element |
+|---|---|---|
+| Map background | 0 | `.world-map-bg` iframe |
+| Map SVG | 1 | agent nodes, `#signalLines`, broadcast rings |
+| Focus overlay (reasoning) | 5 | `.focus-overlay` |
+| Briefing overlay (asset) | 6 | `.briefing-overlay` |
+| Commentary panel | 7 | `.movie-commentary` (new, distinct from briefing) |
+| Architecture-diagram overlay | 8 | `#movieArchDiagram` (new; Ch 0 only) |
+| Chapter card | 50 | `.chapter-card` (existing; also used in movie mode) |
+| Intro crawl | 60 | `.intro-crawl` (existing) — sits above chapter card so the opening crawl is never clipped |
+
+Commentary panel (`z: 7`) intentionally sits above both overlays (`z: 5`/`6`) because movie-mode commentary is transient and overrides the persistent briefing text for the duration of a cue.
 
 ### 3.6 Implementation phases
 
 Six phases, each terminating in a runnable/verifiable state and its own commit.
 
-1. **Phase 1 — Script infrastructure.** `MovieEngine` class, empty `MOVIE_SCRIPT`, `?mode=movie` routing, `--movie` flag on `start.sh`, stubbed cue executors. Verify: empty-script movie shows overview and logs gracefully.
+1. **Phase 1 — Script infrastructure.** `MovieEngine` class with timer registry, 6 cue executor stubs, `MOVIE_SCRIPT = []`, `?mode=movie` routing, `--movie` flag on `start.sh`, `resetPresenterVisuals()`, `zoomToAgent`/`zoomToOverview` duration override, `showCommentary` + `showChapterCard` primitives, `lintMovieScript()` smoke test (rejects cues referencing unknown agents or undefined cue types). Verify: empty-script movie shows overview, linter passes, `R` key works, chapter jump stubs log correctly.
 2. **Phase 2 — First chapter.** Author chapter 1 (Network Startup) fully. Wire every cue type end-to-end. Verify: chapter 1 plays start-to-finish with all 7 agents coming online.
 3. **Phase 3 — Chapters 2–8.** Author chapters in narrative order. Verify each chapter individually (jump via `2`–`8` keys) and in full sequence.
 4. **Phase 4 — Chapter 0.** Bedsheet pitch panel + architecture-diagram SVG + intro timing. Verify smooth transition into chapter 1.
@@ -245,7 +312,10 @@ Manual, visual, per phase. This is cinematic/timing work; automated tests cannot
 
 - **Risk — content rot.** Chapter events tightly couple to pitch copy and briefing text. Mitigation: co-locate all movie content in one script, co-commit changes, treat the movie as one editable unit.
 - **Risk — timing drift across browsers.** `setTimeout` accuracy varies. Mitigation: verify in both target browsers during phases 2 and 5; per-cue `t` rather than per-cue delay avoids compounding errors.
-- **Risk — chapter-jump discontinuity.** Jumping mid-movie to a later chapter may leave agents in an inconsistent state (quarantined, offline, etc.). Mitigation: each chapter's first cues must reset agent state explicitly where it matters (chapter 8 restore, chapter 0 rewind).
+- **Risk — chapter-jump discontinuity.** Jumping mid-movie to a later chapter may leave agents and visuals in an inconsistent state. Mitigation: `MovieEngine.jumpToChapter()` always calls `resetPresenterVisuals()` first, then starts the target chapter at `t=0`. Chapters that need specific pre-state (e.g. Ch 8 needs web-researcher quarantined) include an explicit `reset` cue followed by state-setup cues at `t ≤ 100ms`. Detailed in §3.2.1.
+- **Risk — stale timer handles on restart / pause / speed-change.** `setTimeout`s scheduled before a state transition will fire after it, causing residual animations. Mitigation: all cue-scheduled timers go through `MovieEngine.scheduleCue()` which registers the handle; `cancelAll()` clears them atomically. Applied on `R`, pause, speed-change, and chapter-jump.
+- **Risk — legacy `detectChapter` duplication.** The presenter already auto-detects 7 chapter names (`CHAPTER_COMMENTARY`) from live signals. In movie mode this would fire duplicated cards. Mitigation: guard `detectChapter` with `if (mode === 'movie') return;`.
+- **Risk — bypass of `drainMapEvents` leaves eventBuffer unconsumed.** If we call `handleSignal()` for LLM-card side effects, it pushes into `eventBuffer` but we're not running the drain. Mitigation: either (a) short-circuit `handleSignal`'s `eventBuffer.push` path in movie mode, or (b) let the buffer grow but never drain it (no memory risk for a 2:30 movie).
 
 ## 5. Open items
 
@@ -261,3 +331,15 @@ Manual, visual, per phase. This is cinematic/timing work; automated tests cannot
 | §3.4 Pitch copy (v3 military register) | Yes |
 | §3.5 Architecture diagram | Yes |
 | §3.6 Implementation phases | Yes |
+
+## 7. Revision history
+
+- **v1 (fd16dd8)** — initial design. Reviewed by spec-document-reviewer subagent; issues found.
+- **v2 (this revision)** — addresses 4 critical + 7 important issues from review:
+  - §3.1 — added renderer-primitive table; named keybinding override for `1`–`9` jump-to-chapter vs jump-to-scene; explicit bypass of `detectChapter`/`CHAPTER_COMMENTARY`/`drainMapEvents`.
+  - §3.2 — added `reset` cue type (6th); fully specified `spotlight null` and slow-pull `duration_ms`; fully specified `line` colour resolution; expanded `MovieEngine` with timer registry + speed-change contract + chapter-jump contract; added §3.2.1 visual-state reset.
+  - §3.3 — removed `observation` event_type claims from Ch 3 and Ch 5 (label-only in renderer, no visual effect); Ch 8 uses `spotlight null, duration_ms: 3000`; Ch 5 verified `action-gateway` as valid spotlight target.
+  - §3.5 — noted commander-as-peer diagram correction; added §3.5.1 z-index layering table.
+  - §4 — added three new risks: stale timers, legacy chapter-detection duplication, eventBuffer bypass.
+  - §3.6 Phase 1 — expanded to include `resetPresenterVisuals`, zoom duration override, commentary/chapter-card primitives, and `lintMovieScript()` smoke test.
+  - §3.3 total-runtime arithmetic corrected (~2:37 not ~2:36).
