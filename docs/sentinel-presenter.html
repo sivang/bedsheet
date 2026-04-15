@@ -175,7 +175,13 @@
         }
 
         /* ── Agent Nodes (identical to dashboard) ── */
-        .agent-node { cursor: pointer; transition: opacity 0.6s ease; }
+        .agent-node {
+            cursor: pointer;
+            /* Match the map-viewport transition so pin counter-scale animates in sync with zoom. */
+            transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-box: view-box;
+            transform-origin: 0 0;
+        }
 
         .agent-node-ring {
             fill: none;
@@ -261,7 +267,7 @@
         .focus-overlay {
             position: absolute;
             width: 380px;
-            max-height: 420px;
+            height: 420px;
             background: rgba(14, 22, 42, 0.95);
             border: 1px solid var(--border-glow);
             border-radius: 8px;
@@ -336,7 +342,7 @@
         .briefing-overlay {
             position: absolute;
             width: 360px;
-            max-height: 320px;
+            height: 320px;
             background: rgba(14, 22, 42, 0.95);
             border: 1px solid var(--cyan);
             border-radius: 8px;
@@ -1009,7 +1015,7 @@
 
                     <!-- Agent Nodes (identical positions to dashboard) -->
                     <g id="agentNodes">
-                        <g class="agent-node gateway" id="node-action-gateway" data-agent="action-gateway" transform="translate(195, 195)">
+                        <g class="agent-node gateway" id="node-action-gateway" data-agent="action-gateway" transform="translate(205, 240)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--amber)"/>
                             <circle class="agent-node-ring" r="12"/>
@@ -1018,7 +1024,7 @@
                             <text class="agent-node-label" y="33" style="font-size:6px;fill:var(--text-dim)">us-central1</text>
                         </g>
 
-                        <g class="agent-node" id="node-web-researcher" data-agent="web-researcher" transform="translate(253, 218)">
+                        <g class="agent-node" id="node-web-researcher" data-agent="web-researcher" transform="translate(240, 262)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--green)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1027,7 +1033,7 @@
                             <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-east1</text>
                         </g>
 
-                        <g class="agent-node" id="node-scheduler" data-agent="scheduler" transform="translate(499, 157)">
+                        <g class="agent-node" id="node-scheduler" data-agent="scheduler" transform="translate(490, 300)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--green)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1036,7 +1042,7 @@
                             <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">europe-west1</text>
                         </g>
 
-                        <g class="agent-node" id="node-skill-acquirer" data-agent="skill-acquirer" transform="translate(867, 224)">
+                        <g class="agent-node" id="node-skill-acquirer" data-agent="skill-acquirer" transform="translate(868, 350)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--green)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1045,7 +1051,7 @@
                             <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-northeast1</text>
                         </g>
 
-                        <g class="agent-node sentinel" id="node-behavior-sentinel" data-agent="behavior-sentinel" transform="translate(130, 179)">
+                        <g class="agent-node sentinel" id="node-behavior-sentinel" data-agent="behavior-sentinel" transform="translate(150, 220)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1054,7 +1060,7 @@
                             <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-west1</text>
                         </g>
 
-                        <g class="agent-node sentinel" id="node-supply-chain-sentinel" data-agent="supply-chain-sentinel" transform="translate(766, 386)">
+                        <g class="agent-node sentinel" id="node-supply-chain-sentinel" data-agent="supply-chain-sentinel" transform="translate(766, 459)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1063,7 +1069,7 @@
                             <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-southeast1</text>
                         </g>
 
-                        <g class="agent-node commander" id="node-sentinel-commander" data-agent="sentinel-commander" transform="translate(475, 150)">
+                        <g class="agent-node commander" id="node-sentinel-commander" data-agent="sentinel-commander" transform="translate(470, 285)">
                             <circle class="broadcast-ring" r="5"/>
                             <circle class="pulse-ring" r="6" stroke="var(--cyan)"/>
                             <circle class="agent-node-ring" r="10"/>
@@ -1142,14 +1148,16 @@
 
     <script>
     // ── Agent Registry (identical to dashboard) ──
+    // Coordinates are in SVG user-space (viewBox 0..1009.67 × 0..665.96, see world-map.svg).
+    // Positions were picked from country path bboxes so every pin sits on land.
     var AGENTS = {
-        'action-gateway':         { region: 'us-central1',      role: 'gateway',   x: 195, y: 195 },
-        'web-researcher':         { region: 'us-east1',         role: 'worker',    x: 253, y: 218 },
-        'scheduler':              { region: 'europe-west1',     role: 'worker',    x: 499, y: 157 },
-        'skill-acquirer':         { region: 'asia-northeast1',  role: 'worker',    x: 867, y: 224 },
-        'behavior-sentinel':      { region: 'us-west1',         role: 'sentinel',  x: 130, y: 179 },
-        'supply-chain-sentinel':  { region: 'asia-southeast1',  role: 'sentinel',  x: 766, y: 386 },
-        'sentinel-commander':     { region: 'europe-west2',     role: 'commander', x: 475, y: 150 },
+        'action-gateway':         { region: 'us-central1',      role: 'gateway',   x: 205, y: 240 },
+        'web-researcher':         { region: 'us-east1',         role: 'worker',    x: 240, y: 262 },
+        'scheduler':              { region: 'europe-west1',     role: 'worker',    x: 490, y: 300 },
+        'skill-acquirer':         { region: 'asia-northeast1',  role: 'worker',    x: 868, y: 350 },
+        'behavior-sentinel':      { region: 'us-west1',         role: 'sentinel',  x: 150, y: 220 },
+        'supply-chain-sentinel':  { region: 'asia-southeast1',  role: 'sentinel',  x: 766, y: 459 },
+        'sentinel-commander':     { region: 'europe-west2',     role: 'commander', x: 470, y: 285 },
     };
 
     var KEY_MAP = { k: 'kind', s: 'sender', p: 'payload', c: 'correlation_id', t: 'target', ts: 'timestamp' };
@@ -1181,6 +1189,15 @@
 
     var VIEWBOX_W = 1009.6727;
     var VIEWBOX_H = 665.96301;
+
+    // ── Mode selection (boot-time-immutable) ──
+    var PRESENTER_MODE = (function() {
+        var qs = new URLSearchParams(window.location.search);
+        var m = qs.get('mode');
+        if (m === 'movie' || m === 'replay' || m === 'live') return m;
+        return window.SENTINEL_CONFIG && window.SENTINEL_CONFIG.subscribeKey ? 'live' : 'replay';
+    })();
+    console.log('[presenter] mode =', PRESENTER_MODE);
 
     // ── State ──
     var pubnub = null;
@@ -1632,6 +1649,28 @@
     // ── Map Zoom System ──
     var currentZoom = { scale: 1, panX: 0, panY: 0 };
 
+    // Effective pin size at max zoom. Counter-scale = PIN_EFFECTIVE_SCALE / viewportScale.
+    // 1.0 = pins stay the exact same visual size at every zoom level (Google-Maps feel).
+    // 1.3 = pins grow a little on zoom (cinematic), but far less than the map itself.
+    var PIN_EFFECTIVE_SCALE = 1.3;
+
+    // Apply counter-scale to all agent nodes so they don't balloon with the viewport.
+    // We use element.style.transform (not setAttribute) so the CSS transition on
+    // .agent-node animates the scale change in sync with the viewport zoom.
+    // The base translate(X,Y) comes from the original SVG transform attribute — we
+    // stash it on first call, then rebuild style.transform each zoom.
+    function applyPinCounterScale(viewportScale) {
+        var counter = Math.min(1, PIN_EFFECTIVE_SCALE / viewportScale);
+        document.querySelectorAll('.agent-node').forEach(function(node) {
+            var base = node.getAttribute('data-base-transform');
+            if (!base) {
+                base = node.getAttribute('transform') || '';
+                node.setAttribute('data-base-transform', base);
+            }
+            node.style.transform = base + ' scale(' + counter + ')';
+        });
+    }
+
     function zoomToAgent(agentName) {
         var info = AGENTS[agentName];
         if (!info) return;
@@ -1653,6 +1692,8 @@
         var viewport = document.getElementById('mapViewport');
         viewport.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + targetScale + ')';
 
+        applyPinCounterScale(targetScale);
+
         // Dim other agents, focus this one
         document.querySelectorAll('.agent-node').forEach(function(node) {
             var name = node.getAttribute('data-agent');
@@ -1670,6 +1711,8 @@
         currentZoom = { scale: 1, panX: 0, panY: 0 };
         var viewport = document.getElementById('mapViewport');
         viewport.style.transform = 'translate(0px, 0px) scale(1)';
+
+        applyPinCounterScale(1);
 
         document.querySelectorAll('.agent-node').forEach(function(node) {
             node.classList.remove('dimmed', 'focused');
@@ -1731,7 +1774,11 @@
 
     // Find a position for a panel that avoids the agent node and any existing rects
     function findPanelPosition(areaW, areaH, panelW, panelH, fracX, fracY, avoidRects) {
-        var gap = 50;
+        // Pin halo + two-line labels extend well past the pin ring — at 1.3x effective scale
+        // the widest label ("supply-chain-sentinel") reaches ~70px either side of the pin
+        // center, and labels live ~55px below. The side gap + avoid rect below both account
+        // for this so panels never clip the pin or its labels.
+        var gap = 90;
         var candidates = [
             { x: areaW / 2 + gap, y: areaH / 2 - panelH / 2 },              // right
             { x: areaW / 2 - panelW - gap, y: areaH / 2 - panelH / 2 },     // left
@@ -1751,8 +1798,9 @@
             candidates = [candidates[2], candidates[0], candidates[1], candidates[6], candidates[7], candidates[3], candidates[4], candidates[5]];
         }
 
-        // Agent node is at center after zoom
-        var nodeRect = { x: areaW / 2 - 30, y: areaH / 2 - 30, w: 60, h: 60 };
+        // Agent halo bbox at center after zoom — wider than the pin ring so panels don't
+        // clip the label text ("sentinel-commander" etc.) that renders below the pin.
+        var nodeRect = { x: areaW / 2 - 90, y: areaH / 2 - 30, w: 180, h: 95 };
         var allAvoid = [nodeRect].concat(avoidRects || []);
 
         for (var i = 0; i < candidates.length; i++) {
@@ -1775,8 +1823,10 @@
         };
     }
 
-    // Position both briefing and focus windows, avoiding each other and the agent node
-    var lastBriefingRect = null;
+    // Position both briefing and focus windows, avoiding each other and the agent node.
+    // Focus overlay (reasoning) is positioned first so it claims the slot closest to the pin;
+    // the briefing fills in around it.
+    var lastFocusRect = null;
 
     function positionBothOverlays(agentName) {
         var info = AGENTS[agentName];
@@ -1788,22 +1838,22 @@
         var fracX = info.x / VIEWBOX_W;
         var fracY = info.y / VIEWBOX_H;
 
-        // Position briefing first
-        var briefW = 360, briefH = 320;
-        var briefPos = findPanelPosition(areaW, areaH, briefW, briefH, fracX, fracY, []);
-        lastBriefingRect = { x: briefPos.x, y: briefPos.y, w: briefW, h: briefH };
-
-        var briefEl = document.getElementById('briefingOverlay');
-        briefEl.style.left = briefPos.x + 'px';
-        briefEl.style.top = briefPos.y + 'px';
-
-        // Position focus overlay, avoiding the briefing
+        // Position focus overlay (reasoning) first — it gets the closest slot to the pin
         var focusW = 380, focusH = 420;
-        var focusPos = findPanelPosition(areaW, areaH, focusW, focusH, fracX, fracY, [lastBriefingRect]);
+        var focusPos = findPanelPosition(areaW, areaH, focusW, focusH, fracX, fracY, []);
+        lastFocusRect = { x: focusPos.x, y: focusPos.y, w: focusW, h: focusH };
 
         var overlay = document.getElementById('focusOverlay');
         overlay.style.left = focusPos.x + 'px';
         overlay.style.top = focusPos.y + 'px';
+
+        // Position briefing, avoiding the focus overlay
+        var briefW = 360, briefH = 320;
+        var briefPos = findPanelPosition(areaW, areaH, briefW, briefH, fracX, fracY, [lastFocusRect]);
+
+        var briefEl = document.getElementById('briefingOverlay');
+        briefEl.style.left = briefPos.x + 'px';
+        briefEl.style.top = briefPos.y + 'px';
 
         // Set header info
         var rc = ROLE_COLORS[info.role] || ROLE_COLORS.worker;

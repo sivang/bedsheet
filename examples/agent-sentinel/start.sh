@@ -10,6 +10,7 @@
 #   ./start.sh --quiet        Suppress LLM event output (only show key events)
 #   ./start.sh --present      Cinematic presenter mode (implies --replay 0.3)
 #   ./start.sh --present --cinematic  Start in cinematic mode (no UI chrome)
+#   ./start.sh --movie        Fully-scripted ~2:44 movie (no agents, no recordings)
 #
 # Flags can be combined: ./start.sh --record --no-dash --quiet
 
@@ -41,6 +42,7 @@ REPLAY_DELAY="0.0"
 QUIET=false
 PRESENT=false
 CINEMATIC=false
+MOVIE=false
 while [ $# -gt 0 ]; do
     case $1 in
         --no-dash) NO_DASH=true ;;
@@ -63,9 +65,17 @@ while [ $# -gt 0 ]; do
             fi
             ;;
         --cinematic) CINEMATIC=true ;;
+        --movie)   MOVIE=true ;;
     esac
     shift
 done
+
+# Movie mode doesn't need agents/recordings — it runs purely synthetic.
+# Force --no-dash off so the HTTP server stays up to serve the presenter.
+if [ "$MOVIE" = true ]; then
+    PRESENT=true
+    NO_DASH=false
+fi
 
 if [ "$RECORD" = true ] && [ "$REPLAY" = true ]; then
     echo -e "${RED}Cannot use --record and --replay together${NC}"
@@ -221,7 +231,13 @@ if [ "$NO_DASH" = false ]; then
     sleep 1
 
     # Choose presenter or dashboard page
-    if [ "$PRESENT" = true ]; then
+    if [ "$MOVIE" = true ]; then
+        DASH_PAGE="sentinel-presenter.html?mode=movie"
+        if [ "$CINEMATIC" = true ]; then
+            DASH_PAGE="sentinel-presenter.html?mode=movie#cinematic"
+        fi
+        DASH_LABEL="Movie"
+    elif [ "$PRESENT" = true ]; then
         DASH_PAGE="sentinel-presenter.html"
         if [ "$CINEMATIC" = true ]; then
             DASH_PAGE="sentinel-presenter.html#cinematic"
