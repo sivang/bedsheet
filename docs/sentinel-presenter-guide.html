@@ -302,6 +302,7 @@
             <a href="#briefings">Agent Briefings</a>
             <a href="#signal-lines">Signal Lines</a>
             <a href="#ambient">Ambient Audio</a>
+            <a href="#movie-mode">Movie Mode</a>
 
             <div class="section-label">JS Architecture</div>
             <a href="#js-overview">Code Overview</a>
@@ -820,6 +821,58 @@ ls -la recordings/</code></pre>
                 <a href="https://freesound.org" style="color:var(--cyan)">Freesound.org</a> or
                 <a href="https://pixabay.com/music" style="color:var(--cyan)">Pixabay</a>.
                 Alternatively, use Gemini with Lyra to generate a custom track.
+            </p>
+
+            <h2 id="movie-mode">Movie Mode</h2>
+            <p>
+                <strong>Movie mode</strong> is a third peer playback mode alongside <em>live</em> and <em>replay</em>.
+                It is a fully scripted ~2:44 cinematic demo that runs entirely on synthetic events &mdash; no PubNub,
+                no recorded sessions, no real agents required. Designed to showcase Agent Sentinel as a standalone
+                piece you can send to someone, run at a booth, or loop on a conference kiosk.
+            </p>
+            <p><strong>Activation:</strong></p>
+            <pre><code># Via start.sh (launches a local HTTP server and opens the movie URL)
+./start.sh --movie
+
+# Or open the presenter directly with the query string
+open docs/sentinel-presenter.html?mode=movie</code></pre>
+            <p>
+                Movie mode is <strong>boot-time-immutable</strong>: the mode is resolved once from the URL query
+                string at page load and never switches at runtime.
+            </p>
+            <p><strong>Keyboard shortcuts (movie mode):</strong></p>
+            <table>
+                <tr><th>Key</th><th>Action</th></tr>
+                <tr><td><code>1</code>&ndash;<code>8</code></td><td>Jump to chapter (cancels pending cues, resets visuals, plays target chapter from t=0)</td></tr>
+                <tr><td><code>R</code></td><td>Restart movie from chapter 0</td></tr>
+                <tr><td><code>Shift+1</code>&ndash;<code>5</code></td><td>Speed: 0.5x / 1x / 1.5x / 2x / 3x (re-schedules remaining cues under new speed)</td></tr>
+                <tr><td><code>Space</code>, <code>F</code>, <code>C</code>, <code>T</code></td><td>Inherit from live/replay modes (pause, fullscreen, cinematic, timestamp)</td></tr>
+            </table>
+            <p><strong>Chapters:</strong></p>
+            <ol>
+                <li><strong>Chapter 0</strong> &mdash; Intro + Bedsheet pitch + architecture diagram (~44s)</li>
+                <li><strong>Chapter 1</strong> &mdash; Network Startup (~15s)</li>
+                <li><strong>Chapter 2</strong> &mdash; Normal Operations (~20s)</li>
+                <li><strong>Chapter 3</strong> &mdash; Malicious Install Blocked (~20s)</li>
+                <li><strong>Chapter 4</strong> &mdash; Rogue Burst (~15s)</li>
+                <li><strong>Chapter 5</strong> &mdash; Gateway Block (~10s)</li>
+                <li><strong>Chapter 6</strong> &mdash; Sentinel Alert (~15s)</li>
+                <li><strong>Chapter 7</strong> &mdash; Quarantine Issued (~15s)</li>
+                <li><strong>Chapter 8</strong> &mdash; Stable State Restored (~10s)</li>
+            </ol>
+            <p>
+                <strong>Authoring content:</strong> all movie content lives in the <code>MOVIE_SCRIPT</code> array
+                at the bottom of <code>docs/sentinel-presenter.html</code>. Each chapter is an object
+                <code>{ id, title, subtitle, cues: [...] }</code>. A cue is one atomic stage direction &mdash;
+                one of 10 types: <code>chapter-card</code>, <code>spotlight</code>, <code>signal</code>,
+                <code>commentary</code>, <code>line</code>, <code>reset</code>, and the four Chapter-0 overlay
+                cues (<code>movie-pitch-start</code>, <code>movie-pitch-end</code>, <code>movie-arch-start</code>,
+                <code>movie-arch-end</code>). A boot-time linter (<code>lintMovieScript</code>) reports malformed
+                cues to the console without throwing &mdash; the movie plays best-effort past errors.
+            </p>
+            <p>
+                See <code>docs/superpowers/specs/2026-04-14-sentinel-presenter-movie-mode-design.md</code> for
+                full schema, semantics, and design rationale.
             </p>
 
             <!-- ═══════════════════════════════════ -->
