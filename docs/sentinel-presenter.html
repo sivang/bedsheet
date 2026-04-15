@@ -1646,6 +1646,45 @@
         setTimeout(function() { ring.classList.remove('active'); }, 2100);
     }
 
+    // ── Visual state reset (spec §3.2.1) ──
+    // Called on movie restart, chapter-jump, and any `reset` cue with scope='all'.
+    function resetPresenterVisuals() {
+        // Agent node classes
+        document.querySelectorAll('.agent-node').forEach(function(n) {
+            n.classList.remove('quarantined', 'focused', 'dimmed', 'online');
+        });
+        // Signal lines (animated lines in the SVG group)
+        var lineGroup = document.getElementById('signalLines');
+        if (lineGroup) while (lineGroup.firstChild) lineGroup.removeChild(lineGroup.firstChild);
+        // Broadcast rings
+        document.querySelectorAll('.broadcast-ring').forEach(function(r) {
+            r.classList.remove('active');
+        });
+        // Focus / briefing overlays + commentary + chapter card
+        currentFocus = null;
+        var fo = document.getElementById('focusOverlay');
+        var bo = document.getElementById('briefingOverlay');
+        var cm = document.getElementById('movieCommentary');
+        var cc = document.getElementById('movieChapterCard');
+        if (fo) fo.classList.remove('visible');
+        if (bo) bo.classList.remove('visible');
+        if (cm) cm.classList.remove('visible');
+        if (cc) cc.classList.remove('visible');
+        // Clear the focus body children (event cards from previous plays)
+        var fb = document.getElementById('focusBody');
+        if (fb) while (fb.firstChild) fb.removeChild(fb.firstChild);
+        // Stats
+        stats.signals = 0; stats.alerts = 0; stats.quarantine = 0;
+        if (typeof updateStats === 'function') updateStats();
+        // Scene-collection state from live/replay paths (present but unused in movie)
+        if (typeof onlineAgents !== 'undefined' && onlineAgents.clear) onlineAgents.clear();
+        if (typeof agentScenes === 'object') {
+            for (var k in agentScenes) if (agentScenes.hasOwnProperty(k)) delete agentScenes[k];
+        }
+        if (typeof agentOrder !== 'undefined' && agentOrder.length) agentOrder.length = 0;
+        if (typeof presentedEvents !== 'undefined' && presentedEvents.length) presentedEvents.length = 0;
+    }
+
     // ── Map Zoom System ──
     var currentZoom = { scale: 1, panX: 0, panY: 0 };
 
