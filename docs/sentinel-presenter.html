@@ -2860,6 +2860,62 @@
         }
     }
 
+    // Validates MOVIE_SCRIPT shape on boot. Logs warnings via console.warn, never throws —
+    // the movie plays best-effort past malformed cues.
+    function lintMovieScript(script) {
+        var errors = 0;
+        var validTypes = [
+            'chapter-card', 'spotlight', 'signal', 'commentary', 'line', 'reset',
+            'movie-pitch-start', 'movie-pitch-end', 'movie-arch-start', 'movie-arch-end'
+        ];
+        var validScopes = ['all', 'agents', 'lines'];
+        script.forEach(function(chapter, ci) {
+            var lastT = 0;
+            (chapter.cues || []).forEach(function(cue, i) {
+                var ctx = 'ch' + ci + ' cue' + i;
+                if (validTypes.indexOf(cue.type) < 0) {
+                    console.warn('[lint]', ctx, 'unknown type:', cue.type); errors++;
+                }
+                if (typeof cue.t !== 'number') {
+                    console.warn('[lint]', ctx, 'missing t'); errors++;
+                } else if (cue.t < lastT) {
+                    console.warn('[lint]', ctx, 't not monotonic:', cue.t, '<', lastT); errors++;
+                } else {
+                    lastT = cue.t;
+                }
+                if (cue.type === 'spotlight') {
+                    if (cue.agent !== null && !AGENTS[cue.agent]) {
+                        console.warn('[lint]', ctx, 'unknown spotlight agent:', cue.agent); errors++;
+                    }
+                }
+                if (cue.type === 'signal') {
+                    var s = cue.signal || {};
+                    if (s.sender && !AGENTS[s.sender]) {
+                        console.warn('[lint]', ctx, 'unknown signal sender:', s.sender); errors++;
+                    }
+                    if (s.target && !AGENTS[s.target]) {
+                        console.warn('[lint]', ctx, 'unknown signal target:', s.target); errors++;
+                    }
+                }
+                if (cue.type === 'line') {
+                    if (!AGENTS[cue.from]) { console.warn('[lint]', ctx, 'unknown line.from:', cue.from); errors++; }
+                    if (!AGENTS[cue.to]) { console.warn('[lint]', ctx, 'unknown line.to:', cue.to); errors++; }
+                }
+                if (cue.type === 'reset' && cue.scope && validScopes.indexOf(cue.scope) < 0) {
+                    console.warn('[lint]', ctx, 'unknown reset.scope:', cue.scope); errors++;
+                }
+                if (cue.type === 'chapter-card' && typeof cue.title !== 'string') {
+                    console.warn('[lint]', ctx, 'chapter-card missing title'); errors++;
+                }
+                if (cue.type === 'commentary' && typeof cue.text !== 'string') {
+                    console.warn('[lint]', ctx, 'commentary missing text'); errors++;
+                }
+            });
+        });
+        console.log('[lint] MOVIE_SCRIPT:', script.length, 'chapters,', errors, 'errors');
+        return errors === 0;
+    }
+
     // Map effect driver — bypasses 800ms drainMapEvents pacing for precise cue timing.
     function driveMapEffectForSignal(signal) {
         if (!signal) return;
