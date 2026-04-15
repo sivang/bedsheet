@@ -2695,6 +2695,197 @@
         beginScene();
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // ── Movie Mode (spec §3.2) ──
+    // ──────────────────────────────────────────────────────────────
+
+    function MovieEngine(script) {
+        this.script = script || [];
+        this.chapterIdx = 0;
+        this.chapterStart = 0;
+        this.pendingTimers = new Set();
+        this.paused = false;
+        this.speed = 1;
+    }
+
+    MovieEngine.prototype.scheduleCue = function(cue, effectiveOffsetMs) {
+        var self = this;
+        var handle = setTimeout(function() {
+            self.pendingTimers.delete(handle);
+            runCue(cue);
+        }, effectiveOffsetMs / self.speed);
+        this.pendingTimers.add(handle);
+        return handle;
+    };
+
+    MovieEngine.prototype.cancelAll = function() {
+        this.pendingTimers.forEach(function(h) { clearTimeout(h); });
+        this.pendingTimers.clear();
+    };
+
+    MovieEngine.prototype.playChapter = function(idx) {
+        this.cancelAll();
+        this.chapterIdx = idx;
+        var chapter = this.script[idx];
+        if (!chapter) {
+            console.log('[movie] end of script at index', idx);
+            return;
+        }
+        this.chapterStart = Date.now();
+        console.log('[movie] Chapter', idx, chapter.id, '—', chapter.title);
+        var self = this;
+        chapter.cues.forEach(function(cue) {
+            self.scheduleCue(cue, cue.t);
+        });
+        var lastEnd = chapter.cues.reduce(function(max, c) {
+            return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+        }, 0);
+        var nextHandle = setTimeout(function() {
+            self.pendingTimers.delete(nextHandle);
+            self.playChapter(idx + 1);
+        }, lastEnd / this.speed);
+        this.pendingTimers.add(nextHandle);
+    };
+
+    MovieEngine.prototype.restart = function() {
+        this.cancelAll();
+        resetPresenterVisuals();
+        this.playChapter(0);
+    };
+
+    MovieEngine.prototype.jumpToChapter = function(idx) {
+        this.cancelAll();
+        resetPresenterVisuals();
+        this.playChapter(idx);
+    };
+
+    // Speed change mid-chapter: tear down pending timers, recompute remaining offsets
+    // against chapterStart under the new speed, re-schedule cues + chapter-advance.
+    MovieEngine.prototype.setSpeed = function(newSpeed) {
+        if (newSpeed <= 0) return;
+        var now = Date.now();
+        var elapsedOrig = (now - this.chapterStart) * this.speed; // elapsed in t-space
+        this.cancelAll();
+        this.speed = newSpeed;
+        this.chapterStart = now - elapsedOrig / newSpeed;
+        var chapter = this.script[this.chapterIdx];
+        if (!chapter) return;
+        var self = this;
+        chapter.cues.forEach(function(cue) {
+            var due = cue.t - elapsedOrig;
+            if (due <= 0) return;
+            self.scheduleCue(cue, due);
+        });
+        var lastEnd = chapter.cues.reduce(function(max, c) {
+            return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+        }, 0);
+        var advanceDue = lastEnd - elapsedOrig;
+        if (advanceDue > 0) {
+            var nh = setTimeout(function() {
+                self.pendingTimers.delete(nh);
+                self.playChapter(self.chapterIdx + 1);
+            }, advanceDue / newSpeed);
+            self.pendingTimers.add(nh);
+        }
+    };
+
+    function runCue(cue) {
+        switch (cue.type) {
+            case 'chapter-card':
+                showChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
+                break;
+            case 'spotlight':
+                if (cue.agent === null) {
+                    zoomToOverview({ durationMs: cue.duration_ms });
+                    hideFocusOverlay();
+                } else {
+                    zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
+                    showFocusOverlay(cue.agent);
+                }
+                break;
+            case 'signal':
+                // Render LLM event card directly in the focus overlay.
+                // We avoid handleMessage(event) (line 1531) because it has unwanted
+                // side effects in movie mode: scene collection, eventBuffer push,
+                // 'collecting' timer. We take only the visible step: buildEventCard
+                // (line 1913) → append to #focusBody → trim history.
+                if (cue.signal && cue.signal.kind === 'event' && cue.signal.payload) {
+                    var body = document.getElementById('focusBody');
+                    if (body) {
+                        // Clear the "Waiting for agent activity..." placeholder on first card
+                        var placeholder = body.querySelector('.focus-overlay-empty');
+                        if (placeholder) placeholder.remove();
+                        body.appendChild(buildEventCard(cue.signal));
+                        body.scrollTop = body.scrollHeight;
+                        while (body.children.length > 30) body.removeChild(body.firstChild);
+                    }
+                }
+                driveMapEffectForSignal(cue.signal);
+                if (cue.signal) { stats.signals++; if (typeof updateStats === 'function') updateStats(); }
+                break;
+            case 'commentary':
+                showCommentary(cue.text, cue.hold_ms || 4000);
+                break;
+            case 'line':
+                var lineColor = cue.color ||
+                    (ROLE_COLORS[AGENTS[cue.from] && AGENTS[cue.from].role] || {}).hex ||
+                    '#00d4ff';
+                animateSignalLine(cue.from, cue.to, lineColor);
+                break;
+            case 'reset':
+                var scope = cue.scope || 'all';
+                if (scope === 'all') {
+                    resetPresenterVisuals();
+                } else {
+                    console.warn('[movie] reset scope deferred:', scope, '— no-op (see spec §3.2)');
+                }
+                break;
+            case 'movie-pitch-start':
+                if (typeof showPitch === 'function') showPitch(PITCH_LINES);
+                else console.warn('[movie] showPitch not yet implemented (Phase 4)');
+                break;
+            case 'movie-pitch-end':
+                if (typeof hidePitch === 'function') hidePitch();
+                break;
+            case 'movie-arch-start':
+                if (typeof showArchDiagram === 'function') {
+                    showArchDiagram('Two planes. One listens. The other acts. The line between is one-way.');
+                } else console.warn('[movie] showArchDiagram not yet implemented (Phase 4)');
+                break;
+            case 'movie-arch-end':
+                if (typeof hideArchDiagram === 'function') hideArchDiagram();
+                break;
+            default:
+                console.warn('[movie] unknown cue type:', cue.type);
+        }
+    }
+
+    // Map effect driver — bypasses 800ms drainMapEvents pacing for precise cue timing.
+    function driveMapEffectForSignal(signal) {
+        if (!signal) return;
+        var sender = signal.sender;
+        var kind = signal.kind;
+        var payload = signal.payload || {};
+        if (sender && AGENTS[sender]) setAgentOnline(sender);
+        if (kind === 'quarantine' && signal.target) {
+            var tnode = document.getElementById('node-' + signal.target);
+            if (tnode) tnode.classList.add('quarantined');
+            animateBroadcast(sender);
+            stats.quarantine++;
+        } else if (kind === 'alert') {
+            animateBroadcast(sender);
+            stats.alerts++;
+        } else if (kind === 'event' && payload.event_type === 'tool_call') {
+            pulseNode(sender);
+            if (signal.target) {
+                var color = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+                animateSignalLine(sender, signal.target, color);
+            }
+        } else if (kind === 'heartbeat') {
+            pulseNode(sender);
+        }
+    }
+
     </script>
     <footer style="position: fixed; bottom: 6px; right: 12px; z-index: 100; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); text-align: right; pointer-events: auto; line-height: 1.6;">
         <span>Copyright &copy; 2025-2026 Sivan Gr&uuml;nberg, <a href="https://vitakka.co/" style="color: rgba(255,255,255,0.65); text-decoration: none;">Vitakka Consulting</a> &middot; Elastic License 2.0 &middot; <a href="https://github.com/sivang/bedsheet" style="color: rgba(255,255,255,0.65); text-decoration: none;">GitHub</a></span>
