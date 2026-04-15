@@ -1710,7 +1710,23 @@
         });
     }
 
-    function zoomToAgent(agentName) {
+    // Set a one-shot CSS transition-duration override on an element; restore on transitionend
+    // or after a safety timeout so subsequent transitions use the stylesheet default.
+    function applyTransitionOverride(el, durationMs) {
+        el.style.transitionDuration = durationMs + 'ms';
+        var cleared = false;
+        var clear = function() {
+            if (cleared) return;
+            cleared = true;
+            el.style.transitionDuration = '';
+            el.removeEventListener('transitionend', clear);
+        };
+        el.addEventListener('transitionend', clear);
+        setTimeout(clear, durationMs + 100);
+    }
+
+    function zoomToAgent(agentName, opts) {
+        opts = opts || {};
         var info = AGENTS[agentName];
         if (!info) return;
 
@@ -1729,6 +1745,7 @@
 
         currentZoom = { scale: targetScale, panX: panX, panY: panY };
         var viewport = document.getElementById('mapViewport');
+        if (opts.durationMs) applyTransitionOverride(viewport, opts.durationMs);
         viewport.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + targetScale + ')';
 
         applyPinCounterScale(targetScale);
@@ -1746,9 +1763,11 @@
         });
     }
 
-    function zoomToOverview() {
+    function zoomToOverview(opts) {
+        opts = opts || {};
         currentZoom = { scale: 1, panX: 0, panY: 0 };
         var viewport = document.getElementById('mapViewport');
+        if (opts.durationMs) applyTransitionOverride(viewport, opts.durationMs);
         viewport.style.transform = 'translate(0px, 0px) scale(1)';
 
         applyPinCounterScale(1);
