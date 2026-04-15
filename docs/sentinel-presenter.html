@@ -2579,6 +2579,27 @@
         // Don't capture keys when typing in input
         if (e.target.tagName === 'INPUT') return;
 
+        // Movie-mode overrides (plain 1-9 → chapter jump, R → restart)
+        if (PRESENTER_MODE === 'movie') {
+            if (!e.shiftKey && e.key >= '1' && e.key <= '9') {
+                var chIdx = parseInt(e.key, 10);
+                if (movieEngine) movieEngine.jumpToChapter(chIdx);
+                e.preventDefault();
+                return;
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (movieEngine) movieEngine.restart();
+                e.preventDefault();
+                return;
+            }
+            if (e.shiftKey && e.key >= '1' && e.key <= '5') {
+                var speedMap = { '1': 0.5, '2': 1, '3': 1.5, '4': 2, '5': 3 };
+                if (movieEngine) movieEngine.setSpeed(speedMap[e.key]);
+                e.preventDefault();
+                return;
+            }
+        }
+
         switch (e.key) {
             case ' ':
                 e.preventDefault();
