@@ -1514,8 +1514,12 @@
             });
         }
 
-        // Now connect to PubNub
-        proceedToConnect();
+        // Route to mode: PubNub for live/replay, synthetic engine for movie
+        if (PRESENTER_MODE === 'movie') {
+            startMovieMode();
+        } else {
+            proceedToConnect();
+        }
     }
 
     function proceedToConnect() {
@@ -2216,6 +2220,7 @@
     var maliciousBlockChapterShown = false;
 
     function detectChapter(signal) {
+        if (PRESENTER_MODE === 'movie') return;
         var payload = signal.payload || {};
         var sender = signal.sender || '';
         var kind = signal.kind || '';
@@ -2914,6 +2919,19 @@
         });
         console.log('[lint] MOVIE_SCRIPT:', script.length, 'chapters,', errors, 'errors');
         return errors === 0;
+    }
+
+    var MOVIE_SCRIPT = []; // populated in Phases 2–4
+    var movieEngine = null;
+
+    function startMovieMode() {
+        lintMovieScript(MOVIE_SCRIPT);
+        movieEngine = new MovieEngine(MOVIE_SCRIPT);
+        if (MOVIE_SCRIPT.length === 0) {
+            console.log('[movie] empty script — overview only');
+            return;
+        }
+        movieEngine.playChapter(0);
     }
 
     // Map effect driver — bypasses 800ms drainMapEvents pacing for precise cue timing.
