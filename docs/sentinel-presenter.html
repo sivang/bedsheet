@@ -406,6 +406,59 @@
             animation: blink-cursor 0.7s step-end infinite;
         }
 
+        /* ── Movie commentary (transient narration during a cue) ── */
+        .movie-commentary {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(720px, 80%);
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 14px 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--green);
+            z-index: 7;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .movie-commentary.visible { opacity: 1; }
+
+        /* ── Movie chapter card (full-screen title) ── */
+        .movie-chapter-card {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 10, 20, 0.92);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        .movie-chapter-card.visible { opacity: 1; }
+        .movie-chapter-card-title {
+            font-family: var(--font-mono);
+            font-size: 38px;
+            letter-spacing: 4px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .movie-chapter-card-subtitle {
+            margin-top: 12px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
         /* ── Event Cards (identical to dashboard) ── */
         .llm-event {
             padding: 8px 12px;
@@ -1081,6 +1134,15 @@
                 </svg>
             </div>
 
+            <!-- Movie mode: transient commentary + chapter cards -->
+            <div id="movieCommentary" class="movie-commentary"><div class="movie-commentary-body"></div></div>
+            <div id="movieChapterCard" class="movie-chapter-card">
+                <div class="movie-chapter-card-inner">
+                    <div class="movie-chapter-card-title"></div>
+                    <div class="movie-chapter-card-subtitle"></div>
+                </div>
+            </div>
+
             <!-- Briefing Window (agent dossier — positioned separately) -->
             <div class="briefing-overlay" id="briefingOverlay">
                 <div class="briefing-header">
@@ -1683,6 +1745,40 @@
         }
         if (typeof agentOrder !== 'undefined' && agentOrder.length) agentOrder.length = 0;
         if (typeof presentedEvents !== 'undefined' && presentedEvents.length) presentedEvents.length = 0;
+    }
+
+    // ── Movie commentary / chapter-card primitives ──
+    var commentaryTypingHandle = null;
+    var commentaryHideHandle = null;
+    function showCommentary(text, holdMs) {
+        var panel = document.getElementById('movieCommentary');
+        var body = panel.querySelector('.movie-commentary-body');
+        panel.classList.add('visible');
+        body.textContent = '';
+        var i = 0;
+        if (commentaryTypingHandle) clearInterval(commentaryTypingHandle);
+        if (commentaryHideHandle) clearTimeout(commentaryHideHandle);
+        commentaryTypingHandle = setInterval(function() {
+            if (i < text.length) { body.textContent += text[i]; i++; }
+            else { clearInterval(commentaryTypingHandle); commentaryTypingHandle = null; }
+        }, 22);
+        commentaryHideHandle = setTimeout(function() {
+            panel.classList.remove('visible');
+            commentaryHideHandle = null;
+        }, holdMs);
+    }
+
+    var chapterCardHideHandle = null;
+    function showChapterCard(title, subtitle, holdMs) {
+        var card = document.getElementById('movieChapterCard');
+        card.querySelector('.movie-chapter-card-title').textContent = title || '';
+        card.querySelector('.movie-chapter-card-subtitle').textContent = subtitle || '';
+        card.classList.add('visible');
+        if (chapterCardHideHandle) clearTimeout(chapterCardHideHandle);
+        chapterCardHideHandle = setTimeout(function() {
+            card.classList.remove('visible');
+            chapterCardHideHandle = null;
+        }, holdMs);
     }
 
     // ── Map Zoom System ──
