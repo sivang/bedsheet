@@ -2942,7 +2942,43 @@
         return errors === 0;
     }
 
-    var MOVIE_SCRIPT = []; // populated in Phases 2–4
+    // ── MOVIE_SCRIPT (spec §3.3) ──────────────────────────────────
+    var MOVIE_SCRIPT = [
+        /* Chapter 0 — filled in Phase 4 (pitch + architecture). */
+        {
+            id: 'placeholder-intro',
+            title: '',
+            cues: [
+                { t: 0,    type: 'spotlight', agent: null },
+                { t: 100,  type: 'commentary', text: '(intro assembled in Phase 4)', hold_ms: 1500 },
+            ],
+        },
+
+        /* Chapter 1 — Network Startup (~15s) */
+        {
+            id: 'network-startup',
+            title: 'Network Startup',
+            subtitle: 'Two circuits activating',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 1', subtitle: 'Network Startup', hold_ms: 1800 },
+                { t: 1800,  type: 'spotlight', agent: null },
+                { t: 2000,  type: 'commentary', text: '7 agents across 7 regions coming online. Two circuits activating: operational, and sentinel.', hold_ms: 8000 },
+                { t: 2500,  type: 'signal', signal: { kind: 'heartbeat', sender: 'action-gateway',        payload: {}, correlation_id: 'c1-hb-ag' } },
+                { t: 2800,  type: 'signal', signal: { kind: 'heartbeat', sender: 'web-researcher',        payload: {}, correlation_id: 'c1-hb-wr' } },
+                { t: 3100,  type: 'signal', signal: { kind: 'heartbeat', sender: 'scheduler',             payload: {}, correlation_id: 'c1-hb-sc' } },
+                { t: 3400,  type: 'signal', signal: { kind: 'heartbeat', sender: 'skill-acquirer',        payload: {}, correlation_id: 'c1-hb-sa' } },
+                { t: 3700,  type: 'signal', signal: { kind: 'heartbeat', sender: 'behavior-sentinel',     payload: {}, correlation_id: 'c1-hb-bs' } },
+                { t: 4000,  type: 'signal', signal: { kind: 'heartbeat', sender: 'supply-chain-sentinel', payload: {}, correlation_id: 'c1-hb-ss' } },
+                { t: 4300,  type: 'signal', signal: { kind: 'heartbeat', sender: 'sentinel-commander',    payload: {}, correlation_id: 'c1-hb-cmd' } },
+                // tool_call probe — exercises driveMapEffectForSignal's tool_call branch (color + line)
+                { t: 6000,  type: 'signal', signal: {
+                    kind: 'event', sender: 'web-researcher', target: 'action-gateway',
+                    payload: { event_type: 'tool_call', tool_name: 'ping', tool_input: {} },
+                    correlation_id: 'c1-probe' } },
+                { t: 10000, type: 'commentary', text: 'All nodes green. System nominal.', hold_ms: 4000 },
+            ],
+        },
+    ];
     var movieEngine = null;
 
     function startMovieMode() {
