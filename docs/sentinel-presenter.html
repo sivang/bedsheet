@@ -459,6 +459,85 @@
             text-align: center;
         }
 
+        /* ── Movie pitch panel (Chapter 0) ── */
+        .movie-pitch-panel {
+            position: fixed;
+            inset: 8% 12%;
+            background: rgba(5, 10, 20, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 40px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.9;
+            color: var(--green);
+            white-space: pre-wrap;
+            overflow-y: auto;
+            z-index: 55;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .movie-pitch-panel.visible { opacity: 1; }
+
+        /* ── Movie architecture diagram (Chapter 0) ── */
+        .movie-arch-diagram {
+            position: fixed;
+            inset: 4% 6%;
+            background: rgba(5, 10, 20, 0.96);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 40px;
+            z-index: 8;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .movie-arch-diagram.visible { opacity: 1; }
+        .movie-arch-svg { flex: 1; min-height: 0; }
+        .movie-arch-caption {
+            margin-top: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--cyan);
+            text-align: center;
+            letter-spacing: 1.5px;
+        }
+        .arch-node { fill: rgba(20,30,50,0.8); stroke-width: 2; }
+        .arch-node.worker    { stroke: var(--green); }
+        .arch-node.gateway   { stroke: var(--amber); }
+        .arch-node.sentinel  { stroke: var(--purple); }
+        .arch-node.commander { stroke: var(--cyan); }
+        .arch-label { fill: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
+        .arch-sub   { fill: var(--text-dim); font-family: var(--font-mono); font-size: 10px; }
+        .arch-ext   { fill: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; }
+        .arch-arrow { fill: none; stroke-width: 1.5; opacity: 0.7; }
+        .arch-arrow.down   { stroke: var(--green); color: var(--green); }
+        .arch-arrow.out    { stroke: var(--amber); color: var(--amber); }
+        .arch-arrow.audit  { stroke: var(--amber); color: var(--amber); }
+        .arch-arrow.obs    { stroke: var(--purple); color: var(--purple); stroke-dasharray: 4 3; }
+        .arch-arrow.alert  { stroke: var(--purple); color: var(--purple); }
+        .arch-bus {
+            stroke: var(--cyan); stroke-width: 3; stroke-dasharray: 8 5;
+            filter: drop-shadow(0 0 6px var(--cyan));
+        }
+        .arch-bus-label {
+            fill: var(--cyan); font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+        }
+        /* Staged reveals driven by classes on the container */
+        .movie-arch-diagram .arch-ops-plane,
+        .movie-arch-diagram .arch-bus,
+        .movie-arch-diagram .arch-bus-label,
+        .movie-arch-diagram .arch-ctrl-plane {
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        .movie-arch-diagram.step-ops   .arch-ops-plane   { opacity: 1; }
+        .movie-arch-diagram.step-bus   .arch-bus,
+        .movie-arch-diagram.step-bus   .arch-bus-label   { opacity: 1; }
+        .movie-arch-diagram.step-ctrl  .arch-ctrl-plane  { opacity: 1; }
+
         /* ── Event Cards (identical to dashboard) ── */
         .llm-event {
             padding: 8px 12px;
@@ -1134,13 +1213,57 @@
                 </svg>
             </div>
 
-            <!-- Movie mode: transient commentary + chapter cards -->
+            <!-- Movie mode: transient commentary + chapter cards + pitch + arch diagram -->
             <div id="movieCommentary" class="movie-commentary"><div class="movie-commentary-body"></div></div>
             <div id="movieChapterCard" class="movie-chapter-card">
                 <div class="movie-chapter-card-inner">
                     <div class="movie-chapter-card-title"></div>
                     <div class="movie-chapter-card-subtitle"></div>
                 </div>
+            </div>
+            <div id="moviePitchPanel" class="movie-pitch-panel">
+                <div class="movie-pitch-body"></div>
+            </div>
+            <div id="movieArchDiagram" class="movie-arch-diagram">
+                <svg viewBox="0 0 1000 600" class="movie-arch-svg" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <marker id="archArrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                        </marker>
+                    </defs>
+                    <g class="arch-ops-plane">
+                        <rect class="arch-node worker"  x="140" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="225" y="115" text-anchor="middle">web-researcher</text>
+                        <rect class="arch-node worker"  x="420" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="505" y="115" text-anchor="middle">scheduler</text>
+                        <rect class="arch-node worker"  x="700" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="785" y="115" text-anchor="middle">skill-acquirer</text>
+                        <path class="arch-arrow down"   d="M 225 140 L 450 240" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow down"   d="M 505 140 L 500 240" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow down"   d="M 785 140 L 550 240" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node gateway" x="400" y="240" width="200" height="60" rx="6"/>
+                        <text class="arch-label"        x="500" y="272" text-anchor="middle">action-gateway</text>
+                        <text class="arch-sub"          x="500" y="288" text-anchor="middle">rate · audit · ledger</text>
+                        <path class="arch-arrow out"    d="M 600 270 L 810 270" marker-end="url(#archArrowHead)"/>
+                        <text class="arch-ext"          x="900" y="274" text-anchor="middle">external / ClawHub</text>
+                        <path class="arch-arrow audit"  d="M 500 300 L 500 325" marker-end="url(#archArrowHead)"/>
+                    </g>
+                    <line class="arch-bus" x1="60" y1="330" x2="940" y2="330"/>
+                    <text class="arch-bus-label" x="500" y="322" text-anchor="middle">SIXTH SENSE — PubNub / NATS</text>
+                    <g class="arch-ctrl-plane">
+                        <path class="arch-arrow obs"    d="M 270 400 L 270 335" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow obs"    d="M 730 400 L 730 335" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node sentinel" x="180" y="400" width="180" height="60" rx="6"/>
+                        <text class="arch-label"         x="270" y="435" text-anchor="middle">behavior-sentinel</text>
+                        <rect class="arch-node sentinel" x="640" y="400" width="180" height="60" rx="6"/>
+                        <text class="arch-label"         x="730" y="435" text-anchor="middle">supply-chain-sentinel</text>
+                        <path class="arch-arrow alert"   d="M 360 445 L 450 515" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow alert"   d="M 640 445 L 630 515" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node commander" x="450" y="490" width="180" height="60" rx="6"/>
+                        <text class="arch-label"          x="540" y="525" text-anchor="middle">sentinel-commander</text>
+                    </g>
+                </svg>
+                <div class="movie-arch-caption"></div>
             </div>
 
             <!-- Briefing Window (agent dossier — positioned separately) -->
@@ -1736,6 +1859,9 @@
         if (bo) bo.classList.remove('visible');
         if (cm) cm.classList.remove('visible');
         if (cc) cc.classList.remove('visible');
+        // Pitch + arch overlays (Chapter 0)
+        if (typeof hidePitch === 'function') hidePitch();
+        if (typeof hideArchDiagram === 'function') hideArchDiagram();
         // Clear the focus body children (event cards from previous plays)
         var fb = document.getElementById('focusBody');
         if (fb) while (fb.firstChild) fb.removeChild(fb.firstChild);
@@ -1770,6 +1896,78 @@
             panel.classList.remove('visible');
             commentaryHideHandle = null;
         }, holdMs);
+    }
+
+    // ── Movie pitch panel (Chapter 0) ──
+    // Inter-line gaps (ms): slow open (600), fast threats (200), measured close (800).
+    var PITCH_GAPS = [600, 600, 600, 600, 600, 600, 200, 600, 600, 600, 600, 600, 600, 600, 800, 800];
+    var PITCH_LINES = [
+        'Bedsheet was created out of a single understanding.',
+        'The modern agentic landscape is changing at breakneck speed.',
+        'Adaptability is the only name of the game.',
+        'Thus Bedsheet was built moldable. Protocol-based. Lightweight. You bend it to your problem \u2014 not the other way around.',
+        'But adaptability alone does not survive contact with the real world.',
+        'Production agents now face a growing catalogue of hostile action:',
+        'Prompt injection. Jailbreaking. Phishing. Supply-chain poisoning. Sleeper payloads. Rate-limit exhaustion. Rogue-agent bursts. Data exfiltration.',
+        'Against these threats, an agent alone is a single point of failure.',
+        'To meet this battlefield, Sixth Sense was engineered.',
+        'The first real-time, high-availability, general-purpose communication bus ever fielded in an agentic framework.',
+        'Transport-agnostic. PubNub. NATS. Production-grade. Battle-tested.',
+        'The bus is not a feature. It is the substrate.',
+        'Upon it stands Agent Sentinel \u2014 a fully autonomous command-and-control artificial intelligence plane. It conducts behavioral observation. It dispatches response. No foe breaches the line.',
+        'Skills from the ClawHub registry arrive hashed, signed, and audited. Nothing executes without sentinel clearance.',
+        'A2A does not do this. A2A is not HPC.',
+        'This is Agent Sentinel. Watch it operate.',
+    ];
+    var pitchTypingHandle = null;
+    function showPitch(lines, onComplete) {
+        var panel = document.getElementById('moviePitchPanel');
+        var body = panel.querySelector('.movie-pitch-body');
+        body.textContent = '';
+        panel.classList.add('visible');
+        var li = 0, ci = 0;
+        if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
+        function step() {
+            if (li >= lines.length) { if (onComplete) onComplete(); return; }
+            var line = lines[li];
+            if (ci < line.length) {
+                body.textContent += line[ci]; ci++;
+                pitchTypingHandle = setTimeout(step, 22);
+            } else {
+                body.textContent += '\n\n';
+                var gap = PITCH_GAPS[Math.min(li, PITCH_GAPS.length - 1)];
+                li++; ci = 0;
+                pitchTypingHandle = setTimeout(step, gap);
+            }
+        }
+        step();
+    }
+    function hidePitch() {
+        if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
+        document.getElementById('moviePitchPanel').classList.remove('visible');
+    }
+
+    // ── Movie architecture diagram (Chapter 0) ──
+    function showArchDiagram(caption, onComplete) {
+        var el = document.getElementById('movieArchDiagram');
+        el.querySelector('.movie-arch-caption').textContent = '';
+        el.classList.remove('step-ops', 'step-bus', 'step-ctrl');
+        el.classList.add('visible');
+        setTimeout(function() { el.classList.add('step-ops'); }, 300);
+        setTimeout(function() { el.classList.add('step-bus'); }, 1300);
+        setTimeout(function() { el.classList.add('step-ctrl'); }, 1800);
+        setTimeout(function() {
+            var cap = el.querySelector('.movie-arch-caption');
+            var i = 0;
+            var iv = setInterval(function() {
+                if (i < caption.length) { cap.textContent += caption[i++]; }
+                else { clearInterval(iv); if (onComplete) onComplete(); }
+            }, 30);
+        }, 2800);
+    }
+    function hideArchDiagram() {
+        var el = document.getElementById('movieArchDiagram');
+        el.classList.remove('visible', 'step-ops', 'step-bus', 'step-ctrl');
     }
 
     var chapterCardHideHandle = null;
@@ -2944,13 +3142,21 @@
 
     // ── MOVIE_SCRIPT (spec §3.3) ──────────────────────────────────
     var MOVIE_SCRIPT = [
-        /* Chapter 0 — filled in Phase 4 (pitch + architecture). */
+        /* Chapter 0 — Intro + Bedsheet pitch + Architecture (~44s scripted).
+         * The existing intro crawl is user-dismissed BEFORE startMovieMode() fires,
+         * so these cues play against a clean overview map. Timing math:
+         *   PITCH_LINES = 16 lines / 1270 chars × 22ms/char + ~9.6s gaps = ~37.5s.
+         *   Arch caption ≈ 75 chars × 30ms + 2.8s pre-wait = ~5.1s. */
         {
-            id: 'placeholder-intro',
-            title: '',
+            id: 'intro',
+            title: 'Intro',
+            subtitle: 'Agent Sentinel',
             cues: [
-                { t: 0,    type: 'spotlight', agent: null },
-                { t: 100,  type: 'commentary', text: '(intro assembled in Phase 4)', hold_ms: 1500 },
+                { t: 0,     type: 'spotlight', agent: null },
+                { t: 100,   type: 'movie-pitch-start' },
+                { t: 38000, type: 'movie-pitch-end' },
+                { t: 38300, type: 'movie-arch-start' },
+                { t: 43800, type: 'movie-arch-end' },
             ],
         },
 
