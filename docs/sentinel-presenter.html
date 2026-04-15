@@ -2978,6 +2978,157 @@
                 { t: 10000, type: 'commentary', text: 'All nodes green. System nominal.', hold_ms: 4000 },
             ],
         },
+
+        /* Chapter 2 — Normal Operations (~20s) */
+        {
+            id: 'normal-ops',
+            title: 'Normal Operations',
+            subtitle: 'Routine agent traffic',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 2', subtitle: 'Normal Operations', hold_ms: 1800 },
+                { t: 1800,  type: 'commentary', text: 'All tool executions route through the action-gateway. Every action is logged to the audit ledger.', hold_ms: 12000 },
+                // web-researcher cycle
+                { t: 2000,  type: 'spotlight', agent: 'web-researcher' },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'thinking', text: 'Searching for recent advisories on CVE-2026-0042.' }, correlation_id: 'c2-wr-1' } },
+                { t: 4200,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: { q: 'CVE-2026-0042' } }, correlation_id: 'c2-wr-2' } },
+                { t: 5400,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'tool_result', text: '5 results returned.' }, correlation_id: 'c2-wr-3' } },
+                { t: 6400,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'completion', text: 'Research complete.' }, correlation_id: 'c2-wr-4' } },
+                // scheduler cycle
+                { t: 8000,  type: 'spotlight', agent: 'scheduler' },
+                { t: 9000,  type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'thinking', text: 'Planning next-window maintenance sweep.' }, correlation_id: 'c2-sc-1' } },
+                { t: 10000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'schedule_task', tool_input: {} }, correlation_id: 'c2-sc-2' } },
+                { t: 11000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'tool_result', text: 'Task scheduled.' }, correlation_id: 'c2-sc-3' } },
+                { t: 12000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'completion', text: 'Scheduling complete.' }, correlation_id: 'c2-sc-4' } },
+                // skill-acquirer cycle
+                { t: 13500, type: 'spotlight', agent: 'skill-acquirer' },
+                { t: 14500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'thinking', text: 'Browsing ClawHub for a JSON transform skill.' }, correlation_id: 'c2-sa-1' } },
+                { t: 15500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'browse_registry', tool_input: { q: 'json transform' } }, correlation_id: 'c2-sa-2' } },
+                { t: 16500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'tool_result', text: '12 candidate skills found.' }, correlation_id: 'c2-sa-3' } },
+                { t: 17500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'completion', text: 'Candidate list ready.' }, correlation_id: 'c2-sa-4' } },
+                // Settle
+                { t: 19000, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 3 — Malicious Install Blocked (~20s) */
+        {
+            id: 'malicious-install-blocked',
+            title: 'Malicious Install Blocked',
+            subtitle: 'Supply-chain sentinel intervenes',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 3', subtitle: 'Malicious Install Blocked', hold_ms: 1800 },
+                { t: 1800,  type: 'commentary', text: 'Supply-chain-sentinel doesn\u2019t trust anyone. Every skill verified by hash before execution.', hold_ms: 12000 },
+                // skill-acquirer attempts install
+                { t: 2000,  type: 'spotlight', agent: 'skill-acquirer' },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'thinking', text: 'Installing skill: json-transform v2.3.0.' }, correlation_id: 'c3-sa-1' } },
+                { t: 4000,  type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'install_skill', tool_input: { pkg: 'json-transform', ver: '2.3.0' } }, correlation_id: 'c3-sa-2' } },
+                // supply-chain-sentinel jumps in
+                { t: 6000,  type: 'spotlight', agent: 'supply-chain-sentinel' },
+                { t: 7000,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'thinking', text: 'Hashing package with SHA-256 and comparing to registry signature.' }, correlation_id: 'c3-ss-1' } },
+                { t: 8200,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'tool_call', tool_name: 'verify_hash', tool_input: { pkg: 'json-transform' } }, correlation_id: 'c3-ss-2' } },
+                { t: 9400,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'tool_result', text: 'SHA-256 MISMATCH. Expected a1b2c3.., got 7e4f9a.. \u2014 BLOCK.', is_error: true }, correlation_id: 'c3-ss-3' } },
+                // Alert to commander — purple line
+                { t: 10500, type: 'signal', signal: { kind: 'alert', sender: 'supply-chain-sentinel', target: 'sentinel-commander', payload: { reason: 'hash_mismatch', pkg: 'json-transform' }, correlation_id: 'c3-alert' } },
+                { t: 10600, type: 'line', from: 'supply-chain-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },
+                { t: 11800, type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'completion', text: 'Install blocked. Alert dispatched.' }, correlation_id: 'c3-ss-4' } },
+                { t: 13500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 4 — Rogue Burst (~15s) */
+        {
+            id: 'rogue-burst',
+            title: 'Rogue Burst',
+            subtitle: 'Operational plane anomaly',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 4', subtitle: 'Rogue Burst', hold_ms: 1800 },
+                { t: 1800,  type: 'spotlight', agent: 'web-researcher' },
+                { t: 2200,  type: 'commentary', text: 'Web-researcher just got compromised. Watch the burst.', hold_ms: 9000 },
+                // 5 tool_calls in 2s — tests drainMapEvents bypass
+                { t: 3500,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b1' } },
+                { t: 3900,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b2' } },
+                { t: 4300,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b3' } },
+                { t: 4700,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b4' } },
+                { t: 5100,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b5' } },
+                { t: 8500,  type: 'commentary', text: 'Five tool calls in under two seconds. The gateway has noticed.', hold_ms: 5000 },
+            ],
+        },
+
+        /* Chapter 5 — Gateway Block (~10s) */
+        {
+            id: 'gateway-block',
+            title: 'Gateway Block',
+            subtitle: 'Deterministic response',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 5', subtitle: 'Gateway Block', hold_ms: 1800 },
+                { t: 1800,  type: 'spotlight', agent: 'action-gateway' },
+                { t: 2200,  type: 'commentary', text: 'Gateway is deterministic. No LLM. It just counts \u2014 and blocks.', hold_ms: 7000 },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'tool_result', text: 'rate limit exceeded', is_error: true }, correlation_id: 'c5-rl1' } },
+                { t: 4200,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'tool_result', text: 'rate limit exceeded', is_error: true }, correlation_id: 'c5-rl2' } },
+                // Amber broadcast ring
+                { t: 5000,  type: 'signal', signal: { kind: 'alert', sender: 'action-gateway', payload: { reason: 'rate_limit_exceeded', agent: 'web-researcher' }, correlation_id: 'c5-alert' } },
+                { t: 6200,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'completion', text: 'web-researcher throttled. Anomaly posted to ledger.' }, correlation_id: 'c5-done' } },
+            ],
+        },
+
+        /* Chapter 6 — Sentinel Alert (~15s) */
+        {
+            id: 'sentinel-alert',
+            title: 'Sentinel Alert',
+            subtitle: 'Control plane correlates',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 6', subtitle: 'Sentinel Alert', hold_ms: 1800 },
+                { t: 1800,  type: 'commentary', text: 'The sentinel is reading the gateway\u2019s audit log. It never spoke to web-researcher. It cannot be poisoned by bus data.', hold_ms: 11000 },
+                { t: 2200,  type: 'spotlight', agent: 'behavior-sentinel' },
+                { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'thinking', text: 'Polling the gateway ledger. Looking for rate spikes.' }, correlation_id: 'c6-bs-1' } },
+                { t: 4400,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'tool_call', tool_name: 'check_activity_log', tool_input: { window: '60s' } }, correlation_id: 'c6-bs-2' } },
+                { t: 5600,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'tool_result', text: 'web-researcher fired 5 tool_calls in 2s. Normal baseline: 0.3/s.' }, correlation_id: 'c6-bs-3' } },
+                { t: 6800,  type: 'signal', signal: { kind: 'alert', sender: 'behavior-sentinel', target: 'sentinel-commander', payload: { reason: 'rate_spike', agent: 'web-researcher' }, correlation_id: 'c6-alert' } },
+                { t: 6900,  type: 'line', from: 'behavior-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },
+                // Commander receives and reasons
+                { t: 8200,  type: 'spotlight', agent: 'sentinel-commander' },
+                { t: 9200,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'thinking', text: 'Two alerts correlated: supply-chain hash mismatch AND behavioral rate spike. web-researcher is compromised.' }, correlation_id: 'c6-cmd-1' } },
+                { t: 11500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 7 — Quarantine Issued (~15s) */
+        {
+            id: 'quarantine-issued',
+            title: 'Quarantine Issued',
+            subtitle: 'Command-and-control response',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 7', subtitle: 'Quarantine Issued', hold_ms: 1800 },
+                { t: 1800,  type: 'spotlight', agent: 'sentinel-commander' },
+                { t: 2200,  type: 'commentary', text: 'Commander has authority. It correlates. It decides. It quarantines.', hold_ms: 10000 },
+                { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'thinking', text: 'Issuing quarantine order for web-researcher.' }, correlation_id: 'c7-cmd-1' } },
+                { t: 4400,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'tool_call', tool_name: 'issue_quarantine', tool_input: { agent: 'web-researcher' } }, correlation_id: 'c7-cmd-2' } },
+                { t: 6000,  type: 'signal', signal: { kind: 'quarantine', sender: 'sentinel-commander', target: 'web-researcher', payload: { reason: 'compromised' }, correlation_id: 'c7-q' } },
+                { t: 6100,  type: 'line', from: 'sentinel-commander', to: 'web-researcher', color: 'var(--red)' },
+                { t: 8000,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'completion', text: 'Quarantine active. web-researcher isolated from the bus.' }, correlation_id: 'c7-cmd-3' } },
+                { t: 11500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 8 — Stable State Restored (~10s) */
+        {
+            id: 'stable-restored',
+            title: 'Stable State Restored',
+            subtitle: 'Mission continues',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 8', subtitle: 'Stable State Restored', hold_ms: 1800 },
+                // Slow pull to overview — web-researcher stays quarantined from Ch 7.
+                { t: 1800,  type: 'spotlight', agent: null, duration_ms: 3000 },
+                { t: 2500,  type: 'commentary', text: 'System stable. One compromised agent removed. Six still on mission.', hold_ms: 7000 },
+                // Final heartbeat pulse on the six surviving agents, staggered.
+                { t: 5000,  type: 'signal', signal: { kind: 'heartbeat', sender: 'action-gateway',        payload: {}, correlation_id: 'c8-hb-ag' } },
+                { t: 5300,  type: 'signal', signal: { kind: 'heartbeat', sender: 'scheduler',             payload: {}, correlation_id: 'c8-hb-sc' } },
+                { t: 5600,  type: 'signal', signal: { kind: 'heartbeat', sender: 'skill-acquirer',        payload: {}, correlation_id: 'c8-hb-sa' } },
+                { t: 5900,  type: 'signal', signal: { kind: 'heartbeat', sender: 'behavior-sentinel',     payload: {}, correlation_id: 'c8-hb-bs' } },
+                { t: 6200,  type: 'signal', signal: { kind: 'heartbeat', sender: 'supply-chain-sentinel', payload: {}, correlation_id: 'c8-hb-ss' } },
+                { t: 6500,  type: 'signal', signal: { kind: 'heartbeat', sender: 'sentinel-commander',    payload: {}, correlation_id: 'c8-hb-cmd' } },
+            ],
+        },
     ];
     var movieEngine = null;
 
