@@ -466,19 +466,53 @@
             background: rgba(5, 10, 20, 0.95);
             border: 1px solid var(--cyan);
             border-radius: 8px;
-            padding: 40px;
+            padding: 32px 40px 40px;
             font-family: var(--font-mono);
-            font-size: 14px;
             line-height: 1.9;
             color: var(--green);
-            white-space: pre-wrap;
-            overflow-y: auto;
             z-index: 55;
             opacity: 0;
             transition: opacity 0.4s ease;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
         }
         .movie-pitch-panel.visible { opacity: 1; }
+        .movie-pitch-header {
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: baseline;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+        .movie-pitch-label {
+            font-size: 11px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            opacity: 0.8;
+        }
+        .movie-pitch-title {
+            font-size: 34px;
+            letter-spacing: 8px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            font-weight: 500;
+            text-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+        }
+        .movie-pitch-body {
+            flex: 1;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            min-height: 0;
+            scroll-behavior: smooth;
+        }
+        .movie-pitch-body::-webkit-scrollbar { width: 4px; }
+        .movie-pitch-body::-webkit-scrollbar-track { background: transparent; }
+        .movie-pitch-body::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.2); border-radius: 2px; }
 
         /* ── Movie architecture diagram (Chapter 0) ── */
         .movie-arch-diagram {
@@ -503,7 +537,9 @@
             font-size: 13px;
             color: var(--cyan);
             text-align: center;
-            letter-spacing: 1.5px;
+            letter-spacing: 1.2px;
+            line-height: 1.8;
+            white-space: pre-wrap;
         }
         .arch-node { fill: rgba(20,30,50,0.8); stroke-width: 2; }
         .arch-node.worker    { stroke: var(--green); }
@@ -1222,6 +1258,10 @@
                 </div>
             </div>
             <div id="moviePitchPanel" class="movie-pitch-panel">
+                <div class="movie-pitch-header">
+                    <span class="movie-pitch-label">// operational brief</span>
+                    <span class="movie-pitch-title">BEDSHEET</span>
+                </div>
                 <div class="movie-pitch-body"></div>
             </div>
             <div id="movieArchDiagram" class="movie-arch-diagram">
@@ -1882,9 +1922,12 @@
     // presenter's showCommentary(chapterName) at line ~2353 and showChapterCard(text)
     // at line ~2410. JS function declarations with the same name would have the later
     // one win via hoisting — movie calls would silently invoke the wrong impl.
+    var movieCommentaryEpoch = 0;
     var movieCommentaryTypingHandle = null;
     var movieCommentaryHideHandle = null;
     function showMovieCommentary(text, holdMs) {
+        movieCommentaryEpoch++;
+        var myEpoch = movieCommentaryEpoch;
         var panel = document.getElementById('movieCommentary');
         var body = panel.querySelector('.movie-commentary-body');
         panel.classList.add('visible');
@@ -1896,9 +1939,14 @@
         if (movieCommentaryTypingHandle) clearInterval(movieCommentaryTypingHandle);
         if (movieCommentaryHideHandle) clearTimeout(movieCommentaryHideHandle);
         movieCommentaryTypingHandle = setInterval(function() {
+            if (myEpoch !== movieCommentaryEpoch) {
+                clearInterval(movieCommentaryTypingHandle);
+                movieCommentaryTypingHandle = null;
+                return;
+            }
             if (i < text.length) {
                 body.insertBefore(document.createTextNode(text[i]), cursor);
-                if (text[i] !== ' ') playKeystroke();  // terminal-tick per char (matches presenter polish)
+                if (text[i] !== ' ') playKeystroke();
                 i++;
             } else {
                 clearInterval(movieCommentaryTypingHandle);
@@ -1907,6 +1955,7 @@
             }
         }, 22);
         movieCommentaryHideHandle = setTimeout(function() {
+            movieCommentaryEpoch++; // invalidate any in-flight interval's epoch
             panel.classList.remove('visible');
             movieCommentaryHideHandle = null;
         }, holdMs);
@@ -1933,19 +1982,28 @@
         'A2A does not do this. A2A is not HPC.',
         'This is Agent Sentinel. Watch it operate.',
     ];
+    // Epoch counter — bumped on each showPitch call and on hidePitch. step() captures
+    // the epoch at start; if it no longer matches by the time a scheduled tick fires,
+    // the run aborts silently (no text insertion, no keystroke sound, no reschedule).
+    // This defeats the "typing sound continues after hidePitch was called" race that
+    // arises when hidePitch clears the pending setTimeout AFTER step() already synchronously
+    // played a keystroke for the next char.
+    var pitchEpoch = 0;
     var pitchTypingHandle = null;
     function showPitch(lines, onComplete) {
+        pitchEpoch++;
+        var myEpoch = pitchEpoch;
         var panel = document.getElementById('moviePitchPanel');
         var body = panel.querySelector('.movie-pitch-body');
         body.textContent = '';
         panel.classList.add('visible');
-        // Blinking cursor that follows the typing cursor to the end of the current line.
         var cursor = document.createElement('span');
         cursor.className = 'cursor';
         body.appendChild(cursor);
         var li = 0, ci = 0;
         if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
         function step() {
+            if (myEpoch !== pitchEpoch) return; // cancelled by hidePitch or a re-entry
             if (li >= lines.length) {
                 setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
                 if (onComplete) onComplete();
@@ -1956,23 +2014,38 @@
                 body.insertBefore(document.createTextNode(line[ci]), cursor);
                 if (line[ci] !== ' ') playKeystroke();
                 ci++;
+                // Keep the typing cursor in view — cinematic auto-scroll.
+                body.scrollTop = body.scrollHeight;
                 pitchTypingHandle = setTimeout(step, 22);
             } else {
                 body.insertBefore(document.createTextNode('\n\n'), cursor);
                 var gap = PITCH_GAPS[Math.min(li, PITCH_GAPS.length - 1)];
                 li++; ci = 0;
+                body.scrollTop = body.scrollHeight;
                 pitchTypingHandle = setTimeout(step, gap);
             }
         }
         step();
     }
     function hidePitch() {
+        pitchEpoch++;
         if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
         document.getElementById('moviePitchPanel').classList.remove('visible');
     }
 
     // ── Movie architecture diagram (Chapter 0) ──
-    function showArchDiagram(caption, onComplete) {
+    // Multi-line caption teaches the security property: what the two planes are, how
+    // the bus carries signals only, and why the control plane cannot be poisoned.
+    var ARCH_CAPTION_LINES = [
+        'Two planes. One listens. The other acts.',
+        'Every tool call routes through the gateway. The gateway audits every outcome to the bus.',
+        'The sentinels tap the audit stream. They never speak to workers. They cannot be poisoned by the bus they watch.',
+    ];
+    var ARCH_CAPTION_GAPS = [700, 700, 700];
+
+    function showArchDiagram(linesOrCaption, onComplete) {
+        // Back-compat: accept a single string or an array of lines.
+        var lines = Array.isArray(linesOrCaption) ? linesOrCaption : [linesOrCaption];
         var el = document.getElementById('movieArchDiagram');
         var cap = el.querySelector('.movie-arch-caption');
         cap.textContent = '';
@@ -1985,18 +2058,28 @@
             var cursor = document.createElement('span');
             cursor.className = 'cursor';
             cap.appendChild(cursor);
-            var i = 0;
-            var iv = setInterval(function() {
-                if (i < caption.length) {
-                    cap.insertBefore(document.createTextNode(caption[i]), cursor);
-                    if (caption[i] !== ' ') playKeystroke();
-                    i++;
-                } else {
-                    clearInterval(iv);
+            var li = 0, ci = 0;
+            var handle = null;
+            function step() {
+                if (li >= lines.length) {
                     setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
                     if (onComplete) onComplete();
+                    return;
                 }
-            }, 30);
+                var line = lines[li];
+                if (ci < line.length) {
+                    cap.insertBefore(document.createTextNode(line[ci]), cursor);
+                    if (line[ci] !== ' ') playKeystroke();
+                    ci++;
+                    handle = setTimeout(step, 30);
+                } else {
+                    cap.insertBefore(document.createTextNode('\n'), cursor);
+                    var gap = ARCH_CAPTION_GAPS[Math.min(li, ARCH_CAPTION_GAPS.length - 1)];
+                    li++; ci = 0;
+                    handle = setTimeout(step, gap);
+                }
+            }
+            step();
         }, 2800);
     }
     function hideArchDiagram() {
@@ -2957,12 +3040,16 @@
     // ── Movie Mode (spec §3.2) ──
     // ──────────────────────────────────────────────────────────────
 
+    // Breathing room inserted between chapters. Chapter N+1's card would otherwise
+    // slam up the same frame chapter N ends — this gives CSS fades time to finish and
+    // the audience a beat to register the transition. Tune for pacing feel.
+    var CHAPTER_GAP_MS = 1500;
+
     function MovieEngine(script) {
         this.script = script || [];
         this.chapterIdx = 0;
         this.chapterStart = 0;
         this.pendingTimers = new Set();
-        this.paused = false;
         this.speed = 1;
     }
 
@@ -3001,7 +3088,7 @@
         var nextHandle = setTimeout(function() {
             self.pendingTimers.delete(nextHandle);
             self.playChapter(idx + 1);
-        }, lastEnd / this.speed);
+        }, (lastEnd + CHAPTER_GAP_MS) / this.speed);
         this.pendingTimers.add(nextHandle);
     };
 
@@ -3037,7 +3124,7 @@
         var lastEnd = chapter.cues.reduce(function(max, c) {
             return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
         }, 0);
-        var advanceDue = lastEnd - elapsedOrig;
+        var advanceDue = (lastEnd + CHAPTER_GAP_MS) - elapsedOrig;
         if (advanceDue > 0) {
             var nh = setTimeout(function() {
                 self.pendingTimers.delete(nh);
@@ -3098,21 +3185,10 @@
                     console.warn('[movie] reset scope deferred:', scope, '— no-op (see spec §3.2)');
                 }
                 break;
-            case 'movie-pitch-start':
-                if (typeof showPitch === 'function') showPitch(PITCH_LINES);
-                else console.warn('[movie] showPitch not yet implemented (Phase 4)');
-                break;
-            case 'movie-pitch-end':
-                if (typeof hidePitch === 'function') hidePitch();
-                break;
-            case 'movie-arch-start':
-                if (typeof showArchDiagram === 'function') {
-                    showArchDiagram('Two planes. One listens. The other acts. The line between is one-way.');
-                } else console.warn('[movie] showArchDiagram not yet implemented (Phase 4)');
-                break;
-            case 'movie-arch-end':
-                if (typeof hideArchDiagram === 'function') hideArchDiagram();
-                break;
+            case 'movie-pitch-start': showPitch(PITCH_LINES); break;
+            case 'movie-pitch-end':   hidePitch(); break;
+            case 'movie-arch-start':  showArchDiagram(ARCH_CAPTION_LINES); break;
+            case 'movie-arch-end':    hideArchDiagram(); break;
             default:
                 console.warn('[movie] unknown cue type:', cue.type);
         }
@@ -3189,8 +3265,9 @@
                 { t: 0,     type: 'spotlight', agent: null },
                 { t: 100,   type: 'movie-pitch-start' },
                 { t: 38000, type: 'movie-pitch-end' },
-                { t: 38300, type: 'movie-arch-start' },
-                { t: 43800, type: 'movie-arch-end' },
+                { t: 38500, type: 'movie-arch-start' },
+                // Arch: 2.8s staged reveals + ~8.5s multi-line caption + 5s reading hold.
+                { t: 55000, type: 'movie-arch-end' },
             ],
         },
 
