@@ -378,16 +378,9 @@
             pointer-events: auto;
         }
 
-        /* Shrink-and-reopen transition between spotlights. Applied by spotlight cue
-           handler on agent→agent transitions, then removed after ~350ms so the panel
-           expands back at the new agent's position with fresh content. */
-        .focus-overlay.transitioning,
-        .briefing-overlay.transitioning {
-            transform: scale(0.1);
-            opacity: 0;
-            pointer-events: none;
-            transform-origin: center center;
-        }
+        /* Shrink-and-reopen transition rule lives below — must come AFTER both
+           .focus-overlay.visible AND .briefing-overlay.visible so the cascade lets it
+           override the .visible transforms. See line ~483 for the active rule. */
 
         .focus-overlay-header {
             padding: 10px 16px;
@@ -462,6 +455,19 @@
             opacity: 1;
             transform: translateY(0);
             pointer-events: auto;
+        }
+
+        /* Shrink-and-reopen transition for spotlight changes. Declared AFTER both
+           .focus-overlay.visible (line ~370) and .briefing-overlay.visible (above) so
+           the cascade lets scale(0.1) + opacity 0 override the .visible transform.
+           Applied by the runCue 'spotlight' handler on agent→agent transitions; removed
+           after ~380ms so CSS animates scale 0.1 → 1 back at the new agent's position. */
+        .focus-overlay.transitioning,
+        .briefing-overlay.transitioning {
+            transform: scale(0.1) !important;
+            opacity: 0 !important;
+            pointer-events: none;
+            transform-origin: center center;
         }
 
         .briefing-header {
