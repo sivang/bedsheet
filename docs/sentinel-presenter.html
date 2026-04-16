@@ -3516,8 +3516,15 @@
                     zoomToOverview({ durationMs: cue.duration_ms });
                     hideFocusOverlay();
                 } else if (currentFocus && currentFocus !== cue.agent) {
-                    // Agent-to-agent transition: shrink the panels at the old agent,
-                    // swap zoom + content, then grow back at the new agent.
+                    // Agent-to-agent transition timeline:
+                    //   t=0    : cards start shrinking (400ms)
+                    //   t=400  : cards fully hidden. Start zoom (1500ms). Update content
+                    //            under cover while invisible.
+                    //   t=1900 : zoom finished. Remove .transitioning so cards grow back
+                    //            at the new position with fresh content.
+                    // This keeps the panels out of the frame during the whole zoom move,
+                    // so the viewer isn't distracted by an already-visible panel sliding
+                    // across the screen with the map under it.
                     var _overlay = document.getElementById('focusOverlay');
                     var _briefing = document.getElementById('briefingOverlay');
                     _overlay.classList.add('transitioning');
@@ -3525,13 +3532,16 @@
                     var newAgent = cue.agent;
                     var newDur = cue.duration_ms;
                     currentFocus = newAgent;
+                    var SHRINK_MS = 400;
+                    var ZOOM_MS = newDur || 1500;  // matches .map-viewport CSS default
                     setTimeout(function() {
-                        zoomToAgent(newAgent, { durationMs: newDur });
+                        zoomToAgent(newAgent, { durationMs: ZOOM_MS });
                         showFocusOverlay(newAgent);
-                        // In-place class swap: CSS transitions animate scale 0.1 → 1
-                        _overlay.classList.remove('transitioning');
-                        _briefing.classList.remove('transitioning');
-                    }, 380);
+                        setTimeout(function() {
+                            _overlay.classList.remove('transitioning');
+                            _briefing.classList.remove('transitioning');
+                        }, ZOOM_MS);
+                    }, SHRINK_MS);
                 } else {
                     // Fresh spotlight (from overview or first beat)
                     currentFocus = cue.agent;
