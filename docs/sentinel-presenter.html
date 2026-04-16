@@ -250,6 +250,14 @@
             cursor: grab;
             outline: 2px dashed var(--cyan);
             outline-offset: -2px;
+            /* Disable text selection so click-drag on prose doesn't start a selection. */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Prevent the map itself from responding to mousedown while dragging panels. */
+        body.panel-edit-mode .map-area {
+            user-select: none;
+            -webkit-user-select: none;
         }
         body.panel-edit-mode .focus-overlay.dragging,
         body.panel-edit-mode .briefing-overlay.dragging {
@@ -259,7 +267,7 @@
         }
         /* Small badge in the corner so you can tell edit mode is on */
         body.panel-edit-mode::before {
-            content: '// PANEL EDIT — drag / E to exit / X to export / C to clear';
+            content: '// PANEL EDIT — chapter paused — drag / E exit / X export / C clear';
             position: fixed;
             top: 8px;
             left: 50%;
@@ -2421,7 +2429,15 @@
     function setEditMode(on) {
         editMode = on;
         document.body.classList.toggle('panel-edit-mode', editMode);
-        console.log('[panel-edit] ' + (editMode ? 'ON — drag panels, X to export' : 'OFF'));
+        // Pause chapter playback while editing — otherwise a pending cue (spotlight
+        // to another agent, signal line, etc.) fires mid-drag and the map zooms
+        // unexpectedly, making it impossible to position panels precisely.
+        if (on && movieEngine) {
+            movieEngine.cancelAll();
+            console.log('[panel-edit] ON — drag panels. Cues paused. Press E to resume and N to advance.');
+        } else {
+            console.log('[panel-edit] OFF — press N to advance to the next chapter, or R to restart.');
+        }
     }
 
     function onPanelMouseDown(e) {
@@ -2435,7 +2451,10 @@
         dragOffset.x = e.clientX - rect.left;
         dragOffset.y = e.clientY - rect.top;
         panel.classList.add('dragging');
+        // Lock out browser default drag-scroll and text selection + any parent handlers
+        // (map zoom, focus-overlay internal scrolling, etc.).
         e.preventDefault();
+        e.stopPropagation();
     }
     function onDocMouseMove(e) {
         if (!draggingPanel) return;
@@ -2447,6 +2466,8 @@
         y = Math.max(0, Math.min(y, mapRect.height - draggingPanel.el.offsetHeight));
         draggingPanel.el.style.left = x + 'px';
         draggingPanel.el.style.top = y + 'px';
+        e.preventDefault();
+        e.stopPropagation();
     }
     function onDocMouseUp(e) {
         if (!draggingPanel) return;
@@ -2460,6 +2481,8 @@
         }
         draggingPanel.el.classList.remove('dragging');
         draggingPanel = null;
+        e.preventDefault();
+        e.stopPropagation();
     }
     function exportPanelPositions() {
         var json = JSON.stringify(PANEL_POSITIONS, null, 4);
