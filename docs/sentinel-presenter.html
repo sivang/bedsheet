@@ -2412,31 +2412,43 @@
         briefing: { x_frac: 0.05, y_frac: 0.55 },  // bottom-left area
     };
 
-    var PANEL_POSITIONS = {};  // { agentName: { focus: {x, y}, briefing: {x, y} } } — pixels, map-area relative
+    // Panels are a global HUD — ONE position for focus, ONE for briefing, applied to
+    // every spotlighted agent. User drags once per panel, saves, done.
+    // Shape: { focus: {x, y}, briefing: {x, y} } — pixels, map-area relative.
+    var PANEL_POSITIONS = {};
 
-    // Load persisted positions on boot. Priority:
-    //   1. docs/panel-positions.json (committed, portable across machines)
-    //   2. localStorage (live editing state on this machine)
-    // The JSON file wins if present — once you commit your positions via X export,
-    // they become authoritative.
     (function loadPositions() {
+        function applyRaw(raw) {
+            if (!raw || typeof raw !== 'object') return false;
+            // Accept the current global shape directly.
+            if (raw.focus || raw.briefing) {
+                PANEL_POSITIONS = { focus: raw.focus, briefing: raw.briefing };
+                return true;
+            }
+            // Back-compat: if the stored shape is per-agent, take the first entry as global.
+            var firstKey = Object.keys(raw)[0];
+            if (firstKey && raw[firstKey] && (raw[firstKey].focus || raw[firstKey].briefing)) {
+                PANEL_POSITIONS = { focus: raw[firstKey].focus, briefing: raw[firstKey].briefing };
+                return true;
+            }
+            return false;
+        }
         fetch('./panel-positions.json', { cache: 'no-store' })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(function(json) {
-                if (json && typeof json === 'object') {
-                    PANEL_POSITIONS = json;
-                    console.log('[panel-edit] loaded panel-positions.json');
-                } else {
+                if (!applyRaw(json)) {
                     try {
                         var saved = localStorage.getItem('bedsheet.panelPositions');
-                        if (saved) { PANEL_POSITIONS = JSON.parse(saved); console.log('[panel-edit] loaded from localStorage'); }
+                        if (saved && applyRaw(JSON.parse(saved))) console.log('[panel-edit] loaded from localStorage');
                     } catch (e) {}
+                } else {
+                    console.log('[panel-edit] loaded panel-positions.json');
                 }
             })
             .catch(function() {
                 try {
                     var saved = localStorage.getItem('bedsheet.panelPositions');
-                    if (saved) { PANEL_POSITIONS = JSON.parse(saved); console.log('[panel-edit] loaded from localStorage (no JSON file)'); }
+                    if (saved && applyRaw(JSON.parse(saved))) console.log('[panel-edit] loaded from localStorage (no JSON file)');
                 } catch (e) {}
             });
     })();
@@ -2445,9 +2457,8 @@
         try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) {}
     }
 
-    function getPanelPosition(agentName, which, areaW, areaH, panelW, panelH) {
-        var entry = PANEL_POSITIONS[agentName];
-        if (entry && entry[which]) return { x: entry[which].x, y: entry[which].y };
+    function getPanelPosition(which, areaW, areaH, panelW, panelH) {
+        if (PANEL_POSITIONS[which]) return { x: PANEL_POSITIONS[which].x, y: PANEL_POSITIONS[which].y };
         var def = PANEL_POSITIONS_DEFAULTS[which];
         return {
             x: Math.max(16, Math.min(def.x_frac * areaW, areaW - panelW - 16)),
@@ -2465,8 +2476,8 @@
         var focusW = 380, focusH = 420;
         var briefW = 360, briefH = 320;
 
-        var focusPos = getPanelPosition(agentName, 'focus', areaW, areaH, focusW, focusH);
-        var briefPos = getPanelPosition(agentName, 'briefing', areaW, areaH, briefW, briefH);
+        var focusPos = getPanelPosition('focus', areaW, areaH, focusW, focusH);
+        var briefPos = getPanelPosition('briefing', areaW, areaH, briefW, briefH);
 
         var overlay = document.getElementById('focusOverlay');
         overlay.style.left = focusPos.x + 'px';
@@ -2540,16 +2551,12 @@
     }
     function onDocMouseUp(e) {
         if (!draggingPanel) return;
-        if (currentFocus) {
-            if (!PANEL_POSITIONS[currentFocus]) PANEL_POSITIONS[currentFocus] = {};
-            var x = parseInt(draggingPanel.el.style.left, 10) || 0;
-            var y = parseInt(draggingPanel.el.style.top, 10) || 0;
-            PANEL_POSITIONS[currentFocus][draggingPanel.which] = { x: x, y: y };
-            savePanelPositions();
-            console.log('[panel-edit] saved', currentFocus, draggingPanel.which, x, y);
-        } else {
-            console.warn('[panel-edit] NOT SAVED — no agent is spotlighted. Advance (N) to a chapter that focuses an agent, then drag panels.');
-        }
+        // Save GLOBALLY — one position per panel, used for every spotlighted agent.
+        var x = parseInt(draggingPanel.el.style.left, 10) || 0;
+        var y = parseInt(draggingPanel.el.style.top, 10) || 0;
+        PANEL_POSITIONS[draggingPanel.which] = { x: x, y: y };
+        savePanelPositions();
+        console.log('[panel-edit] saved', draggingPanel.which, x, y);
         draggingPanel.el.classList.remove('dragging');
         draggingPanel = null;
         e.preventDefault();
