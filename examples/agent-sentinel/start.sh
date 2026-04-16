@@ -11,6 +11,7 @@
 #   ./start.sh --present      Cinematic presenter mode (implies --replay 0.3)
 #   ./start.sh --present --cinematic  Start in cinematic mode (no UI chrome)
 #   ./start.sh --movie        Fully-scripted ~2:44 movie (no agents, no recordings)
+#   ./start.sh --help         Show this help and exit
 #
 # Flags can be combined: ./start.sh --record --no-dash --quiet
 
@@ -33,6 +34,44 @@ DASH_PID=""
 TAIL_PID=""
 AGENT_PIDS=()
 AGENT_NAMES=()
+
+# ── Help ──
+show_help() {
+    local me
+    me="$(basename "$0")"
+    echo ""
+    echo -e "  ${CYAN}Agent Sentinel${NC} — launcher"
+    echo ""
+    echo -e "  ${DIM}Usage:${NC}"
+    echo -e "    ${me} [flag ...]"
+    echo ""
+    echo -e "  ${DIM}Modes (pick one; default is live PubNub):${NC}"
+    echo -e "    ${GREEN}--record${NC}               Run live, save all LLM + tool calls to recordings/"
+    echo -e "    ${GREEN}--replay${NC} [delay]       Replay from recordings/ (no API keys needed). Optional"
+    echo -e "                           per-token delay in seconds (e.g. ${DIM}--replay 0.1${NC})."
+    echo -e "    ${GREEN}--present${NC}              Cinematic presenter mode (implies ${DIM}--replay 0.3${NC})."
+    echo -e "    ${GREEN}--movie${NC}                Fully-scripted ~2:44 movie — no agents, no PubNub,"
+    echo -e "                           no recordings. Just the HTTP server + presenter HTML."
+    echo ""
+    echo -e "  ${DIM}Modifiers:${NC}"
+    echo -e "    ${GREEN}--no-dash${NC}              Launch without the dashboard HTTP server."
+    echo -e "    ${GREEN}--quiet${NC}                Suppress per-event LLM output."
+    echo -e "    ${GREEN}--cinematic${NC}            With ${DIM}--present${NC}: start in cinematic mode (no UI chrome)."
+    echo ""
+    echo -e "  ${DIM}Misc:${NC}"
+    echo -e "    ${GREEN}--help${NC}, ${GREEN}-h${NC}             Show this help and exit."
+    echo ""
+    echo -e "  ${DIM}Examples:${NC}"
+    echo -e "    ${me}                      ${DIM}# Live PubNub mode${NC}"
+    echo -e "    ${me} --replay 0.1         ${DIM}# Fast replay from recordings/${NC}"
+    echo -e "    ${me} --present            ${DIM}# Cinematic replay for demos${NC}"
+    echo -e "    ${me} --movie              ${DIM}# Synthetic scripted demo${NC}"
+    echo -e "    ${me} --record --quiet     ${DIM}# Capture a session, low verbosity${NC}"
+    echo ""
+    echo -e "  ${DIM}Dashboard URL (when enabled):${NC}"
+    echo -e "    http://localhost:${DASHBOARD_PORT}/"
+    echo ""
+}
 
 # ── Parse args ──
 NO_DASH=false
@@ -66,6 +105,7 @@ while [ $# -gt 0 ]; do
             ;;
         --cinematic) CINEMATIC=true ;;
         --movie)   MOVIE=true ;;
+        --help|-h) show_help; exit 0 ;;
     esac
     shift
 done
