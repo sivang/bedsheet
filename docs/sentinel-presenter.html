@@ -2174,8 +2174,9 @@
         var areaW = mapArea.offsetWidth;
         var areaH = mapArea.offsetHeight;
 
-        // Calculate transform to center agent at 2.5x zoom
-        var targetScale = 2.5;
+        // Zoom depth: 1.75 gives a subtle push-in (half the extra depth above overview
+        // that 2.5 gave). Pins stay visually stable via applyPinCounterScale.
+        var targetScale = 1.75;
         // Convert SVG coords to screen fraction
         var fracX = info.x / VIEWBOX_W;
         var fracY = info.y / VIEWBOX_H;
