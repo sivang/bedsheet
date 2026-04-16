@@ -2417,41 +2417,40 @@
     // Shape: { focus: {x, y}, briefing: {x, y} } — pixels, map-area relative.
     var PANEL_POSITIONS = {};
 
-    (function loadPositions() {
-        function applyRaw(raw) {
-            if (!raw || typeof raw !== 'object') return false;
-            // Accept the current global shape directly.
-            if (raw.focus || raw.briefing) {
-                PANEL_POSITIONS = { focus: raw.focus, briefing: raw.briefing };
-                return true;
-            }
-            // Back-compat: if the stored shape is per-agent, take the first entry as global.
-            var firstKey = Object.keys(raw)[0];
-            if (firstKey && raw[firstKey] && (raw[firstKey].focus || raw[firstKey].briefing)) {
-                PANEL_POSITIONS = { focus: raw[firstKey].focus, briefing: raw[firstKey].briefing };
-                return true;
-            }
-            return false;
+    function applyRawPanelPositions(raw) {
+        if (!raw || typeof raw !== 'object') return false;
+        if (raw.focus || raw.briefing) {
+            PANEL_POSITIONS = { focus: raw.focus, briefing: raw.briefing };
+            return true;
         }
-        fetch('./panel-positions.json', { cache: 'no-store' })
-            .then(function(r) { return r.ok ? r.json() : null; })
-            .then(function(json) {
-                if (!applyRaw(json)) {
-                    try {
-                        var saved = localStorage.getItem('bedsheet.panelPositions');
-                        if (saved && applyRaw(JSON.parse(saved))) console.log('[panel-edit] loaded from localStorage');
-                    } catch (e) {}
-                } else {
-                    console.log('[panel-edit] loaded panel-positions.json');
-                }
-            })
-            .catch(function() {
-                try {
-                    var saved = localStorage.getItem('bedsheet.panelPositions');
-                    if (saved && applyRaw(JSON.parse(saved))) console.log('[panel-edit] loaded from localStorage (no JSON file)');
-                } catch (e) {}
-            });
-    })();
+        // Back-compat: per-agent shape → promote first entry as the global.
+        var firstKey = Object.keys(raw)[0];
+        if (firstKey && raw[firstKey] && (raw[firstKey].focus || raw[firstKey].briefing)) {
+            PANEL_POSITIONS = { focus: raw[firstKey].focus, briefing: raw[firstKey].briefing };
+            return true;
+        }
+        return false;
+    }
+
+    // SYNCHRONOUS localStorage load so PANEL_POSITIONS is populated BEFORE any
+    // positionBothOverlays call. Previously fetch() was async and first-spotlights
+    // raced against the load — panels fell back to defaults.
+    try {
+        var _saved = localStorage.getItem('bedsheet.panelPositions');
+        if (_saved && applyRawPanelPositions(JSON.parse(_saved))) {
+            console.log('[panel-edit] loaded from localStorage (sync):', PANEL_POSITIONS);
+        }
+    } catch (e) {}
+
+    // Async: the committed JSON file (if present) overrides localStorage.
+    fetch('./panel-positions.json', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) {
+            if (applyRawPanelPositions(json)) {
+                console.log('[panel-edit] loaded panel-positions.json (overriding localStorage)');
+            }
+        })
+        .catch(function() { /* no file — localStorage already applied */ });
 
     function savePanelPositions() {
         try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) {}
@@ -2478,6 +2477,9 @@
 
         var focusPos = getPanelPosition('focus', areaW, areaH, focusW, focusH);
         var briefPos = getPanelPosition('briefing', areaW, areaH, briefW, briefH);
+        console.log('[panel-edit] positioning for', agentName,
+                    '— focus:', focusPos, 'brief:', briefPos,
+                    '(saved?', !!PANEL_POSITIONS.focus, !!PANEL_POSITIONS.briefing, ')');
 
         var overlay = document.getElementById('focusOverlay');
         overlay.style.left = focusPos.x + 'px';
