@@ -2389,11 +2389,32 @@
 
     var PANEL_POSITIONS = {};  // { agentName: { focus: {x, y}, briefing: {x, y} } } — pixels, map-area relative
 
-    // Load persisted positions on boot
-    try {
-        var saved = localStorage.getItem('bedsheet.panelPositions');
-        if (saved) PANEL_POSITIONS = JSON.parse(saved);
-    } catch (e) { /* ignore */ }
+    // Load persisted positions on boot. Priority:
+    //   1. docs/panel-positions.json (committed, portable across machines)
+    //   2. localStorage (live editing state on this machine)
+    // The JSON file wins if present — once you commit your positions via X export,
+    // they become authoritative.
+    (function loadPositions() {
+        fetch('./panel-positions.json', { cache: 'no-store' })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(json) {
+                if (json && typeof json === 'object') {
+                    PANEL_POSITIONS = json;
+                    console.log('[panel-edit] loaded panel-positions.json');
+                } else {
+                    try {
+                        var saved = localStorage.getItem('bedsheet.panelPositions');
+                        if (saved) { PANEL_POSITIONS = JSON.parse(saved); console.log('[panel-edit] loaded from localStorage'); }
+                    } catch (e) {}
+                }
+            })
+            .catch(function() {
+                try {
+                    var saved = localStorage.getItem('bedsheet.panelPositions');
+                    if (saved) { PANEL_POSITIONS = JSON.parse(saved); console.log('[panel-edit] loaded from localStorage (no JSON file)'); }
+                } catch (e) {}
+            });
+    })();
 
     function savePanelPositions() {
         try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) {}
@@ -2511,12 +2532,29 @@
     }
     function exportPanelPositions() {
         var json = JSON.stringify(PANEL_POSITIONS, null, 4);
-        var snippet = 'var PANEL_POSITIONS = ' + json + ';';
-        console.log('[panel-edit] Paste into sentinel-presenter.html to lock positions:\n\n' + snippet + '\n');
+        // 1) Console + clipboard (quick paste to source if preferred)
+        var snippet = '// Panel positions exported from movie mode (drop into docs/panel-positions.json)\n' + json;
+        console.log('[panel-edit] Positions:\n\n' + json + '\n');
+        console.log('[panel-edit] Save this JSON to: docs/panel-positions.json (same folder as sentinel-presenter.html) — the presenter auto-loads it on boot.');
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(snippet).then(function() {
-                console.log('[panel-edit] Copied to clipboard.');
+            navigator.clipboard.writeText(json).then(function() {
+                console.log('[panel-edit] JSON copied to clipboard.');
             }).catch(function() {});
+        }
+        // 2) Trigger a file download so the JSON lands on the user's disk
+        try {
+            var blob = new Blob([json], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'panel-positions.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            console.log('[panel-edit] Downloaded panel-positions.json — move it into the docs/ folder to make positions portable + auto-loaded on next boot.');
+        } catch (e) {
+            console.warn('[panel-edit] Could not trigger download:', e.message);
         }
     }
     function clearPanelPositions() {
