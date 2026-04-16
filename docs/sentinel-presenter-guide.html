@@ -867,9 +867,16 @@ open "docs/sentinel-presenter.html?mode=movie&amp;auto=1"</code></pre>
                 <tr><td><code>C</code></td><td>In edit mode: <strong>clear all saved positions</strong> (resets to defaults)</td></tr>
             </table>
             <p>
-                Within a chapter, cues still play automatically on their authored <code>t</code> offsets &mdash;
-                director mode only controls the <em>between-chapter</em> boundary. If you want to freeze a specific
-                moment within a chapter, use pause or step through with <code>1</code>&ndash;<code>9</code>.
+                <strong>Beats within a chapter are also director-gated.</strong> A chapter splits into "beats"
+                at each <em>spotlight</em> cue &mdash; every time the camera is supposed to move to a different
+                agent, the movie waits for you. Non-spotlight cues (signals, commentary, signal-lines) play
+                automatically <em>within</em> each beat. So in a chapter like "Normal Operations" where the
+                spotlight visits web-researcher, scheduler, and skill-acquirer in sequence, you press <code>N</code>
+                three times to walk through the three beats, then once more to advance to the next chapter.
+            </p>
+            <p>
+                The subtle <code>▸ N advances — E edits panels</code> hint in the bottom-right corner is always
+                there as a reminder: the director has the wheel.
             </p>
 
             <h3 id="panel-positioner">Panel Positioner (Drag-and-Drop)</h3>

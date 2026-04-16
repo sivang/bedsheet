@@ -227,6 +227,25 @@
            can place panels precisely relative to real agent positions. */
         body.panel-edit-mode .agent-node.dimmed { opacity: 0.7; }
 
+        /* Subtle always-on hint so the director never forgets they're in control.
+           Only visible in movie mode (live/replay keep the chrome clean). */
+        .movie-director-hint {
+            position: fixed;
+            bottom: 14px;
+            right: 14px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cyan);
+            opacity: 0.35;
+            letter-spacing: 1.5px;
+            z-index: 60;
+            pointer-events: none;
+            user-select: none;
+            display: none;
+        }
+        body.presenter-mode-movie .movie-director-hint { display: block; }
+        body.panel-edit-mode .movie-director-hint { display: none; }
+
         /* Director-mode hint — blinks at bottom of pitch body / arch caption after
            typing completes, tells the user the movie is waiting for N. */
         .movie-advance-hint {
@@ -1330,6 +1349,7 @@
                     <div class="movie-chapter-card-subtitle"></div>
                 </div>
             </div>
+            <div id="movieDirectorHint" class="movie-director-hint">▸ N advances — E edits panels</div>
             <div id="moviePitchPanel" class="movie-pitch-panel">
                 <div class="movie-pitch-header">
                     <span class="movie-pitch-label">// operational brief</span>
@@ -1498,6 +1518,9 @@
         return window.SENTINEL_CONFIG && window.SENTINEL_CONFIG.subscribeKey ? 'live' : 'replay';
     })();
     console.log('[presenter] mode =', PRESENTER_MODE);
+    // Mirror mode as a body class so CSS can gate mode-specific UI (director hint, etc.).
+    if (document.body) document.body.classList.add('presenter-mode-' + PRESENTER_MODE);
+    else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('presenter-mode-' + PRESENTER_MODE); });
 
     // ── State ──
     var pubnub = null;
@@ -3259,11 +3282,27 @@
         this.chapterStart = 0;
         this.pendingTimers = new Set();
         this.speed = 1;
-        // Director mode: chapters do NOT auto-advance. User presses N / Right-arrow to
-        // progress to the next chapter manually. Default for movie mode — author drives
-        // the tempo, not the clock.
+        // Director mode: author controls tempo. Spotlight cues gate beat advancement;
+        // chapters don't auto-advance. Everything waits for N / Right-arrow.
         this.directorMode = opts.directorMode !== false;
+        // Beats: a chapter is split into beats at each subsequent spotlight cue.
+        // The first beat plays automatically when the chapter starts; subsequent beats
+        // wait for N.
+        this.beats = [];
+        this.beatIdx = 0;
     }
+
+    // Split cues into beats, where each beat begins at the start of the chapter or at
+    // a subsequent spotlight cue. In live mode (directorMode=false), beats are still
+    // computed but played back-to-back without waiting.
+    MovieEngine.prototype.computeBeats = function(cues) {
+        var beats = [[]];
+        cues.forEach(function(cue, i) {
+            if (i > 0 && cue.type === 'spotlight') beats.push([]);
+            beats[beats.length - 1].push(cue);
+        });
+        return beats;
+    };
 
     MovieEngine.prototype.scheduleCue = function(cue, effectiveOffsetMs) {
         var self = this;
@@ -3282,12 +3321,8 @@
 
     MovieEngine.prototype.playChapter = function(idx) {
         this.cancelAll();
-        // Always dismiss Chapter-0 overlays when moving between chapters — otherwise
-        // they linger if the user advances (N) before their own auto-hide cue fires.
-        // Agent visual state (quarantine, focus) is NOT reset here — chapters may
-        // legitimately depend on state from the previous chapter (e.g. Ch 9 keeps
-        // web-researcher quarantined from Ch 8). Use restart() / jumpToChapter() when
-        // a full visual wipe is needed.
+        // Dismiss Chapter-0-scale overlays on every transition. Agent visual state
+        // (quarantine, focus) is NOT reset — chapters may legitimately depend on it.
         if (typeof hidePitch === 'function') hidePitch();
         if (typeof hideArchDiagram === 'function') hideArchDiagram();
         this.chapterIdx = idx;
@@ -3297,32 +3332,55 @@
             return;
         }
         this.chapterStart = Date.now();
-        console.log('[movie] Chapter', idx, chapter.id, '—', chapter.title);
+        this.beats = this.computeBeats(chapter.cues);
+        console.log('[movie] Chapter', idx, chapter.id, '—', chapter.title, '(' + this.beats.length + ' beat' + (this.beats.length === 1 ? '' : 's') + ')');
+        this.playBeat(0);
+    };
+
+    MovieEngine.prototype.playBeat = function(beatIdx) {
+        this.cancelAll();
+        this.beatIdx = beatIdx;
+        var beat = this.beats[beatIdx];
+        if (!beat || beat.length === 0) return;
+        // Schedule this beat's cues with times relative to the first cue in the beat.
+        var baseT = beat[0].t || 0;
         var self = this;
-        chapter.cues.forEach(function(cue) {
-            self.scheduleCue(cue, cue.t);
+        beat.forEach(function(cue) {
+            self.scheduleCue(cue, Math.max(0, (cue.t || 0) - baseT));
         });
-        // Auto-advance only outside director mode. In director mode, the user presses
-        // N / Right-arrow to call advance() when they're ready for the next chapter.
+        // Outside director mode, chain automatically to the next beat once this one
+        // finishes (preserves kiosk auto-play behaviour).
         if (!this.directorMode) {
-            var lastEnd = chapter.cues.reduce(function(max, c) {
-                return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+            var lastEnd = beat.reduce(function(max, c) {
+                return Math.max(max, (c.t || 0) - baseT + (c.hold_ms || 0));
             }, 0);
             var nextHandle = setTimeout(function() {
                 self.pendingTimers.delete(nextHandle);
-                self.playChapter(idx + 1);
-            }, (lastEnd + CHAPTER_GAP_MS) / this.speed);
+                if (beatIdx + 1 < self.beats.length) {
+                    self.playBeat(beatIdx + 1);
+                } else {
+                    setTimeout(function() { self.playChapter(self.chapterIdx + 1); }, CHAPTER_GAP_MS / self.speed);
+                }
+            }, (lastEnd + 500) / this.speed);
             this.pendingTimers.add(nextHandle);
         }
     };
 
-    // Director-mode step: advance to next chapter when user says go.
+    // Director-mode advance: next beat within chapter, or next chapter if last beat.
     MovieEngine.prototype.advance = function() {
-        this.playChapter(this.chapterIdx + 1);
+        if (this.beats && this.beatIdx + 1 < this.beats.length) {
+            this.playBeat(this.beatIdx + 1);
+        } else {
+            this.playChapter(this.chapterIdx + 1);
+        }
     };
 
     MovieEngine.prototype.previous = function() {
-        if (this.chapterIdx > 0) this.playChapter(this.chapterIdx - 1);
+        if (this.beatIdx > 0) {
+            this.playBeat(this.beatIdx - 1);
+        } else if (this.chapterIdx > 0) {
+            this.playChapter(this.chapterIdx - 1);
+        }
     };
 
     MovieEngine.prototype.restart = function() {
