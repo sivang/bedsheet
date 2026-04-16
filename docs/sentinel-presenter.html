@@ -2501,6 +2501,8 @@
             PANEL_POSITIONS[currentFocus][draggingPanel.which] = { x: x, y: y };
             savePanelPositions();
             console.log('[panel-edit] saved', currentFocus, draggingPanel.which, x, y);
+        } else {
+            console.warn('[panel-edit] NOT SAVED — no agent is spotlighted. Advance (N) to a chapter that focuses an agent, then drag panels.');
         }
         draggingPanel.el.classList.remove('dragging');
         draggingPanel = null;
@@ -3431,10 +3433,15 @@
                 showMovieChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
                 break;
             case 'spotlight':
+                // Track currentFocus so the DnD positioner knows which agent to key
+                // saved panel positions under. Previously this stayed null in movie
+                // mode, so dragged positions were never persisted.
                 if (cue.agent === null) {
+                    currentFocus = null;
                     zoomToOverview({ durationMs: cue.duration_ms });
                     hideFocusOverlay();
                 } else {
+                    currentFocus = cue.agent;
                     zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
                     showFocusOverlay(cue.agent);
                 }
