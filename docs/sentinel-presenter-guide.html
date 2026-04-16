@@ -900,16 +900,22 @@ open "docs/sentinel-presenter.html?mode=movie&amp;auto=1"</code></pre>
             <p><strong>Defaults when no position is saved:</strong> focus overlay goes top-right (60% x / 8% y), briefing goes bottom-left (5% x / 55% y). The movie will still play, just with these safe-corner fallbacks. Drag to fix.</p>
 
             <h3 id="movie-chapters">Chapters</h3>
-            <ol>
-                <li><strong>Chapter 0</strong> &mdash; Intro + Bedsheet pitch + architecture diagram</li>
-                <li><strong>Chapter 1</strong> &mdash; Network Startup</li>
-                <li><strong>Chapter 2</strong> &mdash; Normal Operations</li>
-                <li><strong>Chapter 3</strong> &mdash; Malicious Install Blocked</li>
-                <li><strong>Chapter 4</strong> &mdash; Rogue Burst</li>
-                <li><strong>Chapter 5</strong> &mdash; Gateway Block</li>
-                <li><strong>Chapter 6</strong> &mdash; Sentinel Alert</li>
-                <li><strong>Chapter 7</strong> &mdash; Quarantine Issued</li>
-                <li><strong>Chapter 8</strong> &mdash; Stable State Restored</li>
+            <p>
+                All chapters are director-triggered (press <code>N</code> to advance) except <strong>Chapter 0 (Bedsheet Brief)</strong>,
+                which auto-plays once you dismiss the intro crawl. Inside each chapter, cues fire automatically on
+                their authored <code>t</code> offsets; the director only controls the between-chapter boundary.
+            </p>
+            <ol start="0">
+                <li><strong>Chapter 0</strong> &mdash; Bedsheet Brief &mdash; pitch types out on its own (~37s). Press <code>N</code> when done reading.</li>
+                <li><strong>Chapter 1</strong> &mdash; Architecture &mdash; two-plane diagram draws in with a 3-line caption. Stays until you press <code>N</code>.</li>
+                <li><strong>Chapter 2</strong> &mdash; Network Startup &mdash; 7 agents come online.</li>
+                <li><strong>Chapter 3</strong> &mdash; Normal Operations &mdash; routine tool calls through the gateway.</li>
+                <li><strong>Chapter 4</strong> &mdash; Malicious Install Blocked &mdash; supply-chain sentinel catches SHA-256 mismatch.</li>
+                <li><strong>Chapter 5</strong> &mdash; Rogue Burst &mdash; web-researcher fires 5 tool calls in 2s.</li>
+                <li><strong>Chapter 6</strong> &mdash; Gateway Block &mdash; deterministic rate limiter responds.</li>
+                <li><strong>Chapter 7</strong> &mdash; Sentinel Alert &mdash; behavior-sentinel correlates the spike to commander.</li>
+                <li><strong>Chapter 8</strong> &mdash; Quarantine Issued &mdash; commander quarantines web-researcher.</li>
+                <li><strong>Chapter 9</strong> &mdash; Stable State Restored &mdash; 6 agents on mission, 1 removed.</li>
             </ol>
             <p>
                 <strong>Authoring content:</strong> all movie content lives in the <code>MOVIE_SCRIPT</code> array

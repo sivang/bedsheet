@@ -217,10 +217,32 @@
         .agent-node.online .agent-node-label { fill: var(--text-primary); }
 
         /* Dimmed state for non-focused agents */
-        /* Fully hide non-focused agents during spotlight. Previously at 0.2 opacity,
-           panels were visually overlapping these dimmed pins. 0 takes them out of the
-           composition entirely while the focused agent's story plays. */
-        .agent-node.dimmed { opacity: 0; transition: opacity 0.8s ease; }
+        /* Non-focused agents during spotlight — visible but clearly de-emphasized.
+           Panel overlap is now solved by the DnD positioner (author places panels
+           away from background agents), so we DON'T need to hide agents to avoid
+           panel collisions. Keep them soft-visible so the map context stays intact
+           and the user sees all agents while editing panel positions. */
+        .agent-node.dimmed { opacity: 0.3; transition: opacity 0.8s ease; }
+        /* In panel-edit mode, bring agents back to near-full visibility so the author
+           can place panels precisely relative to real agent positions. */
+        body.panel-edit-mode .agent-node.dimmed { opacity: 0.7; }
+
+        /* Director-mode hint — blinks at bottom of pitch body / arch caption after
+           typing completes, tells the user the movie is waiting for N. */
+        .movie-advance-hint {
+            margin-top: 24px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            text-align: center;
+            opacity: 0;
+            animation: hint-pulse 1.8s ease-in-out 0.4s infinite;
+        }
+        @keyframes hint-pulse {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 0.95; }
+        }
 
         /* ── Panel edit mode (DnD positioner) ── */
         body.panel-edit-mode .focus-overlay.visible,
@@ -2068,6 +2090,12 @@
             if (myEpoch !== pitchEpoch) return;
             if (li >= lines.length) {
                 setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                // Director-mode hint so the user knows we're waiting for them to press N.
+                var hint = document.createElement('div');
+                hint.className = 'movie-advance-hint';
+                hint.textContent = '▸ press N to continue';
+                body.appendChild(hint);
+                updateScroll();
                 if (onComplete) onComplete();
                 return;
             }
@@ -2124,6 +2152,11 @@
             function step() {
                 if (li >= lines.length) {
                     setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                    // Director-mode hint on the arch caption too
+                    var hint = document.createElement('div');
+                    hint.className = 'movie-advance-hint';
+                    hint.textContent = '▸ press N to continue';
+                    cap.appendChild(hint);
                     if (onComplete) onComplete();
                     return;
                 }
@@ -3222,6 +3255,14 @@
 
     MovieEngine.prototype.playChapter = function(idx) {
         this.cancelAll();
+        // Always dismiss Chapter-0 overlays when moving between chapters — otherwise
+        // they linger if the user advances (N) before their own auto-hide cue fires.
+        // Agent visual state (quarantine, focus) is NOT reset here — chapters may
+        // legitimately depend on state from the previous chapter (e.g. Ch 9 keeps
+        // web-researcher quarantined from Ch 8). Use restart() / jumpToChapter() when
+        // a full visual wipe is needed.
+        if (typeof hidePitch === 'function') hidePitch();
+        if (typeof hideArchDiagram === 'function') hideArchDiagram();
         this.chapterIdx = idx;
         var chapter = this.script[idx];
         if (!chapter) {
@@ -3417,23 +3458,33 @@
 
     // ── MOVIE_SCRIPT (spec §3.3) ──────────────────────────────────
     var MOVIE_SCRIPT = [
-        /* Chapter 0 — Intro + Bedsheet pitch + Architecture (~44s scripted).
-         * The existing intro crawl is user-dismissed BEFORE startMovieMode() fires,
-         * so these cues play against a clean overview map. Timing math:
-         *   PITCH_LINES = 16 lines / 1270 chars × 22ms/char + ~9.6s gaps = ~37.5s.
-         *   Arch caption ≈ 75 chars × 30ms + 2.8s pre-wait = ~5.1s. */
+        /* Chapter 0 — Bedsheet briefing (the one chapter that auto-plays).
+         * The existing intro crawl is user-dismissed BEFORE startMovieMode() fires.
+         * Pitch types out (~37.5s), then stays visible until the director presses N.
+         * Pitch is hidden automatically when the director advances to Chapter 1. */
         {
-            id: 'intro',
-            title: 'Intro',
-            subtitle: 'Agent Sentinel',
+            id: 'bedsheet-brief',
+            title: 'Bedsheet Brief',
+            subtitle: 'Operational brief',
             cues: [
-                { t: 0,     type: 'spotlight', agent: null },
-                { t: 100,   type: 'movie-pitch-start' },
-                { t: 38000, type: 'movie-pitch-end' },
-                { t: 38500, type: 'movie-arch-start' },
-                // Arch: 2.8s staged reveals + ~8.5s multi-line caption + 20s hold so the
-                // audience can actually read and absorb the two-plane security property.
-                { t: 70000, type: 'movie-arch-end' },
+                { t: 0,   type: 'spotlight', agent: null },
+                { t: 100, type: 'movie-pitch-start' },
+                // No explicit end: playChapter auto-hides pitch when Ch1 starts.
+            ],
+        },
+
+        /* Chapter 1 — Architecture (director-triggered).
+         * Stays on screen indefinitely until director presses N. playChapter auto-hides
+         * the arch diagram on transition to Ch 2. */
+        {
+            id: 'architecture',
+            title: 'Architecture',
+            subtitle: 'Two parallel circuits',
+            cues: [
+                { t: 0,    type: 'chapter-card', title: 'Architecture', subtitle: 'Two parallel circuits', hold_ms: 2800 },
+                { t: 2800, type: 'movie-arch-start' },
+                // Arch diagram self-animates (staged reveals + typed caption); user reads
+                // at leisure, presses N when ready.
             ],
         },
 
@@ -3443,7 +3494,7 @@
             title: 'Network Startup',
             subtitle: 'Two circuits activating',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 1', subtitle: 'Network Startup', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 2', subtitle: 'Network Startup', hold_ms: 2800 },
                 { t: 1800,  type: 'spotlight', agent: null },
                 { t: 2000,  type: 'commentary', text: '7 agents across 7 regions coming online. Two circuits activating: operational, and sentinel.', hold_ms: 8000 },
                 { t: 2500,  type: 'signal', signal: { kind: 'heartbeat', sender: 'action-gateway',        payload: {}, correlation_id: 'c1-hb-ag' } },
@@ -3468,7 +3519,7 @@
             title: 'Normal Operations',
             subtitle: 'Routine agent traffic',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 2', subtitle: 'Normal Operations', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 3', subtitle: 'Normal Operations', hold_ms: 2800 },
                 { t: 2800,  type: 'commentary', text: 'All tool executions route through the action-gateway. Every action is logged to the audit ledger.', hold_ms: 12000 },
                 // web-researcher cycle
                 { t: 2000,  type: 'spotlight', agent: 'web-researcher' },
@@ -3499,7 +3550,7 @@
             title: 'Malicious Install Blocked',
             subtitle: 'Supply-chain sentinel intervenes',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 3', subtitle: 'Malicious Install Blocked', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 4', subtitle: 'Malicious Install Blocked', hold_ms: 2800 },
                 { t: 2800,  type: 'commentary', text: 'Supply-chain-sentinel doesn\u2019t trust anyone. Every skill verified by hash before execution.', hold_ms: 12000 },
                 // skill-acquirer attempts install
                 { t: 2000,  type: 'spotlight', agent: 'skill-acquirer' },
@@ -3524,7 +3575,7 @@
             title: 'Rogue Burst',
             subtitle: 'Operational plane anomaly',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 4', subtitle: 'Rogue Burst', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 5', subtitle: 'Rogue Burst', hold_ms: 2800 },
                 { t: 1800,  type: 'spotlight', agent: 'web-researcher' },
                 { t: 2200,  type: 'commentary', text: 'Web-researcher just got compromised. Watch the burst.', hold_ms: 9000 },
                 // 5 tool_calls in 2s — tests drainMapEvents bypass
@@ -3543,7 +3594,7 @@
             title: 'Gateway Block',
             subtitle: 'Deterministic response',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 5', subtitle: 'Gateway Block', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 6', subtitle: 'Gateway Block', hold_ms: 2800 },
                 { t: 1800,  type: 'spotlight', agent: 'action-gateway' },
                 { t: 2200,  type: 'commentary', text: 'Gateway is deterministic. No LLM. It just counts \u2014 and blocks.', hold_ms: 7000 },
                 { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'tool_result', text: 'rate limit exceeded', is_error: true }, correlation_id: 'c5-rl1' } },
@@ -3560,7 +3611,7 @@
             title: 'Sentinel Alert',
             subtitle: 'Control plane correlates',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 6', subtitle: 'Sentinel Alert', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 7', subtitle: 'Sentinel Alert', hold_ms: 2800 },
                 { t: 2800,  type: 'commentary', text: 'The sentinel is reading the gateway\u2019s audit log. It never spoke to web-researcher. It cannot be poisoned by bus data.', hold_ms: 11000 },
                 { t: 2200,  type: 'spotlight', agent: 'behavior-sentinel' },
                 { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'thinking', text: 'Polling the gateway ledger. Looking for rate spikes.' }, correlation_id: 'c6-bs-1' } },
@@ -3581,7 +3632,7 @@
             title: 'Quarantine Issued',
             subtitle: 'Command-and-control response',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 7', subtitle: 'Quarantine Issued', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 8', subtitle: 'Quarantine Issued', hold_ms: 2800 },
                 { t: 1800,  type: 'spotlight', agent: 'sentinel-commander' },
                 { t: 2200,  type: 'commentary', text: 'Commander has authority. It correlates. It decides. It quarantines.', hold_ms: 10000 },
                 { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'thinking', text: 'Issuing quarantine order for web-researcher.' }, correlation_id: 'c7-cmd-1' } },
@@ -3599,7 +3650,7 @@
             title: 'Stable State Restored',
             subtitle: 'Mission continues',
             cues: [
-                { t: 0,     type: 'chapter-card', title: 'Chapter 8', subtitle: 'Stable State Restored', hold_ms: 2800 },
+                { t: 0,     type: 'chapter-card', title: 'Chapter 9', subtitle: 'Stable State Restored', hold_ms: 2800 },
                 // Slow pull to overview — web-researcher stays quarantined from Ch 7.
                 { t: 1800,  type: 'spotlight', agent: null, duration_ms: 3000 },
                 { t: 2500,  type: 'commentary', text: 'System stable. One compromised agent removed. Six still on mission.', hold_ms: 7000 },
