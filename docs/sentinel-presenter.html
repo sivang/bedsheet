@@ -1878,23 +1878,37 @@
     }
 
     // ── Movie commentary / chapter-card primitives ──
-    var commentaryTypingHandle = null;
-    var commentaryHideHandle = null;
-    function showCommentary(text, holdMs) {
+    // NOTE: these functions are prefixed `movie*` to avoid collision with the
+    // presenter's showCommentary(chapterName) at line ~2353 and showChapterCard(text)
+    // at line ~2410. JS function declarations with the same name would have the later
+    // one win via hoisting — movie calls would silently invoke the wrong impl.
+    var movieCommentaryTypingHandle = null;
+    var movieCommentaryHideHandle = null;
+    function showMovieCommentary(text, holdMs) {
         var panel = document.getElementById('movieCommentary');
         var body = panel.querySelector('.movie-commentary-body');
         panel.classList.add('visible');
         body.textContent = '';
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
         var i = 0;
-        if (commentaryTypingHandle) clearInterval(commentaryTypingHandle);
-        if (commentaryHideHandle) clearTimeout(commentaryHideHandle);
-        commentaryTypingHandle = setInterval(function() {
-            if (i < text.length) { body.textContent += text[i]; i++; }
-            else { clearInterval(commentaryTypingHandle); commentaryTypingHandle = null; }
+        if (movieCommentaryTypingHandle) clearInterval(movieCommentaryTypingHandle);
+        if (movieCommentaryHideHandle) clearTimeout(movieCommentaryHideHandle);
+        movieCommentaryTypingHandle = setInterval(function() {
+            if (i < text.length) {
+                body.insertBefore(document.createTextNode(text[i]), cursor);
+                if (text[i] !== ' ') playKeystroke();  // terminal-tick per char (matches presenter polish)
+                i++;
+            } else {
+                clearInterval(movieCommentaryTypingHandle);
+                movieCommentaryTypingHandle = null;
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+            }
         }, 22);
-        commentaryHideHandle = setTimeout(function() {
+        movieCommentaryHideHandle = setTimeout(function() {
             panel.classList.remove('visible');
-            commentaryHideHandle = null;
+            movieCommentaryHideHandle = null;
         }, holdMs);
     }
 
@@ -1925,16 +1939,26 @@
         var body = panel.querySelector('.movie-pitch-body');
         body.textContent = '';
         panel.classList.add('visible');
+        // Blinking cursor that follows the typing cursor to the end of the current line.
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
         var li = 0, ci = 0;
         if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
         function step() {
-            if (li >= lines.length) { if (onComplete) onComplete(); return; }
+            if (li >= lines.length) {
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                if (onComplete) onComplete();
+                return;
+            }
             var line = lines[li];
             if (ci < line.length) {
-                body.textContent += line[ci]; ci++;
+                body.insertBefore(document.createTextNode(line[ci]), cursor);
+                if (line[ci] !== ' ') playKeystroke();
+                ci++;
                 pitchTypingHandle = setTimeout(step, 22);
             } else {
-                body.textContent += '\n\n';
+                body.insertBefore(document.createTextNode('\n\n'), cursor);
                 var gap = PITCH_GAPS[Math.min(li, PITCH_GAPS.length - 1)];
                 li++; ci = 0;
                 pitchTypingHandle = setTimeout(step, gap);
@@ -1950,18 +1974,28 @@
     // ── Movie architecture diagram (Chapter 0) ──
     function showArchDiagram(caption, onComplete) {
         var el = document.getElementById('movieArchDiagram');
-        el.querySelector('.movie-arch-caption').textContent = '';
+        var cap = el.querySelector('.movie-arch-caption');
+        cap.textContent = '';
         el.classList.remove('step-ops', 'step-bus', 'step-ctrl');
         el.classList.add('visible');
         setTimeout(function() { el.classList.add('step-ops'); }, 300);
         setTimeout(function() { el.classList.add('step-bus'); }, 1300);
         setTimeout(function() { el.classList.add('step-ctrl'); }, 1800);
         setTimeout(function() {
-            var cap = el.querySelector('.movie-arch-caption');
+            var cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            cap.appendChild(cursor);
             var i = 0;
             var iv = setInterval(function() {
-                if (i < caption.length) { cap.textContent += caption[i++]; }
-                else { clearInterval(iv); if (onComplete) onComplete(); }
+                if (i < caption.length) {
+                    cap.insertBefore(document.createTextNode(caption[i]), cursor);
+                    if (caption[i] !== ' ') playKeystroke();
+                    i++;
+                } else {
+                    clearInterval(iv);
+                    setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                    if (onComplete) onComplete();
+                }
             }, 30);
         }, 2800);
     }
@@ -1970,16 +2004,16 @@
         el.classList.remove('visible', 'step-ops', 'step-bus', 'step-ctrl');
     }
 
-    var chapterCardHideHandle = null;
-    function showChapterCard(title, subtitle, holdMs) {
+    var movieChapterCardHideHandle = null;
+    function showMovieChapterCard(title, subtitle, holdMs) {
         var card = document.getElementById('movieChapterCard');
         card.querySelector('.movie-chapter-card-title').textContent = title || '';
         card.querySelector('.movie-chapter-card-subtitle').textContent = subtitle || '';
         card.classList.add('visible');
-        if (chapterCardHideHandle) clearTimeout(chapterCardHideHandle);
-        chapterCardHideHandle = setTimeout(function() {
+        if (movieChapterCardHideHandle) clearTimeout(movieChapterCardHideHandle);
+        movieChapterCardHideHandle = setTimeout(function() {
             card.classList.remove('visible');
-            chapterCardHideHandle = null;
+            movieChapterCardHideHandle = null;
         }, holdMs);
     }
 
@@ -3016,7 +3050,7 @@
     function runCue(cue) {
         switch (cue.type) {
             case 'chapter-card':
-                showChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
+                showMovieChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
                 break;
             case 'spotlight':
                 if (cue.agent === null) {
@@ -3048,7 +3082,7 @@
                 if (cue.signal) { stats.signals++; if (typeof updateStats === 'function') updateStats(); }
                 break;
             case 'commentary':
-                showCommentary(cue.text, cue.hold_ms || 4000);
+                showMovieCommentary(cue.text, cue.hold_ms || 4000);
                 break;
             case 'line':
                 var lineColor = cue.color ||
