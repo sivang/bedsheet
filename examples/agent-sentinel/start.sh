@@ -70,10 +70,10 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# Movie mode doesn't need agents/recordings — it runs purely synthetic.
-# Force --no-dash off so the HTTP server stays up to serve the presenter.
+# Movie mode is fully synthetic — no agents, no PubNub, no recordings.
+# Just the HTTP server serving the presenter HTML. Keep the dashboard on;
+# do NOT turn REPLAY/PRESENT on (those launch agents — wasted in movie mode).
 if [ "$MOVIE" = true ]; then
-    PRESENT=true
     NO_DASH=false
 fi
 
@@ -88,7 +88,9 @@ echo -e "${CYAN}  ╔═══════════════════�
 echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel${NC} — AI Agent Security Monitoring   ${CYAN}║${NC}"
 echo -e "${CYAN}  ║${NC}   ${DIM}Powered by Bedsheet + PubNub + Gemini${NC}          ${CYAN}║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════════════════╝${NC}"
-if [ "$PRESENT" = true ]; then
+if [ "$MOVIE" = true ]; then
+    echo -e "   ${CYAN}▶ MOVIE MODE${NC} — fully-scripted demo (no agents, no PubNub)"
+elif [ "$PRESENT" = true ]; then
     echo -e "   ${CYAN}▶ PRESENTER MODE${NC} — cinematic demo playback"
 elif [ "$RECORD" = true ]; then
     echo -e "   ${YELLOW}● RECORDING MODE${NC} — saving to recordings/"
@@ -258,6 +260,7 @@ if [ "$NO_DASH" = false ]; then
 fi
 
 # ── Launch gateway + agents ──
+# (Skipped entirely in movie mode — movie is fully synthetic, no agents needed.)
 # Order: gateway first (owns all tools), then workers, then sentinels, then commander
 AGENTS=(
     "middleware/action_gateway.py:action-gateway:gateway"
@@ -268,6 +271,20 @@ AGENTS=(
     "agents/supply_chain_sentinel.py:supply-chain-sentinel:sentinel"
     "agents/sentinel_commander.py:sentinel-commander:commander"
 )
+
+if [ "$MOVIE" = true ]; then
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}  Movie ready${NC}"
+    echo -e "${CYAN}  Mode:      MOVIE (synthetic — no agents, no PubNub)${NC}"
+    echo -e "${BLUE}  Movie:     http://localhost:${DASHBOARD_PORT}/${DASH_PAGE}${NC}"
+    echo -e "${DIM}  Dismiss the intro crawl (Space/Enter) to start the movie.${NC}"
+    echo -e "${DIM}  Press Ctrl+C to stop the HTTP server.${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    # Wait on the HTTP server (DASH_PID); Ctrl+C kills it and us.
+    wait "$DASH_PID"
+    exit 0
+fi
 
 # ── Set verbose/recording/replay env vars (inherited by child processes) ──
 if [ "$QUIET" = false ]; then
