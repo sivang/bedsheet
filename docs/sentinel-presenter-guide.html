@@ -303,6 +303,9 @@
             <a href="#signal-lines">Signal Lines</a>
             <a href="#ambient">Ambient Audio</a>
             <a href="#movie-mode">Movie Mode</a>
+            <a href="#director-controls" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Director Controls</a>
+            <a href="#panel-positioner" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Panel Positioner (DnD)</a>
+            <a href="#movie-chapters" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Chapters</a>
             <a href="#authoring-chapter" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring a New Chapter</a>
             <a href="#authoring-tips" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring Tips</a>
 
@@ -828,39 +831,85 @@ ls -la recordings/</code></pre>
             <h2 id="movie-mode">Movie Mode</h2>
             <p>
                 <strong>Movie mode</strong> is a third peer playback mode alongside <em>live</em> and <em>replay</em>.
-                It is a fully scripted ~2:44 cinematic demo that runs entirely on synthetic events &mdash; no PubNub,
-                no recorded sessions, no real agents required. Designed to showcase Agent Sentinel as a standalone
-                piece you can send to someone, run at a booth, or loop on a conference kiosk.
+                Fully scripted, synthetic, runs with no PubNub or recordings. <strong>Director mode</strong>
+                (default) means the author controls the tempo &mdash; you press <code>N</code> to move between
+                chapters, the movie never auto-advances. Kiosk-style auto-play is opt-in via <code>&amp;auto=1</code>.
             </p>
             <p><strong>Activation:</strong></p>
-            <pre><code># Via start.sh (launches a local HTTP server and opens the movie URL)
+            <pre><code># Preferred: launches a local HTTP server + opens the movie URL
 ./start.sh --movie
 
-# Or open the presenter directly with the query string
-open docs/sentinel-presenter.html?mode=movie</code></pre>
+# Direct (file:// works too since movie mode has zero I/O deps)
+open docs/sentinel-presenter.html?mode=movie
+
+# Opt-in auto-advance for kiosks / conference loops
+open "docs/sentinel-presenter.html?mode=movie&amp;auto=1"</code></pre>
             <p>
                 Movie mode is <strong>boot-time-immutable</strong>: the mode is resolved once from the URL query
                 string at page load and never switches at runtime.
             </p>
-            <p><strong>Keyboard shortcuts (movie mode):</strong></p>
+
+            <h3 id="director-controls">Director Controls</h3>
+            <p>
+                Once the intro crawl is dismissed (Space / Enter / click "Start"), you are the director. All
+                keybindings below work in movie mode only.
+            </p>
             <table>
                 <tr><th>Key</th><th>Action</th></tr>
-                <tr><td><code>1</code>&ndash;<code>8</code></td><td>Jump to chapter (cancels pending cues, resets visuals, plays target chapter from t=0)</td></tr>
-                <tr><td><code>R</code></td><td>Restart movie from chapter 0</td></tr>
-                <tr><td><code>Shift+1</code>&ndash;<code>5</code></td><td>Speed: 0.5x / 1x / 1.5x / 2x / 3x (re-schedules remaining cues under new speed)</td></tr>
-                <tr><td><code>Space</code>, <code>F</code>, <code>C</code>, <code>T</code></td><td>Inherit from live/replay modes (pause, fullscreen, cinematic, timestamp)</td></tr>
+                <tr><td><code>N</code> or <code>&rarr;</code></td><td><strong>Next chapter</strong> &mdash; advance when you're ready for the next beat</td></tr>
+                <tr><td><code>P</code> or <code>&larr;</code></td><td><strong>Previous chapter</strong> &mdash; go back one</td></tr>
+                <tr><td><code>1</code>&ndash;<code>9</code></td><td><strong>Jump to chapter N</strong> &mdash; cancels pending cues, resets visuals, plays target chapter from t=0</td></tr>
+                <tr><td><code>R</code></td><td><strong>Restart</strong> movie from chapter 0</td></tr>
+                <tr><td><code>Shift+1</code>&ndash;<code>5</code></td><td>Speed: 0.5x / 1x / 1.5x / 2x / 3x (re-paces the current chapter's remaining cues)</td></tr>
+                <tr><td><code>F</code></td><td>Fullscreen</td></tr>
+                <tr><td><code>E</code></td><td><strong>Toggle panel-edit mode</strong> &mdash; drag panels to author positions (see next section)</td></tr>
+                <tr><td><code>X</code></td><td><strong>Export panel positions</strong> to console + clipboard (paste into source to lock)</td></tr>
+                <tr><td><code>C</code></td><td>In edit mode: <strong>clear all saved positions</strong> (resets to defaults)</td></tr>
             </table>
-            <p><strong>Chapters:</strong></p>
+            <p>
+                Within a chapter, cues still play automatically on their authored <code>t</code> offsets &mdash;
+                director mode only controls the <em>between-chapter</em> boundary. If you want to freeze a specific
+                moment within a chapter, use pause or step through with <code>1</code>&ndash;<code>9</code>.
+            </p>
+
+            <h3 id="panel-positioner">Panel Positioner (Drag-and-Drop)</h3>
+            <p>
+                The focus overlay (reasoning stream) and briefing overlay (asset dossier) are positioned by
+                <strong>you, the director</strong>. There is no auto-placement. Positions are authored per
+                spotlighted agent via drag-and-drop, persisted to <code>localStorage</code>, and exported as
+                a JS snippet you paste into the source to lock them in permanently.
+            </p>
+            <p><strong>Workflow:</strong></p>
             <ol>
-                <li><strong>Chapter 0</strong> &mdash; Intro + Bedsheet pitch + architecture diagram (~44s)</li>
-                <li><strong>Chapter 1</strong> &mdash; Network Startup (~15s)</li>
-                <li><strong>Chapter 2</strong> &mdash; Normal Operations (~20s)</li>
-                <li><strong>Chapter 3</strong> &mdash; Malicious Install Blocked (~20s)</li>
-                <li><strong>Chapter 4</strong> &mdash; Rogue Burst (~15s)</li>
-                <li><strong>Chapter 5</strong> &mdash; Gateway Block (~10s)</li>
-                <li><strong>Chapter 6</strong> &mdash; Sentinel Alert (~15s)</li>
-                <li><strong>Chapter 7</strong> &mdash; Quarantine Issued (~15s)</li>
-                <li><strong>Chapter 8</strong> &mdash; Stable State Restored (~10s)</li>
+                <li>Open the movie: <code>./start.sh --movie</code></li>
+                <li>Navigate to a chapter where the panels you want to position are visible (e.g. Chapter 3 for skill-acquirer and supply-chain-sentinel scenes)</li>
+                <li>Press <code>E</code> &mdash; a banner appears: <code>// PANEL EDIT &mdash; drag / E to exit / X to export / C to clear</code>. Panels get a dashed cyan outline and a grab cursor.</li>
+                <li>Drag the focus overlay and briefing overlay to the positions you want for the currently-spotlighted agent.</li>
+                <li>Release &mdash; the console logs <code>[panel-edit] saved &lt;agent&gt; &lt;which&gt; &lt;x&gt; &lt;y&gt;</code>. Position is persisted to <code>localStorage</code>.</li>
+                <li>Press <code>N</code> to advance to the next chapter. When the next agent is spotlighted, drag its panels into place.</li>
+                <li>Repeat until every agent's panels are where you want them.</li>
+                <li>Press <code>X</code> &mdash; full <code>PANEL_POSITIONS</code> JS snippet printed to console and copied to clipboard.</li>
+                <li>Paste the snippet into <code>docs/sentinel-presenter.html</code> to replace the existing <code>var PANEL_POSITIONS = {};</code> declaration. Commit.</li>
+            </ol>
+            <p><strong>Persistence:</strong></p>
+            <ul>
+                <li>While editing, positions live in <code>localStorage['bedsheet.panelPositions']</code> &mdash; survives reload, survives restart.</li>
+                <li>Clearing browser data wipes your work; export with <code>X</code> first if you want to save.</li>
+                <li>Once pasted into source, positions are authoritative; the user's <code>localStorage</code> overrides the source so you can experiment without losing the committed default.</li>
+            </ul>
+            <p><strong>Defaults when no position is saved:</strong> focus overlay goes top-right (60% x / 8% y), briefing goes bottom-left (5% x / 55% y). The movie will still play, just with these safe-corner fallbacks. Drag to fix.</p>
+
+            <h3 id="movie-chapters">Chapters</h3>
+            <ol>
+                <li><strong>Chapter 0</strong> &mdash; Intro + Bedsheet pitch + architecture diagram</li>
+                <li><strong>Chapter 1</strong> &mdash; Network Startup</li>
+                <li><strong>Chapter 2</strong> &mdash; Normal Operations</li>
+                <li><strong>Chapter 3</strong> &mdash; Malicious Install Blocked</li>
+                <li><strong>Chapter 4</strong> &mdash; Rogue Burst</li>
+                <li><strong>Chapter 5</strong> &mdash; Gateway Block</li>
+                <li><strong>Chapter 6</strong> &mdash; Sentinel Alert</li>
+                <li><strong>Chapter 7</strong> &mdash; Quarantine Issued</li>
+                <li><strong>Chapter 8</strong> &mdash; Stable State Restored</li>
             </ol>
             <p>
                 <strong>Authoring content:</strong> all movie content lives in the <code>MOVIE_SCRIPT</code> array
