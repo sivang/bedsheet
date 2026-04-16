@@ -2,7 +2,58 @@
 
 ## Session Summary
 
-Three-day arc (2026-04-14 through 2026-04-16) executing a full brainstorm → spec → plan → implement loop for **Movie Mode** on the Sentinel Presenter. Ended with PR #8 open and all 6 phases implemented, tested in-browser, and committed.
+Three-day arc (2026-04-14 through 2026-04-16) plus a long polish-and-rework session on 04-16 afternoon/evening. Executed a full brainstorm → spec → plan → implement loop for **Movie Mode** on the Sentinel Presenter, then iterated heavily with the user on visual and interaction polish. PR #8 is open with ~30 commits of movie-mode work.
+
+## Major Polish Iteration (after first doomsday on 04-16)
+
+After the initial movie-mode implementation (commits `8996c13` → `43845aa`), the user went into a polish iteration session that surfaced and fixed many issues. Key threads:
+
+### Pacing & visual feel
+- **Zoom depth** iterated 2.5× → 1.75× → 1.3× based on user feedback that zoom was "far too much."
+- **Zoom transition duration** 0.8s → 1.5s for a stately push-in.
+- **Chapter inter-gap** 0 → 1.5s → 3s of breathing room between chapters.
+- **Non-focused agents** `.dimmed` opacity iterated 0.2 → 0 → 0.3 (back to visible; panel overlap isn't solved by hiding agents, it's solved by DnD positioning).
+- **Architecture-diagram dwell** 5s → 20s so the audience has time to actually read the two-plane teaching caption.
+
+### Font + typography
+- Bedsheet pitch font iterated 14px → 70px → 66px → 50px → 34px (final, matched to BEDSHEET title).
+- Intro crawl text bumped to 34px to match — unified type-scale across pitch, intro, and BEDSHEET title.
+- Arch-diagram caption is multi-line with inter-line gaps.
+- `[object Object]` bug in tool_call cards — `buildEventCard` now JSON-stringifies object tool_inputs; tool_result reads `.result || .text` for movie/live schema compatibility.
+
+### Director mode (major restructure)
+- **Chapters do not auto-advance.** User presses `N` / Right-arrow to move between chapters. `P` / Left-arrow goes back.
+- **Beats within a chapter are also director-gated.** A chapter splits at each spotlight cue into "beats" — each beat requires a separate `N` to advance to the next spotlight. Non-spotlight cues (signals, commentary) play automatically inside each beat. Chapter 3 (Normal Operations) has 4 beats; Chapter 7 (Quarantine) has 2; etc.
+- `?mode=movie&auto=1` opts into kiosk-style auto-play. Director mode is the default for movie.
+- Old chapter 0 split: Chapter 0 (Bedsheet Brief, auto-plays pitch) + Chapter 1 (Architecture, director-triggered).
+- Chapter-card titles renumbered 1–8 → 2–9 to match new array indices.
+
+### DnD panel positioner (replaces auto-placer)
+- `findPanelPosition` heuristic **removed entirely** (+ `rectsOverlap`, + `lastFocusRect` state).
+- Press `E` to enter edit mode: panels get dashed cyan outline, chapter pauses (cancelAll), grab cursor. Drag panels anywhere.
+- Every drag-release **saves to localStorage instantly** (key: `bedsheet.panelPositions`).
+- Press `X`: browser downloads `panel-positions.json`, also printed to console + copied to clipboard. Move the file to `docs/panel-positions.json` and commit to make positions portable across machines.
+- Boot sequence: synchronous localStorage load → async fetch of `docs/panel-positions.json` → override if present.
+- **Positions are GLOBAL (HUD-style)**, one per panel, not per-agent. The per-agent model was a premature abstraction; the user correctly called it out.
+- **Fallback defaults**: focus top-right (60%, 8%), briefing bottom-left (5%, 55%). Safe corners, non-overlapping, used when no authored positions exist.
+
+### Shrink-and-reopen spotlight transitions
+- Panels collapse to `scale(0.1) opacity: 0` for the full zoom duration, then grow back at the new agent's position.
+- Unified across every spotlight start (not just agent→agent transitions) for visual consistency.
+- Fix a CSS cascade bug: `.transitioning` rule had to be placed AFTER both `.focus-overlay.visible` and `.briefing-overlay.visible` declarations in the stylesheet, plus `!important` on transform+opacity, for specificity reasons.
+
+### Music toggle + director hint
+- `M` toggles ambient music (on/off). Preference persists in `localStorage['bedsheet.ambientMuted']`.
+- Director hint moved from bottom-right to bottom-left (copyright footer lives bottom-right in cinematic mode).
+- Hint reads: `▸ N advances — E edits panels — M mutes music`.
+
+### Bug fixes
+- start.sh `--movie` no longer launches the 7-agent fleet (was wasteful; movie is fully synthetic).
+- `--help` flag added to start.sh with color-grouped modes/modifiers/misc sections.
+- `showCommentary` + `showChapterCard` name-collision fix with presenter originals (commit `6beaa40`).
+- `spotlight` cue now sets `currentFocus` in movie mode (was null → DnD saves silently failed).
+- Typing-sound epoch guard (commit `418c11e`) — race condition where `hidePitch` clears a pending setTimeout AFTER the keystroke sound fires.
+- Worktree-vs-main-workspace Bash tool discipline: always `cd` to worktree path explicitly, or use absolute paths.
 
 ## What Shipped
 
@@ -53,50 +104,65 @@ Three-day arc (2026-04-14 through 2026-04-16) executing a full brainstorm → sp
 
 ## Next Actions (priority order)
 
-1. **Run `pr-review-toolkit` on PR #8** before tagging ready. Your memory notes say it's caught real bugs on every past PR. Agents to run: `code-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, possibly `type-design-analyzer` (though low-value for JS-only work). `comment-analyzer` on the docs changes.
+1. **Author panel positions for the movie.** Press `E` once per chapter with a spotlight, drag focus + briefing panels to ideal positions (they're GLOBAL now, so one drag set applies everywhere). Press `X`, move `~/Downloads/panel-positions.json` to `docs/`. Commit. This locks in the visual composition for every future movie playthrough.
 
-2. **Apply any fixes the toolkit surfaces**, re-push, let CI re-run.
+2. **Rerun `pr-review-toolkit` on PR #8** — earlier review (commit range before the polish session) was done; the polish iteration added ~30 commits that haven't been reviewed. Focus agents: `code-reviewer`, `silent-failure-hunter`, `comment-analyzer`.
 
-3. **CI will run** test 3.11, test 3.12, lint, typecheck on the PR automatically. Watch it turn green.
+3. **Apply any fixes from toolkit**, re-push, watch CI.
 
-4. **Merge the PR** — squash merge per project convention. Remember the post-squash gotcha: use `git fetch && git reset --hard origin/main` after merging, not `git pull` (the memory-noted orphan-commit bug).
+4. **Merge the PR** — squash merge. Remember the post-squash gotcha: `git fetch && git reset --hard origin/main`, NOT `git pull`.
 
 5. **Clean up the worktree** after merge: `git worktree remove .worktrees/sentinel-presenter`.
 
 6. **Optional follow-ups (parked):**
    - Re-record the sentinel demo at 60-90s with a paid Gemini key (unblocks replay mode for full chapters).
-   - Simplify `agent-sentinel-security-architecture.html` (user flagged this as overly dense — acknowledged as separate side project).
-   - Install `@claude` GitHub bot (`.github/workflows/claude-review.yml` + `ANTHROPIC_API_KEY` secret) so future PR reviews work asynchronously.
+   - Simplify `agent-sentinel-security-architecture.html` (user flagged as overly dense).
+   - Install `@claude` GitHub bot (`.github/workflows/claude-review.yml` + `ANTHROPIC_API_KEY` secret).
    - v0.5.0 release bump — codebase is substantially ahead of PyPI v0.4.8.
-   - Rename ClawHub → OpenClaw across code, briefings, and copy if the rename is desired (flagged as non-blocking in spec §5).
+   - Rename ClawHub → OpenClaw across code, briefings, and copy.
+   - Auto-save panel-positions.json via POST endpoint (would need to upgrade start.sh's HTTP server from `python3 -m http.server` to something POST-capable).
 
 ## Version Control State
 
-- **Branch:** `feature/sentinel-presenter` at `57d3c9d`
-- **PR:** [#8](https://github.com/sivang/bedsheet/pull/8) — open, awaiting review
-- **Ahead of main:** 40 commits (includes presenter pin/overlay fixes + 6 spec/plan revisions + 16 movie-mode implementation commits + 3 doc commits)
+- **Branch:** `feature/sentinel-presenter` at `c4eabbf`
+- **PR:** [#8](https://github.com/sivang/bedsheet/pull/8) — open
+- **Ahead of main:** ~70 commits total (movie-mode implementation + polish iteration session)
 - **All pushed** to `origin/feature/sentinel-presenter`
-- **Worktree:** `.worktrees/sentinel-presenter/` preserved per the finishing-branch skill (Option 2)
-- **Uncommitted:** `examples/agent-sentinel/data/calendar.json` — pre-existing test-run side effect, NOT shipping with this PR
-
-## Commit to add the handoff file + README link
-
-```bash
-cd /Users/sivan/VitakkaProjects/BedsheetAgents/.worktrees/sentinel-presenter
-git add SESSION_HANDOFF_2026-04-16.md README.md
-git commit -m "docs: session handoff 2026-04-16 — movie mode shipped in PR #8"
-git push origin feature/sentinel-presenter
-```
+- **Worktree:** `.worktrees/sentinel-presenter/` preserved
+- **Uncommitted:** clean working tree
 
 ## Resume commands (next session)
 
 ```bash
 cd /Users/sivan/VitakkaProjects/BedsheetAgents/.worktrees/sentinel-presenter
 source /Users/sivan/VitakkaProjects/BedsheetAgents/.venv/bin/activate
-gh pr view 8 --comments                                  # See any review activity
-./start.sh --movie                                       # Visually verify the movie
-pytest tests/ -q --ignore=tests/integration --ignore=tests/test_memory_redis.py   # Sanity
+
+# Check PR state
+gh pr view 8 --comments
+
+# Author panel positions (top priority remaining item):
+examples/agent-sentinel/start.sh --movie
+# → dismiss intro → N through chapters with spotlights → E to edit → drag focus + briefing
+# → X to export JSON → mv ~/Downloads/panel-positions.json docs/ → commit
+
+# Sanity checks
+pytest tests/ -q --ignore=tests/integration --ignore=tests/test_memory_redis.py
 ```
+
+## Key runtime controls (for next-session orientation)
+
+| Key | Movie-mode action |
+|---|---|
+| `N` / `→` | Advance one beat (within chapter) or one chapter (between chapters) |
+| `P` / `←` | Go back one beat or one chapter |
+| `1`–`9` | Jump to chapter |
+| `R` | Restart from chapter 0 |
+| `Shift+1`–`5` | Speed 0.5× / 1× / 1.5× / 2× / 3× |
+| `E` | Toggle panel-edit mode (pauses chapter, allows drag) |
+| `X` | Export panel positions to disk (downloads panel-positions.json) |
+| `C` | Clear all saved positions (in edit mode) |
+| `M` | Toggle ambient music |
+| `F` | Fullscreen |
 
 ---
 *Session ended: 2026-04-16*
