@@ -528,6 +528,7 @@ A complete multi-agent security monitoring system built on Bedsheet + Sixth Sens
 - **[Sentinel Network Guide](https://sivang.github.io/bedsheet/sentinel-network-guide.html)** — Multi-agent network topology and signal flow
 - **[Security Architecture](https://sivang.github.io/bedsheet/agent-sentinel-security-architecture.html)** — Threat model, trust boundaries, and mitigations (including a documented prompt-injection vector and the v0.6 roadmap to close it)
 - **[Live Dashboard](https://sivang.github.io/bedsheet/agent-sentinel-dashboard.html)** — Real-time PubNub signal visualization for the running sentinel network
+- **[Sentinel Presenter Guide](https://sivang.github.io/bedsheet/sentinel-presenter-guide.html)** — Cinematic playback of the sentinel network. Supports live, replay, and a fully-scripted **movie mode** (`./start.sh --movie`) — a 2:44 standalone demo with no agents, PubNub, or recording dependency
 
 ### Engineering notes & retrospectives
 
