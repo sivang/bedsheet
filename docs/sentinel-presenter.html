@@ -502,17 +502,20 @@
             font-weight: 500;
             text-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
         }
-        .movie-pitch-body {
+        /* Viewport acts as a fixed window; body translates up inside it for the
+           cinematic teleprompter scroll effect. */
+        .movie-pitch-viewport {
             flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .movie-pitch-body {
             font-size: 14px;
             white-space: pre-wrap;
-            overflow-y: auto;
-            min-height: 0;
-            scroll-behavior: smooth;
+            will-change: transform;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-        .movie-pitch-body::-webkit-scrollbar { width: 4px; }
-        .movie-pitch-body::-webkit-scrollbar-track { background: transparent; }
-        .movie-pitch-body::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.2); border-radius: 2px; }
 
         /* ── Movie architecture diagram (Chapter 0) ── */
         .movie-arch-diagram {
@@ -1262,7 +1265,9 @@
                     <span class="movie-pitch-label">// operational brief</span>
                     <span class="movie-pitch-title">BEDSHEET</span>
                 </div>
-                <div class="movie-pitch-body"></div>
+                <div class="movie-pitch-viewport">
+                    <div class="movie-pitch-body"></div>
+                </div>
             </div>
             <div id="movieArchDiagram" class="movie-arch-diagram">
                 <svg viewBox="0 0 1000 600" class="movie-arch-svg" preserveAspectRatio="xMidYMid meet">
@@ -1990,20 +1995,41 @@
     // played a keystroke for the next char.
     var pitchEpoch = 0;
     var pitchTypingHandle = null;
+    // Teleprompter scroll: pin the typing cursor at ~62% down the viewport. As new
+    // text arrives, translate the body upward so the cursor stays at the target line.
+    // Old text glides up and out of view; CSS transition on .movie-pitch-body gives
+    // the smooth-scroll feel. Local state (bodyOffset) avoids parsing the style string.
+    var PITCH_CURSOR_TARGET_FRAC = 0.62;
     function showPitch(lines, onComplete) {
         pitchEpoch++;
         var myEpoch = pitchEpoch;
         var panel = document.getElementById('moviePitchPanel');
+        var viewport = panel.querySelector('.movie-pitch-viewport');
         var body = panel.querySelector('.movie-pitch-body');
         body.textContent = '';
+        var bodyOffset = 0;
+        body.style.transform = 'translateY(0px)';
         panel.classList.add('visible');
         var cursor = document.createElement('span');
         cursor.className = 'cursor';
         body.appendChild(cursor);
         var li = 0, ci = 0;
         if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
+
+        function updateScroll() {
+            var vpRect = viewport.getBoundingClientRect();
+            var cursorRect = cursor.getBoundingClientRect();
+            var targetY = vpRect.top + vpRect.height * PITCH_CURSOR_TARGET_FRAC;
+            var cursorY = cursorRect.top + cursorRect.height / 2;
+            var delta = cursorY - targetY;
+            if (delta > 0) {
+                bodyOffset -= delta;
+                body.style.transform = 'translateY(' + bodyOffset + 'px)';
+            }
+        }
+
         function step() {
-            if (myEpoch !== pitchEpoch) return; // cancelled by hidePitch or a re-entry
+            if (myEpoch !== pitchEpoch) return;
             if (li >= lines.length) {
                 setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
                 if (onComplete) onComplete();
@@ -2014,14 +2040,13 @@
                 body.insertBefore(document.createTextNode(line[ci]), cursor);
                 if (line[ci] !== ' ') playKeystroke();
                 ci++;
-                // Keep the typing cursor in view — cinematic auto-scroll.
-                body.scrollTop = body.scrollHeight;
+                updateScroll();
                 pitchTypingHandle = setTimeout(step, 22);
             } else {
                 body.insertBefore(document.createTextNode('\n\n'), cursor);
                 var gap = PITCH_GAPS[Math.min(li, PITCH_GAPS.length - 1)];
                 li++; ci = 0;
-                body.scrollTop = body.scrollHeight;
+                updateScroll();
                 pitchTypingHandle = setTimeout(step, gap);
             }
         }
