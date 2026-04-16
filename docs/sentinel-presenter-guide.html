@@ -303,6 +303,8 @@
             <a href="#signal-lines">Signal Lines</a>
             <a href="#ambient">Ambient Audio</a>
             <a href="#movie-mode">Movie Mode</a>
+            <a href="#authoring-chapter" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring a New Chapter</a>
+            <a href="#authoring-tips" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring Tips</a>
 
             <div class="section-label">JS Architecture</div>
             <a href="#js-overview">Code Overview</a>
@@ -874,6 +876,103 @@ open docs/sentinel-presenter.html?mode=movie</code></pre>
                 See <code>docs/superpowers/specs/2026-04-14-sentinel-presenter-movie-mode-design.md</code> for
                 full schema, semantics, and design rationale.
             </p>
+
+            <h3 id="authoring-chapter">Authoring a New Chapter</h3>
+            <p>
+                Add your chapter as a new object in the <code>MOVIE_SCRIPT</code> array (bottom of
+                <code>docs/sentinel-presenter.html</code>). Chapter order in the array is playback order;
+                the <code>1</code>&ndash;<code>8</code> keys jump by index.
+            </p>
+
+            <p><strong>Step 1 &mdash; start with the chapter skeleton:</strong></p>
+            <pre><code>/* Chapter N &mdash; &lt;title&gt; (~&lt;duration&gt;) */
+{
+    id: 'short-kebab-name',
+    title: '&lt;what the audience sees on the chapter card&gt;',
+    subtitle: '&lt;one-line mood setter&gt;',
+    cues: [
+        { t: 0,    type: 'chapter-card', title: 'Chapter N', subtitle: '&lt;...&gt;', hold_ms: 1800 },
+        { t: 1800, type: 'spotlight', agent: 'web-researcher' },  // or null for overview
+        { t: 2000, type: 'commentary', text: '&lt;one-sentence narration&gt;', hold_ms: 8000 },
+        // ... your signals, lines, more spotlights ...
+    ],
+},</code></pre>
+
+            <p><strong>Step 2 &mdash; add the signal events.</strong> Each signal cue is a PubNub-shaped object.
+                Here's the idiomatic pattern for an LLM-event sequence on a single agent:</p>
+            <pre><code>{ t: 3000, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'thinking', text: 'Reasoning about X...' },
+    correlation_id: 'chN-wr-1'
+}},
+{ t: 4200, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher', target: 'action-gateway',
+    payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: { q: 'X' } },
+    correlation_id: 'chN-wr-2'
+}},
+{ t: 5400, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'tool_result', text: '5 results.' },
+    correlation_id: 'chN-wr-3'
+}},
+{ t: 6400, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'completion', text: 'Done.' },
+    correlation_id: 'chN-wr-4'
+}},</code></pre>
+            <p>
+                <code>target</code> on a <code>tool_call</code> makes <code>driveMapEffectForSignal</code>
+                animate a signal-line from <code>sender</code> to <code>target</code> automatically &mdash; you
+                don't need a separate <code>line</code> cue for normal tool flow.
+            </p>
+
+            <p><strong>Step 3 &mdash; move the spotlight to follow causality.</strong> When one agent's output
+                reaches another, zoom to the receiver:</p>
+            <pre><code>{ t: 7000, type: 'spotlight', agent: 'sentinel-commander' },
+{ t: 8000, type: 'signal', signal: {
+    kind: 'event', sender: 'sentinel-commander',
+    payload: { event_type: 'thinking', text: 'Correlating alerts...' },
+    correlation_id: 'chN-cmd-1'
+}},</code></pre>
+
+            <p><strong>Step 4 &mdash; cross-plane moments use explicit <code>line</code> cues.</strong>
+                When you want a colored line between agents that is <em>not</em> a tool call (e.g. a sentinel
+                alerting the commander), add a <code>line</code> cue:</p>
+            <pre><code>{ t: 9000, type: 'signal', signal: {
+    kind: 'alert', sender: 'behavior-sentinel', target: 'sentinel-commander',
+    payload: { reason: 'rate_spike' }, correlation_id: 'chN-alert'
+}},
+{ t: 9100, type: 'line', from: 'behavior-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },</code></pre>
+
+            <p><strong>Step 5 &mdash; set duration and end.</strong> The chapter advances automatically once the
+                last cue's <code>t + hold_ms</code> elapses. For a clean fade, end with
+                <code>spotlight null</code>:</p>
+            <pre><code>{ t: 13500, type: 'spotlight', agent: null },</code></pre>
+
+            <h3 id="authoring-tips">Authoring tips</h3>
+            <ul>
+                <li><strong>Monotonic <code>t</code>.</strong> Cue timestamps within a chapter must not go
+                    backwards. The linter (<code>lintMovieScript</code>) will warn on boot if you violate this.</li>
+                <li><strong>Typing math for commentary.</strong> <code>showCommentary</code> types at 22 ms/char.
+                    Budget <code>hold_ms</code> &ge; text length &times; 22ms + 2&ndash;3 s of readable hold
+                    afterward. A 100-char sentence wants <code>hold_ms: 5000</code> minimum.</li>
+                <li><strong>Chapter self-sufficiency.</strong> A chapter jumped-to via the <code>1</code>&ndash;<code>8</code>
+                    keys always starts after <code>resetPresenterVisuals()</code>. If your chapter's story depends
+                    on prior state (e.g. "web-researcher is already quarantined"), either fix that state in the
+                    first cues, or accept that jump-in plays with a fresh map.</li>
+                <li><strong>Rapid bursts render faithfully.</strong> Unlike replay mode, signal cues bypass the 800 ms
+                    <code>drainMapEvents</code> throttle &mdash; you can schedule 5 <code>tool_call</code>s in
+                    2 seconds and each will pulse individually (see Chapter 4 for reference).</li>
+                <li><strong>Correlation IDs are free-form.</strong> They surface in the event-card UI but the movie
+                    engine does not use them. Use them to trace which cue is which when debugging.</li>
+                <li><strong>Verify with <code>?mode=movie</code> and the chapter key.</strong> Reload the presenter,
+                    dismiss the intro, press the chapter number. If something looks wrong, open devtools &mdash; the
+                    linter and cue runtime both log to the console (<code>[lint]</code>, <code>[movie]</code>
+                    prefixes).</li>
+                <li><strong>Colors.</strong> <code>line</code> cues accept a CSS custom property
+                    (<code>color: 'var(--purple)'</code>) or a hex (<code>color: '#ff3b6f'</code>). Omit the field
+                    entirely and the color defaults to the sender's role color from <code>ROLE_COLORS</code>.</li>
+            </ul>
 
             <!-- ═══════════════════════════════════ -->
             <!-- JS ARCHITECTURE -->
