@@ -2654,9 +2654,21 @@
 
         var text = '';
         if (eventType === 'tool_call') {
-            text = payload.tool_input || '';
+            // tool_input may be an object (movie-mode synthetic events) or string (live
+            // PubNub). Objects get pretty-printed JSON so '[object Object]' never shows.
+            var ti = payload.tool_input;
+            if (ti && typeof ti === 'object') {
+                try { text = Object.keys(ti).length === 0 ? '' : JSON.stringify(ti); }
+                catch (e) { text = ''; }
+            } else {
+                text = ti || '';
+            }
         } else if (eventType === 'tool_result') {
-            text = payload.result || '';
+            // Live PubNub uses .result; movie-mode synthetics use .text. Accept either.
+            text = payload.result || payload.text || '';
+            if (text && typeof text === 'object') {
+                try { text = JSON.stringify(text); } catch (e) { text = ''; }
+            }
         } else {
             text = payload.text || '';
         }
