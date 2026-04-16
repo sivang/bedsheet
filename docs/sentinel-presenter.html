@@ -227,12 +227,12 @@
            can place panels precisely relative to real agent positions. */
         body.panel-edit-mode .agent-node.dimmed { opacity: 0.7; }
 
-        /* Subtle always-on hint so the director never forgets they're in control.
-           Only visible in movie mode (live/replay keep the chrome clean). */
+        /* Subtle always-on hint — placed bottom-LEFT so the copyright in cinematic
+           full-screen mode (bottom-right) doesn't collide with these keybind hints. */
         .movie-director-hint {
             position: fixed;
             bottom: 14px;
-            right: 14px;
+            left: 14px;
             font-family: var(--font-mono);
             font-size: 11px;
             color: var(--cyan);
@@ -1374,7 +1374,7 @@
                     <div class="movie-chapter-card-subtitle"></div>
                 </div>
             </div>
-            <div id="movieDirectorHint" class="movie-director-hint">▸ N advances — E edits panels</div>
+            <div id="movieDirectorHint" class="movie-director-hint">▸ N advances — E edits panels — M mutes music</div>
             <div id="moviePitchPanel" class="movie-pitch-panel">
                 <div class="movie-pitch-header">
                     <span class="movie-pitch-label">// operational brief</span>
@@ -1778,6 +1778,30 @@
         }, 2000);
     }
 
+    // ── Ambient music mute preference ──
+    // Persisted in localStorage so the user's choice survives reloads. M toggles.
+    function ambientMuted() {
+        try { return localStorage.getItem('bedsheet.ambientMuted') === '1'; }
+        catch (e) { return false; }
+    }
+    function setAmbientMuted(muted) {
+        try { localStorage.setItem('bedsheet.ambientMuted', muted ? '1' : '0'); } catch (e) {}
+    }
+    function toggleAmbientMusic() {
+        var audio = document.getElementById('ambientAudio');
+        if (!audio) return;
+        if (audio.paused) {
+            setAmbientMuted(false);
+            audio.volume = 0.15;
+            audio.play().catch(function() {});
+            console.log('[presenter] ambient music: ON');
+        } else {
+            setAmbientMuted(true);
+            audio.pause();
+            console.log('[presenter] ambient music: OFF');
+        }
+    }
+
     function dismissIntro() {
         if (introShown) return;
         introShown = true;
@@ -1788,12 +1812,11 @@
             overlay.classList.add('hidden');
         }, 1600);
 
-        // Start ambient audio (requires user interaction to play)
+        // Start ambient audio unless the user has muted it (preference persisted).
         var audio = document.getElementById('ambientAudio');
-        if (audio) {
+        if (audio && !ambientMuted()) {
             audio.volume = 0.15;
             audio.play().catch(function(err) {
-                // NotAllowedError = autoplay policy, expected if no user gesture
                 if (err.name !== 'NotAllowedError') {
                     console.warn('[presenter] Audio failed:', err.name, err.message);
                 }
@@ -3227,6 +3250,12 @@
             if (e.shiftKey && e.key >= '1' && e.key <= '5') {
                 var speedMap = { '1': 0.5, '2': 1, '3': 1.5, '4': 2, '5': 3 };
                 if (movieEngine) movieEngine.setSpeed(speedMap[e.key]);
+                e.preventDefault();
+                return;
+            }
+            // M → toggle ambient music (persists across reloads via localStorage)
+            if (e.key === 'm' || e.key === 'M') {
+                toggleAmbientMusic();
                 e.preventDefault();
                 return;
             }
