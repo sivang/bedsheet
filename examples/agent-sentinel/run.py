@@ -128,7 +128,7 @@ def main():
         delay = os.environ.get("BEDSHEET_REPLAY_DELAY", "0.0")
         logger.info(f"  Replay delay: {delay}s per token")
 
-    log_section("Agent Sentinel - AI Agent Security Monitoring")
+    log_section("Agent Sentinel™ - AI Agent Security Monitoring")
     logger.info("  Inspired by the OpenClaw crisis of 2026")
     logger.info(
         "  Launching 7 processes (1 gateway + 3 workers + 2 sentinels + 1 commander)"

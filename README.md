@@ -519,12 +519,12 @@ Agents running on different machines, processes, or networks can exchange typed 
 - **[Sixth Sense Design](https://sivang.github.io/bedsheet/sixth-sense-design.html)** — Architecture, protocols, design decisions
 - **[Sixth Sense Internals](https://sivang.github.io/bedsheet/sixth-sense-internals.html)** — Honest deep-dive into how every piece works under the hood
 
-### Agent Sentinel — security demo
+### Agent Sentinel™ — security demo
 
 A complete multi-agent security monitoring system built on Bedsheet + Sixth Sense. Demonstrates tamper-proof tool execution via a pure-Python Action Gateway, behavior-based and supply-chain sentinels, and a sentinel commander that orchestrates threat response. Ships with a live dashboard.
 
-- **[Agent Sentinel Guide](https://sivang.github.io/bedsheet/agent-sentinel-guide.html)** — What it is, how it works, how to run it
-- **[Agent Sentinel Setup](https://sivang.github.io/bedsheet/agent-sentinel-setup.html)** — Step-by-step setup instructions
+- **[Agent Sentinel™ Guide](https://sivang.github.io/bedsheet/agent-sentinel-guide.html)** — What it is, how it works, how to run it
+- **[Agent Sentinel™ Setup](https://sivang.github.io/bedsheet/agent-sentinel-setup.html)** — Step-by-step setup instructions
 - **[Sentinel Network Guide](https://sivang.github.io/bedsheet/sentinel-network-guide.html)** — Multi-agent network topology and signal flow
 - **[Security Architecture](https://sivang.github.io/bedsheet/agent-sentinel-security-architecture.html)** — Threat model, trust boundaries, and mitigations (including a documented prompt-injection vector and the v0.6 roadmap to close it)
 - **[Live Dashboard](https://sivang.github.io/bedsheet/agent-sentinel-dashboard.html)** — Real-time PubNub signal visualization for the running sentinel network
