@@ -352,7 +352,12 @@
         .focus-overlay {
             position: absolute;
             width: 380px;
-            height: 420px;
+            /* Grow to fit event cards as they stream in, capped at max-height so the
+               reasoning stream scrolls after filling the viewport. Transition height
+               smoothly for a cinematic 'panel expanding as thoughts arrive' feel. */
+            height: auto;
+            min-height: 80px;
+            max-height: 70vh;
             background: rgba(14, 22, 42, 0.95);
             border: 1px solid var(--border-glow);
             border-radius: 8px;
@@ -363,7 +368,7 @@
             backdrop-filter: blur(8px);
             opacity: 0;
             transform: translateY(8px);
-            transition: opacity 0.4s ease, transform 0.4s ease;
+            transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.5s ease;
             pointer-events: none;
         }
 
@@ -371,6 +376,17 @@
             opacity: 1;
             transform: translateY(0);
             pointer-events: auto;
+        }
+
+        /* Shrink-and-reopen transition between spotlights. Applied by spotlight cue
+           handler on agent→agent transitions, then removed after ~350ms so the panel
+           expands back at the new agent's position with fresh content. */
+        .focus-overlay.transitioning,
+        .briefing-overlay.transitioning {
+            transform: scale(0.1);
+            opacity: 0;
+            pointer-events: none;
+            transform-origin: center center;
         }
 
         .focus-overlay-header {
@@ -3493,7 +3509,25 @@
                     currentFocus = null;
                     zoomToOverview({ durationMs: cue.duration_ms });
                     hideFocusOverlay();
+                } else if (currentFocus && currentFocus !== cue.agent) {
+                    // Agent-to-agent transition: shrink the panels at the old agent,
+                    // swap zoom + content, then grow back at the new agent.
+                    var _overlay = document.getElementById('focusOverlay');
+                    var _briefing = document.getElementById('briefingOverlay');
+                    _overlay.classList.add('transitioning');
+                    _briefing.classList.add('transitioning');
+                    var newAgent = cue.agent;
+                    var newDur = cue.duration_ms;
+                    currentFocus = newAgent;
+                    setTimeout(function() {
+                        zoomToAgent(newAgent, { durationMs: newDur });
+                        showFocusOverlay(newAgent);
+                        // In-place class swap: CSS transitions animate scale 0.1 → 1
+                        _overlay.classList.remove('transitioning');
+                        _briefing.classList.remove('transitioning');
+                    }, 380);
                 } else {
+                    // Fresh spotlight (from overview or first beat)
                     currentFocus = cue.agent;
                     zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
                     showFocusOverlay(cue.agent);
