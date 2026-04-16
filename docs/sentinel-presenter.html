@@ -222,6 +222,38 @@
            composition entirely while the focused agent's story plays. */
         .agent-node.dimmed { opacity: 0; transition: opacity 0.8s ease; }
 
+        /* ── Panel edit mode (DnD positioner) ── */
+        body.panel-edit-mode .focus-overlay.visible,
+        body.panel-edit-mode .briefing-overlay.visible {
+            cursor: grab;
+            outline: 2px dashed var(--cyan);
+            outline-offset: -2px;
+        }
+        body.panel-edit-mode .focus-overlay.dragging,
+        body.panel-edit-mode .briefing-overlay.dragging {
+            cursor: grabbing;
+            outline-color: var(--green);
+            box-shadow: 0 0 24px rgba(0, 239, 130, 0.5);
+        }
+        /* Small badge in the corner so you can tell edit mode is on */
+        body.panel-edit-mode::before {
+            content: '// PANEL EDIT — drag / E to exit / X to export / C to clear';
+            position: fixed;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            z-index: 999;
+            pointer-events: none;
+        }
+
         /* Enhanced glow for focused agent */
         .agent-node.focused .agent-node-ring {
             stroke-width: 2;
@@ -2271,94 +2303,65 @@
 
     // Convert agent node SVG coords to screen position after zoom
 
-    function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
-        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    // ── Panel positioning (director-authored, persisted) ──
+    //
+    // Panels (.focus-overlay, .briefing-overlay) are placed per spotlighted agent from
+    // PANEL_POSITIONS. Defaults live in code; user overrides by dragging in edit mode
+    // (press E to toggle) and pressing X to export a JS snippet to the console.
+    // Positions persist to localStorage across reloads so editing is iterative.
+    //
+    // There is no auto-placement heuristic. The director picks frames. If a position
+    // is missing for an agent, a safe default (top-right / bottom-left corners) is used
+    // so the movie never breaks — just looks ugly until the director places them.
+    var PANEL_POSITIONS_DEFAULTS = {
+        // Fallback corners used when no authored position exists for an agent.
+        focus:    { x_frac: 0.60, y_frac: 0.08 },  // top-right area
+        briefing: { x_frac: 0.05, y_frac: 0.55 },  // bottom-left area
+    };
+
+    var PANEL_POSITIONS = {};  // { agentName: { focus: {x, y}, briefing: {x, y} } } — pixels, map-area relative
+
+    // Load persisted positions on boot
+    try {
+        var saved = localStorage.getItem('bedsheet.panelPositions');
+        if (saved) PANEL_POSITIONS = JSON.parse(saved);
+    } catch (e) { /* ignore */ }
+
+    function savePanelPositions() {
+        try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) {}
     }
 
-    // Find a position for a panel that avoids the agent node and any existing rects
-    function findPanelPosition(areaW, areaH, panelW, panelH, fracX, fracY, avoidRects) {
-        // Pin halo + two-line labels extend well past the pin ring — at 1.3x effective scale
-        // the widest label ("supply-chain-sentinel") reaches ~70px either side of the pin
-        // center, and labels live ~55px below. The side gap + avoid rect below both account
-        // for this so panels never clip the pin or its labels.
-        var gap = 90;
-        var candidates = [
-            { x: areaW / 2 + gap, y: areaH / 2 - panelH / 2 },              // right
-            { x: areaW / 2 - panelW - gap, y: areaH / 2 - panelH / 2 },     // left
-            { x: areaW / 2 - panelW / 2, y: areaH / 2 + gap },              // below
-            { x: areaW / 2 - panelW / 2, y: areaH / 2 - panelH - gap },     // above
-            { x: areaW - panelW - 20, y: 60 },                                // top-right corner
-            { x: 20, y: 60 },                                                 // top-left corner
-            { x: areaW - panelW - 20, y: areaH - panelH - 70 },              // bottom-right
-            { x: 20, y: areaH - panelH - 70 },                                // bottom-left
-        ];
-
-        // Prefer based on agent position
-        if (fracX > 0.5) {
-            candidates = [candidates[1], candidates[0], candidates[5], candidates[4], candidates[2], candidates[3], candidates[7], candidates[6]];
-        }
-        if (fracY < 0.3) {
-            candidates = [candidates[2], candidates[0], candidates[1], candidates[6], candidates[7], candidates[3], candidates[4], candidates[5]];
-        }
-
-        // Agent halo bbox at center after zoom — wider than the pin ring so panels don't
-        // clip the label text ("sentinel-commander" etc.) that renders below the pin.
-        var nodeRect = { x: areaW / 2 - 90, y: areaH / 2 - 30, w: 180, h: 95 };
-        var allAvoid = [nodeRect].concat(avoidRects || []);
-
-        for (var i = 0; i < candidates.length; i++) {
-            var cx = Math.max(16, Math.min(candidates[i].x, areaW - panelW - 16));
-            var cy = Math.max(16, Math.min(candidates[i].y, areaH - panelH - 16));
-            var collides = false;
-            for (var j = 0; j < allAvoid.length; j++) {
-                var r = allAvoid[j];
-                if (rectsOverlap(cx, cy, panelW, panelH, r.x, r.y, r.w, r.h)) {
-                    collides = true;
-                    break;
-                }
-            }
-            if (!collides) return { x: cx, y: cy };
-        }
-        // Fallback: first candidate clamped
+    function getPanelPosition(agentName, which, areaW, areaH, panelW, panelH) {
+        var entry = PANEL_POSITIONS[agentName];
+        if (entry && entry[which]) return { x: entry[which].x, y: entry[which].y };
+        var def = PANEL_POSITIONS_DEFAULTS[which];
         return {
-            x: Math.max(16, Math.min(candidates[0].x, areaW - panelW - 16)),
-            y: Math.max(16, Math.min(candidates[0].y, areaH - panelH - 16))
+            x: Math.max(16, Math.min(def.x_frac * areaW, areaW - panelW - 16)),
+            y: Math.max(16, Math.min(def.y_frac * areaH, areaH - panelH - 16)),
         };
     }
-
-    // Position both briefing and focus windows, avoiding each other and the agent node.
-    // Focus overlay (reasoning) is positioned first so it claims the slot closest to the pin;
-    // the briefing fills in around it.
-    var lastFocusRect = null;
 
     function positionBothOverlays(agentName) {
         var info = AGENTS[agentName];
         if (!info) return;
-
         var mapArea = document.getElementById('mapArea');
         var areaW = mapArea.offsetWidth;
         var areaH = mapArea.offsetHeight;
-        var fracX = info.x / VIEWBOX_W;
-        var fracY = info.y / VIEWBOX_H;
 
-        // Position focus overlay (reasoning) first — it gets the closest slot to the pin
         var focusW = 380, focusH = 420;
-        var focusPos = findPanelPosition(areaW, areaH, focusW, focusH, fracX, fracY, []);
-        lastFocusRect = { x: focusPos.x, y: focusPos.y, w: focusW, h: focusH };
+        var briefW = 360, briefH = 320;
+
+        var focusPos = getPanelPosition(agentName, 'focus', areaW, areaH, focusW, focusH);
+        var briefPos = getPanelPosition(agentName, 'briefing', areaW, areaH, briefW, briefH);
 
         var overlay = document.getElementById('focusOverlay');
         overlay.style.left = focusPos.x + 'px';
         overlay.style.top = focusPos.y + 'px';
 
-        // Position briefing, avoiding the focus overlay
-        var briefW = 360, briefH = 320;
-        var briefPos = findPanelPosition(areaW, areaH, briefW, briefH, fracX, fracY, [lastFocusRect]);
-
         var briefEl = document.getElementById('briefingOverlay');
         briefEl.style.left = briefPos.x + 'px';
         briefEl.style.top = briefPos.y + 'px';
 
-        // Set header info
         var rc = ROLE_COLORS[info.role] || ROLE_COLORS.worker;
         document.getElementById('focusDot').style.background = rc.hex;
         document.getElementById('focusDot').style.boxShadow = '0 0 6px ' + rc.hex;
@@ -2369,6 +2372,87 @@
         roleEl.style.color = rc.hex;
         overlay.style.borderColor = rc.hex;
     }
+
+    // ── DnD panel positioner (edit mode) ──
+    // Press E to toggle edit mode. Panels gain grab cursors + dashed outlines; click-drag
+    // to reposition. Release saves position for the currently-spotlighted agent. Press X
+    // to dump PANEL_POSITIONS to the console as a JS snippet (copy into source to lock).
+    var editMode = false;
+    var draggingPanel = null;
+    var dragOffset = { x: 0, y: 0 };
+
+    function setEditMode(on) {
+        editMode = on;
+        document.body.classList.toggle('panel-edit-mode', editMode);
+        console.log('[panel-edit] ' + (editMode ? 'ON — drag panels, X to export' : 'OFF'));
+    }
+
+    function onPanelMouseDown(e) {
+        if (!editMode) return;
+        var panel = e.currentTarget;
+        draggingPanel = {
+            el: panel,
+            which: panel.id === 'focusOverlay' ? 'focus' : 'briefing',
+        };
+        var rect = panel.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        panel.classList.add('dragging');
+        e.preventDefault();
+    }
+    function onDocMouseMove(e) {
+        if (!draggingPanel) return;
+        var mapArea = document.getElementById('mapArea');
+        var mapRect = mapArea.getBoundingClientRect();
+        var x = e.clientX - mapRect.left - dragOffset.x;
+        var y = e.clientY - mapRect.top - dragOffset.y;
+        x = Math.max(0, Math.min(x, mapRect.width - draggingPanel.el.offsetWidth));
+        y = Math.max(0, Math.min(y, mapRect.height - draggingPanel.el.offsetHeight));
+        draggingPanel.el.style.left = x + 'px';
+        draggingPanel.el.style.top = y + 'px';
+    }
+    function onDocMouseUp(e) {
+        if (!draggingPanel) return;
+        if (currentFocus) {
+            if (!PANEL_POSITIONS[currentFocus]) PANEL_POSITIONS[currentFocus] = {};
+            var x = parseInt(draggingPanel.el.style.left, 10) || 0;
+            var y = parseInt(draggingPanel.el.style.top, 10) || 0;
+            PANEL_POSITIONS[currentFocus][draggingPanel.which] = { x: x, y: y };
+            savePanelPositions();
+            console.log('[panel-edit] saved', currentFocus, draggingPanel.which, x, y);
+        }
+        draggingPanel.el.classList.remove('dragging');
+        draggingPanel = null;
+    }
+    function exportPanelPositions() {
+        var json = JSON.stringify(PANEL_POSITIONS, null, 4);
+        var snippet = 'var PANEL_POSITIONS = ' + json + ';';
+        console.log('[panel-edit] Paste into sentinel-presenter.html to lock positions:\n\n' + snippet + '\n');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(snippet).then(function() {
+                console.log('[panel-edit] Copied to clipboard.');
+            }).catch(function() {});
+        }
+    }
+    function clearPanelPositions() {
+        PANEL_POSITIONS = {};
+        savePanelPositions();
+        console.log('[panel-edit] All saved positions cleared.');
+    }
+
+    // Wire drag handlers once the DOM is ready.
+    (function() {
+        function init() {
+            var fo = document.getElementById('focusOverlay');
+            var bo = document.getElementById('briefingOverlay');
+            if (fo) fo.addEventListener('mousedown', onPanelMouseDown);
+            if (bo) bo.addEventListener('mousedown', onPanelMouseDown);
+            document.addEventListener('mousemove', onDocMouseMove);
+            document.addEventListener('mouseup', onDocMouseUp);
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+    })();
 
     // Type the agent briefing in the separate briefing window
     var briefingTypingInterval = null;
@@ -2924,18 +3008,52 @@
         // Don't capture keys when typing in input
         if (e.target.tagName === 'INPUT') return;
 
-        // Movie-mode overrides (plain 1-9 → chapter jump, R → restart)
+        // Movie-mode overrides (director controls)
         if (PRESENTER_MODE === 'movie') {
+            // Director advance: N / Right-arrow → next chapter
+            if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowRight') {
+                if (movieEngine) movieEngine.advance();
+                e.preventDefault();
+                return;
+            }
+            // Director rewind: P / Left-arrow → previous chapter
+            if (e.key === 'p' || e.key === 'P' || e.key === 'ArrowLeft') {
+                if (movieEngine) movieEngine.previous();
+                e.preventDefault();
+                return;
+            }
+            // Number keys 1-9 → jump to chapter N
             if (!e.shiftKey && e.key >= '1' && e.key <= '9') {
                 var chIdx = parseInt(e.key, 10);
                 if (movieEngine) movieEngine.jumpToChapter(chIdx);
                 e.preventDefault();
                 return;
             }
+            // R → restart from chapter 0
             if (e.key === 'r' || e.key === 'R') {
                 if (movieEngine) movieEngine.restart();
                 e.preventDefault();
                 return;
+            }
+            // E → toggle panel-edit mode (DnD positioner)
+            if (e.key === 'e' || e.key === 'E') {
+                setEditMode(!editMode);
+                e.preventDefault();
+                return;
+            }
+            // X → export authored panel positions to console + clipboard
+            if (e.key === 'x' || e.key === 'X') {
+                exportPanelPositions();
+                e.preventDefault();
+                return;
+            }
+            // C → clear all saved positions
+            if (e.key === 'c' || e.key === 'C') {
+                if (editMode) {
+                    clearPanelPositions();
+                    e.preventDefault();
+                    return;
+                }
             }
             if (e.shiftKey && e.key >= '1' && e.key <= '5') {
                 var speedMap = { '1': 0.5, '2': 1, '3': 1.5, '4': 2, '5': 3 };
@@ -3074,12 +3192,17 @@
     // absorb what just happened before the next card arrives. 3000ms = ~3 heartbeats.
     var CHAPTER_GAP_MS = 3000;
 
-    function MovieEngine(script) {
+    function MovieEngine(script, opts) {
+        opts = opts || {};
         this.script = script || [];
         this.chapterIdx = 0;
         this.chapterStart = 0;
         this.pendingTimers = new Set();
         this.speed = 1;
+        // Director mode: chapters do NOT auto-advance. User presses N / Right-arrow to
+        // progress to the next chapter manually. Default for movie mode — author drives
+        // the tempo, not the clock.
+        this.directorMode = opts.directorMode !== false;
     }
 
     MovieEngine.prototype.scheduleCue = function(cue, effectiveOffsetMs) {
@@ -3111,14 +3234,27 @@
         chapter.cues.forEach(function(cue) {
             self.scheduleCue(cue, cue.t);
         });
-        var lastEnd = chapter.cues.reduce(function(max, c) {
-            return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
-        }, 0);
-        var nextHandle = setTimeout(function() {
-            self.pendingTimers.delete(nextHandle);
-            self.playChapter(idx + 1);
-        }, (lastEnd + CHAPTER_GAP_MS) / this.speed);
-        this.pendingTimers.add(nextHandle);
+        // Auto-advance only outside director mode. In director mode, the user presses
+        // N / Right-arrow to call advance() when they're ready for the next chapter.
+        if (!this.directorMode) {
+            var lastEnd = chapter.cues.reduce(function(max, c) {
+                return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+            }, 0);
+            var nextHandle = setTimeout(function() {
+                self.pendingTimers.delete(nextHandle);
+                self.playChapter(idx + 1);
+            }, (lastEnd + CHAPTER_GAP_MS) / this.speed);
+            this.pendingTimers.add(nextHandle);
+        }
+    };
+
+    // Director-mode step: advance to next chapter when user says go.
+    MovieEngine.prototype.advance = function() {
+        this.playChapter(this.chapterIdx + 1);
+    };
+
+    MovieEngine.prototype.previous = function() {
+        if (this.chapterIdx > 0) this.playChapter(this.chapterIdx - 1);
     };
 
     MovieEngine.prototype.restart = function() {
@@ -3481,11 +3617,16 @@
 
     function startMovieMode() {
         lintMovieScript(MOVIE_SCRIPT);
-        movieEngine = new MovieEngine(MOVIE_SCRIPT);
+        // Director mode is default: user presses N to advance chapters. Auto-advance
+        // can be opted-in via ?mode=movie&auto=1 (e.g. kiosk loops).
+        var qs = new URLSearchParams(window.location.search);
+        var autoPlay = qs.get('auto') === '1';
+        movieEngine = new MovieEngine(MOVIE_SCRIPT, { directorMode: !autoPlay });
         if (MOVIE_SCRIPT.length === 0) {
             console.log('[movie] empty script — overview only');
             return;
         }
+        console.log('[movie] director mode =', !autoPlay, '  (N/Right = next, E = edit panels, X = export, R = restart)');
         movieEngine.playChapter(0);
     }
 
