@@ -3509,31 +3509,28 @@
                 break;
             case 'spotlight':
                 // Track currentFocus so the DnD positioner knows which agent to key
-                // saved panel positions under. Previously this stayed null in movie
-                // mode, so dragged positions were never persisted.
+                // saved panel positions under.
                 if (cue.agent === null) {
                     currentFocus = null;
                     zoomToOverview({ durationMs: cue.duration_ms });
                     hideFocusOverlay();
-                } else if (currentFocus && currentFocus !== cue.agent) {
-                    // Agent-to-agent transition timeline:
-                    //   t=0    : cards start shrinking (400ms)
-                    //   t=400  : cards fully hidden. Start zoom (1500ms). Update content
-                    //            under cover while invisible.
-                    //   t=1900 : zoom finished. Remove .transitioning so cards grow back
-                    //            at the new position with fresh content.
-                    // This keeps the panels out of the frame during the whole zoom move,
-                    // so the viewer isn't distracted by an already-visible panel sliding
-                    // across the screen with the map under it.
+                } else {
+                    // Unified spotlight transition for every agent spotlight:
+                    //   - From overview / fresh beat : panels hidden → zoom → panels grow
+                    //   - From another agent         : panels shrink → zoom → panels grow
+                    // Timeline:
+                    //   t=0          shrink starts (no-op if panels aren't visible yet)
+                    //   t=SHRINK_MS  panels fully hidden. Start zoom + update content.
+                    //   t=+ZOOM_MS   zoom done. Remove .transitioning → panels grow in.
                     var _overlay = document.getElementById('focusOverlay');
                     var _briefing = document.getElementById('briefingOverlay');
+                    var isAgentToAgent = (currentFocus && currentFocus !== cue.agent);
                     _overlay.classList.add('transitioning');
                     _briefing.classList.add('transitioning');
                     var newAgent = cue.agent;
-                    var newDur = cue.duration_ms;
                     currentFocus = newAgent;
-                    var SHRINK_MS = 400;
-                    var ZOOM_MS = newDur || 1500;  // matches .map-viewport CSS default
+                    var SHRINK_MS = isAgentToAgent ? 400 : 0;  // no shrink wait on fresh spotlight
+                    var ZOOM_MS = cue.duration_ms || 1500;
                     setTimeout(function() {
                         zoomToAgent(newAgent, { durationMs: ZOOM_MS });
                         showFocusOverlay(newAgent);
@@ -3542,11 +3539,6 @@
                             _briefing.classList.remove('transitioning');
                         }, ZOOM_MS);
                     }, SHRINK_MS);
-                } else {
-                    // Fresh spotlight (from overview or first beat)
-                    currentFocus = cue.agent;
-                    zoomToAgent(cue.agent, { durationMs: cue.duration_ms });
-                    showFocusOverlay(cue.agent);
                 }
                 break;
             case 'signal':
