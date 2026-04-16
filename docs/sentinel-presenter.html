@@ -875,38 +875,40 @@
         .intro-overlay.hidden { display: none; }
 
         .intro-crawl {
-            max-width: 620px;
+            max-width: min(1200px, 90vw);
             text-align: left;
             padding: 40px;
         }
 
         .intro-title {
             font-family: var(--font-mono);
-            font-size: 12px;
+            /* Matched to BEDSHEET briefing title (34px) for a cohesive display scale. */
+            font-size: 34px;
             color: var(--cyan);
             text-transform: uppercase;
             letter-spacing: 3px;
-            margin-bottom: 28px;
+            margin-bottom: 36px;
             opacity: 0;
         }
 
         .intro-line {
             font-family: var(--font-mono);
-            font-size: 15px;
+            /* Matched to BEDSHEET title size (34px). */
+            font-size: 34px;
             font-weight: 400;
             color: var(--green);
-            line-height: 1.8;
-            margin-bottom: 20px;
+            line-height: 1.4;
+            margin-bottom: 28px;
             opacity: 0;
             white-space: pre-wrap;
         }
 
         .intro-line .cursor {
             display: inline-block;
-            width: 8px;
-            height: 16px;
+            width: 10px;
+            height: 28px;
             background: var(--green);
-            margin-left: 2px;
+            margin-left: 4px;
             vertical-align: text-bottom;
             animation: blink-cursor 0.7s step-end infinite;
         }
@@ -918,7 +920,7 @@
 
         .intro-line.dim {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 34px;
         }
 
         .intro-line.accent {
@@ -928,7 +930,8 @@
 
         .intro-line.classified {
             color: var(--red);
-            font-size: 11px;
+            /* Slightly smaller than title to read as a pre-header / stamp; still display-scale. */
+            font-size: 24px;
             text-transform: uppercase;
             letter-spacing: 2px;
         }
