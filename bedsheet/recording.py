@@ -224,7 +224,16 @@ class ReplayLLMClient:
     ) -> LLMResponse:
         if not self._responses:
             _log.info("Replay complete — no more recorded responses")
-            return LLMResponse(text=None, tool_calls=[], stop_reason="end_turn")
+            # Return a synthetic text completion so the agent's ReAct loop
+            # exits cleanly via the "text with no tool_calls" branch.
+            # Returning text=None with empty tool_calls triggers the agent's
+            # empty-response guard ("Model returned an empty response") which
+            # is correct for live LLM failures but misleading during replay.
+            return LLMResponse(
+                text="[Replay complete — no more recorded responses]",
+                tool_calls=[],
+                stop_reason="end_turn",
+            )
 
         if self._delay > 0:
             import asyncio

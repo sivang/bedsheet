@@ -673,7 +673,15 @@ async def test_recording_context_manager(tmp_path: Path):
 
 
 async def test_replay_exhausted_responses(tmp_path: Path):
-    """ReplayLLMClient raises RuntimeError when recordings are exhausted."""
+    """Exhausted ReplayLLMClient returns a synthetic text completion.
+
+    When replay runs out of recorded responses it returns a sentinel text
+    message instead of text=None.  Returning None with empty tool_calls
+    would trigger the agent's empty-response guard (added for Gemini
+    content-filtering failures) and surface a misleading error during
+    replay.  The synthetic text lets the ReAct loop exit cleanly via its
+    normal "text with no tool_calls → CompletionEvent" branch.
+    """
     from bedsheet.recording import ReplayLLMClient
 
     path = tmp_path / "test.jsonl"
@@ -701,11 +709,14 @@ async def test_replay_exhausted_responses(tmp_path: Path):
     replay = ReplayLLMClient(path=str(path))
     await replay.chat([], system="s")  # consumes the one response
 
-    # Exhausted replay returns end_turn with no tool calls (graceful stop)
+    # Exhausted replay returns a synthetic text completion (not None) so the
+    # agent's ReAct loop exits via the normal completion branch rather than
+    # hitting the empty-response error guard.
     result = await replay.chat([], system="s")
     assert result.stop_reason == "end_turn"
     assert result.tool_calls == []
-    assert result.text is None
+    assert result.text is not None
+    assert "Replay complete" in result.text
 
 
 async def test_replay_exhausted_tool_results(tmp_path: Path):
