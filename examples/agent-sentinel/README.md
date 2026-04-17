@@ -1,4 +1,4 @@
-# Agent Sentinel
+# Agent Sentinel™
 
 Real-time AI agent security monitoring using [Bedsheet Sense](../../docs/sixth-sense-guide.html).
 

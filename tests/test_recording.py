@@ -673,7 +673,14 @@ async def test_recording_context_manager(tmp_path: Path):
 
 
 async def test_replay_exhausted_responses(tmp_path: Path):
-    """ReplayLLMClient raises RuntimeError when recordings are exhausted."""
+    """Exhausted ReplayLLMClient signals via custom stop_reason.
+
+    When replay runs out of recorded responses it returns
+    stop_reason="replay_exhausted" with text=None. The agent's ReAct
+    loop handles this explicitly, avoiding both the empty-response
+    error guard and synthetic text that would leak into memory,
+    PubNub broadcasts, and streaming output.
+    """
     from bedsheet.recording import ReplayLLMClient
 
     path = tmp_path / "test.jsonl"
@@ -701,9 +708,9 @@ async def test_replay_exhausted_responses(tmp_path: Path):
     replay = ReplayLLMClient(path=str(path))
     await replay.chat([], system="s")  # consumes the one response
 
-    # Exhausted replay returns end_turn with no tool calls (graceful stop)
+    # Exhausted replay signals via custom stop_reason — no synthetic text.
     result = await replay.chat([], system="s")
-    assert result.stop_reason == "end_turn"
+    assert result.stop_reason == "replay_exhausted"
     assert result.tool_calls == []
     assert result.text is None
 
@@ -837,3 +844,51 @@ async def test_enable_replay(tmp_path: Path):
     completions = [e for e in events if isinstance(e, CompletionEvent)]
     assert len(completions) == 1
     assert completions[0].response == "Replayed!"
+
+
+async def test_agent_invoke_handles_replay_exhaustion(tmp_path: Path):
+    """Agent.invoke() yields CompletionEvent without persisting to memory
+    when ReplayLLMClient is exhausted (stop_reason=replay_exhausted)."""
+    from bedsheet.recording import enable_replay
+    from bedsheet.agent import Agent
+    from bedsheet.events import ErrorEvent
+
+    path = tmp_path / "test.jsonl"
+    records = [
+        {
+            "type": "llm_call",
+            "seq": 0,
+            "agent": "test",
+            "messages_hash": "x",
+            "system_hash": "y",
+            "tools": [],
+        },
+        {
+            "type": "llm_response",
+            "seq": 0,
+            "text": "First response",
+            "tool_calls": [],
+            "stop_reason": "end_turn",
+            "thinking": None,
+            "parsed_output": None,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+
+    agent = Agent(
+        name="test", instruction="Help.", model_client=MockLLMClient(responses=[])
+    )
+    enable_replay(agent, directory=str(tmp_path))
+
+    # First invoke consumes the one recorded response
+    events1 = [e async for e in agent.invoke("s1", "Hi")]
+    completions1 = [e for e in events1 if isinstance(e, CompletionEvent)]
+    assert completions1[0].response == "First response"
+
+    # Second invoke hits exhausted replay — should get CompletionEvent, not ErrorEvent
+    events2 = [e async for e in agent.invoke("s1", "Hi again")]
+    errors = [e for e in events2 if isinstance(e, ErrorEvent)]
+    assert len(errors) == 0
+    completions2 = [e for e in events2 if isinstance(e, CompletionEvent)]
+    assert len(completions2) == 1
+    assert "Replay ended" in completions2[0].response

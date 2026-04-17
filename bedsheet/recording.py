@@ -223,8 +223,17 @@ class ReplayLLMClient:
         output_schema: OutputSchema | None = None,
     ) -> LLMResponse:
         if not self._responses:
-            _log.info("Replay complete — no more recorded responses")
-            return LLMResponse(text=None, tool_calls=[], stop_reason="end_turn")
+            _log.warning(
+                "Replay exhausted — no more recorded responses (recording may be too short)"
+            )
+            # Signal exhaustion via a custom stop_reason so the agent's
+            # ReAct loop can handle it explicitly without synthetic text
+            # that would leak into memory, PubNub broadcasts, and streaming.
+            return LLMResponse(
+                text=None,
+                tool_calls=[],
+                stop_reason="replay_exhausted",
+            )
 
         if self._delay > 0:
             import asyncio

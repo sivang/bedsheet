@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start Agent Sentinel — all 6 agents + live dashboard
+# Start Agent Sentinel™ — all 6 agents + live dashboard
 #
 # Usage:
 #   ./start.sh                Launch agents + dashboard (live mode)
@@ -126,7 +126,7 @@ fi
 # ── Banner ──
 echo ""
 echo -e "${CYAN}  ╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel${NC} — AI Agent Security Monitoring   ${CYAN}║${NC}"
+echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel™${NC} — AI Agent Security Monitoring  ${CYAN}║${NC}"
 echo -e "${CYAN}  ║${NC}   ${DIM}Powered by Bedsheet + PubNub + Gemini${NC}          ${CYAN}║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════════════════╝${NC}"
 if [ "$MOVIE" = true ]; then
