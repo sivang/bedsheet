@@ -8,6 +8,7 @@ gateway that actually enforced the rules — it cannot be tampered with.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 
 from bedsheet import Agent, ActionGroup, Annotated, SenseMixin
@@ -155,7 +156,7 @@ async def main():
             )
             await agent.broadcast(agent.name, signal)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("PubNub broadcast failed", exc_info=True)
 
     try:
         while True:
