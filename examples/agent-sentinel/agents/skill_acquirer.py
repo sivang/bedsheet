@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import random
 import time
@@ -67,7 +68,7 @@ async def _publish_llm_event(agent: SkillAcquirer, session_id: str, event) -> No
             signal = Signal(kind="event", sender=agent.name, payload=payload)
             await agent.broadcast(agent.name, signal)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("PubNub broadcast failed", exc_info=True)
 
 
 skill_tools = ActionGroup("skill_tools", "Skill installation tools")

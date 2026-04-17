@@ -196,6 +196,17 @@ If no agent is appropriate, respond directly.
                 tools=tools,
             )
 
+            if response.stop_reason == "replay_exhausted":
+                yield CompletionEvent(response="[Replay ended — recording exhausted]")
+                return
+
+            if not response.text and not response.tool_calls:
+                yield ErrorEvent(
+                    error="Model returned an empty response (no text, no tool calls)",
+                    recoverable=False,
+                )
+                return
+
             if response.text and not response.tool_calls:
                 assistant_message = Message(role="assistant", content=response.text)
                 messages.append(assistant_message)
