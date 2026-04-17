@@ -151,6 +151,13 @@ Current date: $current_datetime$
                 yield ErrorEvent(error="No response from LLM", recoverable=False)
                 return
 
+            # ReplayLLMClient signals exhaustion via a custom stop_reason
+            # so we exit cleanly without persisting synthetic text to memory
+            # or broadcasting it over PubNub.
+            if response.stop_reason == "replay_exhausted":
+                yield CompletionEvent(response="[Replay ended — recording exhausted]")
+                return
+
             # If text response with no tool calls, we're done
             if response.text and not response.tool_calls:
                 assistant_message = Message(role="assistant", content=response.text)

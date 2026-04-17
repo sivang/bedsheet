@@ -223,16 +223,16 @@ class ReplayLLMClient:
         output_schema: OutputSchema | None = None,
     ) -> LLMResponse:
         if not self._responses:
-            _log.info("Replay complete — no more recorded responses")
-            # Return a synthetic text completion so the agent's ReAct loop
-            # exits cleanly via the "text with no tool_calls" branch.
-            # Returning text=None with empty tool_calls triggers the agent's
-            # empty-response guard ("Model returned an empty response") which
-            # is correct for live LLM failures but misleading during replay.
+            _log.warning(
+                "Replay exhausted — no more recorded responses (recording may be too short)"
+            )
+            # Signal exhaustion via a custom stop_reason so the agent's
+            # ReAct loop can handle it explicitly without synthetic text
+            # that would leak into memory, PubNub broadcasts, and streaming.
             return LLMResponse(
-                text="[Replay complete — no more recorded responses]",
+                text=None,
                 tool_calls=[],
-                stop_reason="end_turn",
+                stop_reason="replay_exhausted",
             )
 
         if self._delay > 0:
