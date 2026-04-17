@@ -134,8 +134,8 @@ After the initial movie-mode implementation (commits `8996c13` → `43845aa`), t
 ## Resume commands (next session)
 
 ```bash
-cd /Users/sivan/VitakkaProjects/BedsheetAgents/.worktrees/sentinel-presenter
-source /Users/sivan/VitakkaProjects/BedsheetAgents/.venv/bin/activate
+cd .worktrees/sentinel-presenter
+source .venv/bin/activate
 
 # Check PR state
 gh pr view 8 --comments

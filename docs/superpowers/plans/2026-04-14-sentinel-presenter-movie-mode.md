@@ -52,8 +52,8 @@ Goal: movie mode activates, empty script plays cleanly, every primitive stub exi
 ## Task 1.1 — Add `--movie` flag and query-string dispatch
 
 **Files:**
-- Modify: `/Users/sivan/VitakkaProjects/BedsheetAgents/.worktrees/sentinel-presenter/examples/agent-sentinel/start.sh`
-- Modify: `/Users/sivan/VitakkaProjects/BedsheetAgents/.worktrees/sentinel-presenter/docs/sentinel-presenter.html`
+- Modify: `examples/agent-sentinel/start.sh`
+- Modify: `docs/sentinel-presenter.html`
 
 - [ ] **Step 1: Locate the existing flag parser in `start.sh`**
 

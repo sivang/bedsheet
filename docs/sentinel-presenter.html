@@ -1892,6 +1892,10 @@
             showConnectionError('Network error \u2014 check your connection');
         } else if (statusEvent.category === 'PNTimeoutCategory') {
             showConnectionError('Connection timed out \u2014 try again');
+        } else if (statusEvent.category === 'PNReconnectedCategory') {
+            console.log('[presenter] PubNub reconnected after network interruption');
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Reconnected';
         } else if (statusEvent.error) {
             console.error('[presenter] PubNub status error:', statusEvent.category, statusEvent);
             showConnectionError('Connection failed: ' + statusEvent.category);
@@ -1920,6 +1924,10 @@
         var signal = decodeSignal(raw, event.channel);
         if (!signal) {
             console.warn('[presenter] Undecipherable message on', event.channel, raw);
+            return;
+        }
+        if (!signal.kind || !signal.sender) {
+            console.warn('[presenter] Signal missing kind or sender:', signal);
             return;
         }
 
@@ -3519,13 +3527,22 @@
     };
 
     // Speed change mid-chapter: tear down pending timers, recompute remaining offsets
-    // against chapterStart under the new speed, re-schedule cues + chapter-advance.
+    // under the new speed. In director mode, only reschedule the current beat to avoid
+    // firing future-beat cues that should wait for the director to press N.
     MovieEngine.prototype.setSpeed = function(newSpeed) {
         if (newSpeed <= 0) return;
-        var now = Date.now();
-        var elapsedOrig = (now - this.chapterStart) * this.speed; // elapsed in t-space
         this.cancelAll();
         this.speed = newSpeed;
+
+        if (this.directorMode && this.beats && this.beats[this.beatIdx]) {
+            // Replay current beat from scratch at new speed
+            this.playBeat(this.beatIdx);
+            return;
+        }
+
+        // Auto-play mode: reschedule remaining cues from the full chapter
+        var now = Date.now();
+        var elapsedOrig = (now - this.chapterStart) * this.speed;
         this.chapterStart = now - elapsedOrig / newSpeed;
         var chapter = this.script[this.chapterIdx];
         if (!chapter) return;
@@ -3900,7 +3917,9 @@
     var movieEngine = null;
 
     function startMovieMode() {
-        lintMovieScript(MOVIE_SCRIPT);
+        if (!lintMovieScript(MOVIE_SCRIPT)) {
+            console.error('[movie] Script validation failed — check console warnings above.');
+        }
         // Director mode is default: user presses N to advance chapters. Auto-advance
         // can be opted-in via ?mode=movie&auto=1 (e.g. kiosk loops).
         var qs = new URLSearchParams(window.location.search);
@@ -3930,13 +3949,14 @@
             animateBroadcast(sender);
             stats.alerts++;
         } else if (kind === 'event' && payload.event_type === 'tool_call') {
-            pulseNode(sender);
+            var tcColor = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+            pulseNode(sender, tcColor);
             if (signal.target) {
-                var color = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
-                animateSignalLine(sender, signal.target, color);
+                animateSignalLine(sender, signal.target, tcColor);
             }
         } else if (kind === 'heartbeat') {
-            pulseNode(sender);
+            var hbColor = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+            pulseNode(sender, hbColor);
         }
     }
 
