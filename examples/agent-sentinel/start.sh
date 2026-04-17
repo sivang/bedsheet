@@ -107,6 +107,7 @@ while [ $# -gt 0 ]; do
         --cinematic) CINEMATIC=true ;;
         --movie)   MOVIE=true ;;
         --help|-h) show_help; exit 0 ;;
+        *) echo -e "${RED}Unknown flag: $1${NC}"; show_help; exit 1 ;;
     esac
     shift
 done
@@ -120,6 +121,16 @@ fi
 
 if [ "$RECORD" = true ] && [ "$REPLAY" = true ]; then
     echo -e "${RED}Cannot use --record and --replay together${NC}"
+    exit 1
+fi
+
+if [ "$MOVIE" = true ] && [ "$RECORD" = true ]; then
+    echo -e "${RED}Cannot use --movie and --record together${NC}"
+    exit 1
+fi
+
+if [ "$MOVIE" = true ] && [ "$PRESENT" = true ]; then
+    echo -e "${RED}Cannot use --movie and --present together${NC}"
     exit 1
 fi
 
@@ -151,9 +162,9 @@ fi
 # ── Check environment ──
 echo -e "${BLUE}Checking environment...${NC}"
 
-if [ "$REPLAY" = true ]; then
-    # Replay mode — no API keys needed
-    echo -e "${GREEN}  Replay mode — no API keys required${NC}"
+if [ "$REPLAY" = true ] || [ "$MOVIE" = true ]; then
+    # Replay/movie mode — no API keys needed
+    echo -e "${GREEN}  ${MOVIE:+Movie}${REPLAY:+Replay} mode — no API keys required${NC}"
     echo ""
 else
     MISSING=()
@@ -266,6 +277,13 @@ if [ "$NO_DASH" = false ]; then
     # Write config for dashboard auto-connect
     if [ -n "${PUBNUB_SUBSCRIBE_KEY:-}" ]; then
         echo "window.SENTINEL_CONFIG = { subscribeKey: '${PUBNUB_SUBSCRIBE_KEY}' };" > "$REPO_ROOT/docs/sentinel-config.js"
+    fi
+
+    # Pre-flight: check if port is already in use
+    existing=$(lsof -ti :"$DASHBOARD_PORT" 2>/dev/null || true)
+    if [ -n "$existing" ]; then
+        echo -e "${RED}Port $DASHBOARD_PORT already in use (pid $existing). Kill it or choose another port.${NC}"
+        exit 1
     fi
 
     echo -e "${CYAN}Starting dashboard server on port $DASHBOARD_PORT...${NC}"

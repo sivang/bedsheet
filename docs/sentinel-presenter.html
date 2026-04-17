@@ -1540,6 +1540,9 @@
         var qs = new URLSearchParams(window.location.search);
         var m = qs.get('mode');
         if (m === 'movie' || m === 'replay' || m === 'live') return m;
+        if (!window.SENTINEL_CONFIG || !window.SENTINEL_CONFIG.subscribeKey) {
+            console.warn('[presenter] sentinel-config.js not found or has no subscribeKey. Defaulting to replay mode. Run start.sh to generate the config, or enter a key manually.');
+        }
         return window.SENTINEL_CONFIG && window.SENTINEL_CONFIG.subscribeKey ? 'live' : 'replay';
     })();
     console.log('[presenter] mode =', PRESENTER_MODE);
@@ -1785,7 +1788,7 @@
         catch (e) { return false; }
     }
     function setAmbientMuted(muted) {
-        try { localStorage.setItem('bedsheet.ambientMuted', muted ? '1' : '0'); } catch (e) {}
+        try { localStorage.setItem('bedsheet.ambientMuted', muted ? '1' : '0'); } catch (e) { console.warn('[presenter] localStorage error:', e.message); }
     }
     function toggleAmbientMusic() {
         var audio = document.getElementById('ambientAudio');
@@ -1793,7 +1796,7 @@
         if (audio.paused) {
             setAmbientMuted(false);
             audio.volume = 0.15;
-            audio.play().catch(function() {});
+            audio.play().catch(function(err) { if (err.name !== 'NotAllowedError') console.warn('[presenter] Audio play failed:', err.message); });
             console.log('[presenter] ambient music: ON');
         } else {
             setAmbientMuted(true);
@@ -2463,7 +2466,10 @@
         if (_saved && applyRawPanelPositions(JSON.parse(_saved))) {
             console.log('[panel-edit] loaded from localStorage (sync):', PANEL_POSITIONS);
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[panel-edit] corrupted localStorage data, clearing:', e.message);
+        try { localStorage.removeItem('bedsheet.panelPositions'); } catch (_) {}
+    }
 
     // Async: the committed JSON file (if present) overrides localStorage.
     fetch('./panel-positions.json', { cache: 'no-store' })
@@ -2473,10 +2479,12 @@
                 console.log('[panel-edit] loaded panel-positions.json (overriding localStorage)');
             }
         })
-        .catch(function() { /* no file — localStorage already applied */ });
+        .catch(function(err) {
+            if (err && err.message) console.warn('[panel-edit] Failed to load panel-positions.json:', err.message);
+        });
 
     function savePanelPositions() {
-        try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) {}
+        try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) { console.warn('[panel-edit] localStorage save failed:', e.message); }
     }
 
     function getPanelPosition(which, areaW, areaH, panelW, panelH) {
@@ -2596,7 +2604,7 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(json).then(function() {
                 console.log('[panel-edit] JSON copied to clipboard.');
-            }).catch(function() {});
+            }).catch(function(err) { console.warn('[panel-edit] Clipboard write failed:', err.message); });
         }
         // 2) Trigger a file download so the JSON lands on the user's disk
         try {
