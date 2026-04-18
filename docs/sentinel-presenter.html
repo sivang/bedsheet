@@ -3531,6 +3531,7 @@
     // firing future-beat cues that should wait for the director to press N.
     MovieEngine.prototype.setSpeed = function(newSpeed) {
         if (newSpeed <= 0) return;
+        var oldSpeed = this.speed;
         this.cancelAll();
         this.speed = newSpeed;
 
@@ -3540,9 +3541,10 @@
             return;
         }
 
-        // Auto-play mode: reschedule remaining cues from the full chapter
+        // Auto-play mode: reschedule remaining cues from the full chapter.
+        // Use oldSpeed to compute elapsed virtual time before the change.
         var now = Date.now();
-        var elapsedOrig = (now - this.chapterStart) * this.speed;
+        var elapsedOrig = (now - this.chapterStart) * oldSpeed;
         this.chapterStart = now - elapsedOrig / newSpeed;
         var chapter = this.script[this.chapterIdx];
         if (!chapter) return;

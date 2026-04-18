@@ -134,6 +134,11 @@ if [ "$MOVIE" = true ] && [ "$PRESENT" = true ]; then
     exit 1
 fi
 
+if [ "$MOVIE" = true ] && [ "$REPLAY" = true ]; then
+    echo -e "${RED}Cannot use --movie and --replay together${NC}"
+    exit 1
+fi
+
 # ── Banner ──
 echo ""
 echo -e "${CYAN}  ╔══════════════════════════════════════════════════╗${NC}"
