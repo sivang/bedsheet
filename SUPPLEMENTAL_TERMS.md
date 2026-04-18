@@ -82,7 +82,7 @@ For licensing inquiries, commercial partnerships, or questions about permitted u
 
 **Vitakka Consulting**
 Website: https://vitakka.co/
-Email: info@vitakka.co
+Email: contact@vitakka.co
 
 ---
 
