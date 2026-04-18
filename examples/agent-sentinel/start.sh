@@ -8,6 +8,10 @@
 #   ./start.sh --replay 0.1   Replay with delay between tokens (seconds)
 #   ./start.sh --no-dash      Launch without dashboard server
 #   ./start.sh --quiet        Suppress LLM event output (only show key events)
+#   ./start.sh --present      Cinematic presenter mode (implies --replay 0.3)
+#   ./start.sh --present --cinematic  Start in cinematic mode (no UI chrome)
+#   ./start.sh --movie        Fully-scripted ~2:44 movie (no agents, no recordings)
+#   ./start.sh --help         Show this help and exit
 #
 # Flags can be combined: ./start.sh --record --no-dash --quiet
 
@@ -31,12 +35,54 @@ TAIL_PID=""
 AGENT_PIDS=()
 AGENT_NAMES=()
 
+# ── Help ──
+show_help() {
+    local me
+    me="$(basename "$0")"
+    echo ""
+    echo -e "  ${CYAN}Agent Sentinel${NC} — launcher"
+    echo ""
+    echo -e "  ${DIM}Usage:${NC}"
+    echo -e "    ${me} [flag ...]"
+    echo ""
+    echo -e "  ${DIM}Modes (pick one; default is live PubNub):${NC}"
+    echo -e "    ${GREEN}--record${NC}               Run live, save all LLM + tool calls to recordings/"
+    echo -e "    ${GREEN}--replay${NC} [delay]       Replay from recordings/ (no API keys needed). Optional"
+    echo -e "                           per-token delay in seconds (e.g. ${DIM}--replay 0.1${NC})."
+    echo -e "    ${GREEN}--present${NC}              Cinematic presenter mode (implies ${DIM}--replay 0.3${NC})."
+    echo -e "    ${GREEN}--movie${NC}                Fully-scripted demo — no agents, no PubNub, no recordings."
+    echo -e "                           Director mode by default: press ${DIM}N${NC} to advance chapters, ${DIM}E${NC} to"
+    echo -e "                           drag-reposition panels, ${DIM}X${NC} to export positions. See the guide."
+    echo ""
+    echo -e "  ${DIM}Modifiers:${NC}"
+    echo -e "    ${GREEN}--no-dash${NC}              Launch without the dashboard HTTP server."
+    echo -e "    ${GREEN}--quiet${NC}                Suppress per-event LLM output."
+    echo -e "    ${GREEN}--cinematic${NC}            With ${DIM}--present${NC}: start in cinematic mode (no UI chrome)."
+    echo ""
+    echo -e "  ${DIM}Misc:${NC}"
+    echo -e "    ${GREEN}--help${NC}, ${GREEN}-h${NC}             Show this help and exit."
+    echo ""
+    echo -e "  ${DIM}Examples:${NC}"
+    echo -e "    ${me}                      ${DIM}# Live PubNub mode${NC}"
+    echo -e "    ${me} --replay 0.1         ${DIM}# Fast replay from recordings/${NC}"
+    echo -e "    ${me} --present            ${DIM}# Cinematic replay for demos${NC}"
+    echo -e "    ${me} --movie              ${DIM}# Synthetic scripted demo${NC}"
+    echo -e "    ${me} --record --quiet     ${DIM}# Capture a session, low verbosity${NC}"
+    echo ""
+    echo -e "  ${DIM}Dashboard URL (when enabled):${NC}"
+    echo -e "    http://localhost:${DASHBOARD_PORT}/"
+    echo ""
+}
+
 # ── Parse args ──
 NO_DASH=false
 RECORD=false
 REPLAY=false
 REPLAY_DELAY="0.0"
 QUIET=false
+PRESENT=false
+CINEMATIC=false
+MOVIE=false
 while [ $# -gt 0 ]; do
     case $1 in
         --no-dash) NO_DASH=true ;;
@@ -50,12 +96,46 @@ while [ $# -gt 0 ]; do
                 shift
             fi
             ;;
+        --present)
+            PRESENT=true
+            # Implies replay mode with default 0.3s delay (if not already set)
+            if [ "$REPLAY" = false ]; then
+                REPLAY=true
+                REPLAY_DELAY="0.3"
+            fi
+            ;;
+        --cinematic) CINEMATIC=true ;;
+        --movie)   MOVIE=true ;;
+        --help|-h) show_help; exit 0 ;;
+        *) echo -e "${RED}Unknown flag: $1${NC}"; show_help; exit 1 ;;
     esac
     shift
 done
 
+# Movie mode is fully synthetic — no agents, no PubNub, no recordings.
+# Just the HTTP server serving the presenter HTML. Keep the dashboard on;
+# do NOT turn REPLAY/PRESENT on (those launch agents — wasted in movie mode).
+if [ "$MOVIE" = true ]; then
+    NO_DASH=false
+fi
+
 if [ "$RECORD" = true ] && [ "$REPLAY" = true ]; then
     echo -e "${RED}Cannot use --record and --replay together${NC}"
+    exit 1
+fi
+
+if [ "$MOVIE" = true ] && [ "$RECORD" = true ]; then
+    echo -e "${RED}Cannot use --movie and --record together${NC}"
+    exit 1
+fi
+
+if [ "$MOVIE" = true ] && [ "$PRESENT" = true ]; then
+    echo -e "${RED}Cannot use --movie and --present together${NC}"
+    exit 1
+fi
+
+if [ "$MOVIE" = true ] && [ "$REPLAY" = true ]; then
+    echo -e "${RED}Cannot use --movie and --replay together${NC}"
     exit 1
 fi
 
@@ -65,7 +145,11 @@ echo -e "${CYAN}  ╔═══════════════════�
 echo -e "${CYAN}  ║${NC}   ${PURPLE}Agent Sentinel™${NC} — AI Agent Security Monitoring  ${CYAN}║${NC}"
 echo -e "${CYAN}  ║${NC}   ${DIM}Powered by Bedsheet + PubNub + Gemini${NC}          ${CYAN}║${NC}"
 echo -e "${CYAN}  ╚══════════════════════════════════════════════════╝${NC}"
-if [ "$RECORD" = true ]; then
+if [ "$MOVIE" = true ]; then
+    echo -e "   ${CYAN}▶ MOVIE MODE${NC} — fully-scripted demo (no agents, no PubNub)"
+elif [ "$PRESENT" = true ]; then
+    echo -e "   ${CYAN}▶ PRESENTER MODE${NC} — cinematic demo playback"
+elif [ "$RECORD" = true ]; then
     echo -e "   ${YELLOW}● RECORDING MODE${NC} — saving to recordings/"
 elif [ "$REPLAY" = true ]; then
     echo -e "   ${GREEN}▶ REPLAY MODE${NC} — reading from recordings/ (delay: ${REPLAY_DELAY}s)"
@@ -83,9 +167,9 @@ fi
 # ── Check environment ──
 echo -e "${BLUE}Checking environment...${NC}"
 
-if [ "$REPLAY" = true ]; then
-    # Replay mode — no API keys needed
-    echo -e "${GREEN}  Replay mode — no API keys required${NC}"
+if [ "$REPLAY" = true ] || [ "$MOVIE" = true ]; then
+    # Replay/movie mode — no API keys needed
+    echo -e "${GREEN}  ${MOVIE:+Movie}${REPLAY:+Replay} mode — no API keys required${NC}"
     echo ""
 else
     MISSING=()
@@ -200,21 +284,47 @@ if [ "$NO_DASH" = false ]; then
         echo "window.SENTINEL_CONFIG = { subscribeKey: '${PUBNUB_SUBSCRIBE_KEY}' };" > "$REPO_ROOT/docs/sentinel-config.js"
     fi
 
+    # Pre-flight: check if port is already in use
+    existing=$(lsof -ti :"$DASHBOARD_PORT" 2>/dev/null || true)
+    if [ -n "$existing" ]; then
+        echo -e "${RED}Port $DASHBOARD_PORT already in use (pid $existing). Kill it or choose another port.${NC}"
+        exit 1
+    fi
+
     echo -e "${CYAN}Starting dashboard server on port $DASHBOARD_PORT...${NC}"
     python3 -m http.server "$DASHBOARD_PORT" --directory "$REPO_ROOT/docs" > /tmp/sentinel-dashboard.log 2>&1 &
     DASH_PID=$!
     sleep 1
 
-    if kill -0 "$DASH_PID" 2>/dev/null; then
-        echo -e "${GREEN}  Dashboard ready${NC}"
-        echo -e "${BLUE}  http://localhost:${DASHBOARD_PORT}/agent-sentinel-dashboard.html${NC}"
+    # Choose presenter or dashboard page
+    if [ "$MOVIE" = true ]; then
+        DASH_PAGE="sentinel-presenter.html?mode=movie"
+        if [ "$CINEMATIC" = true ]; then
+            DASH_PAGE="sentinel-presenter.html?mode=movie#cinematic"
+        fi
+        DASH_LABEL="Movie"
+    elif [ "$PRESENT" = true ]; then
+        DASH_PAGE="sentinel-presenter.html"
+        if [ "$CINEMATIC" = true ]; then
+            DASH_PAGE="sentinel-presenter.html#cinematic"
+        fi
+        DASH_LABEL="Presenter"
     else
-        echo -e "${RED}  Dashboard failed to start — check /tmp/sentinel-dashboard.log${NC}"
+        DASH_PAGE="agent-sentinel-dashboard.html"
+        DASH_LABEL="Dashboard"
+    fi
+
+    if kill -0 "$DASH_PID" 2>/dev/null; then
+        echo -e "${GREEN}  ${DASH_LABEL} ready${NC}"
+        echo -e "${BLUE}  http://localhost:${DASHBOARD_PORT}/${DASH_PAGE}${NC}"
+    else
+        echo -e "${RED}  ${DASH_LABEL} failed to start — check /tmp/sentinel-dashboard.log${NC}"
     fi
     echo ""
 fi
 
 # ── Launch gateway + agents ──
+# (Skipped entirely in movie mode — movie is fully synthetic, no agents needed.)
 # Order: gateway first (owns all tools), then workers, then sentinels, then commander
 AGENTS=(
     "middleware/action_gateway.py:action-gateway:gateway"
@@ -225,6 +335,20 @@ AGENTS=(
     "agents/supply_chain_sentinel.py:supply-chain-sentinel:sentinel"
     "agents/sentinel_commander.py:sentinel-commander:commander"
 )
+
+if [ "$MOVIE" = true ]; then
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}  Movie ready${NC}"
+    echo -e "${CYAN}  Mode:      MOVIE (synthetic — no agents, no PubNub)${NC}"
+    echo -e "${BLUE}  Movie:     http://localhost:${DASHBOARD_PORT}/${DASH_PAGE}${NC}"
+    echo -e "${DIM}  Dismiss the intro crawl (Space/Enter) to start the movie.${NC}"
+    echo -e "${DIM}  Press Ctrl+C to stop the HTTP server.${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    # Wait on the HTTP server (DASH_PID); Ctrl+C kills it and us.
+    wait "$DASH_PID"
+    exit 0
+fi
 
 # ── Set verbose/recording/replay env vars (inherited by child processes) ──
 if [ "$QUIET" = false ]; then
@@ -276,13 +400,15 @@ done
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  All systems online${NC}"
-if [ "$RECORD" = true ]; then
+if [ "$PRESENT" = true ]; then
+    echo -e "${CYAN}  Mode:       PRESENTER (cinematic demo playback)${NC}"
+elif [ "$RECORD" = true ]; then
     echo -e "${YELLOW}  Mode:       RECORDING to recordings/${NC}"
 elif [ "$REPLAY" = true ]; then
     echo -e "${GREEN}  Mode:       REPLAY from recordings/ (delay: ${REPLAY_DELAY}s)${NC}"
 fi
 if [ "$NO_DASH" = false ]; then
-    echo -e "${BLUE}  Dashboard:  http://localhost:${DASHBOARD_PORT}/agent-sentinel-dashboard.html${NC}"
+    echo -e "${BLUE}  ${DASH_LABEL:-Dashboard}:  http://localhost:${DASHBOARD_PORT}/${DASH_PAGE:-agent-sentinel-dashboard.html}${NC}"
 fi
 if [ "$REPLAY" != true ]; then
     echo -e "${BLUE}  PubNub key: ${PUBNUB_SUBSCRIBE_KEY:0:20}...${NC}"

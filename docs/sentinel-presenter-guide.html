@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Presenter Guide - Bedsheet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f1923;
+            --bg-card: #1a2636;
+            --bg-code: #0d1520;
+            --border: rgba(0, 200, 255, 0.15);
+            --cyan: #00d4ff;
+            --green: #00ef82;
+            --amber: #ffc030;
+            --red: #ff4d6d;
+            --purple: #c49fff;
+            --text: #e8edf4;
+            --text-secondary: #8fa3b8;
+            --text-dim: #5a7088;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        .sidebar a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            transition: all 0.15s;
+        }
+
+        .sidebar a:hover {
+            color: var(--text);
+            background: rgba(0, 200, 255, 0.06);
+        }
+
+        .sidebar .section-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            padding-left: 12px;
+        }
+
+        .sidebar .copyright {
+            margin-top: auto;
+            padding-top: 24px;
+            font-size: 9px;
+            color: var(--text-dim);
+            line-height: 1.6;
+            padding-left: 12px;
+        }
+
+        .sidebar .copyright a {
+            display: inline;
+            padding: 0;
+            color: var(--text-secondary);
+            font-size: 9px;
+        }
+
+        /* Main content */
+        .main {
+            padding: 48px 64px;
+            max-width: 860px;
+        }
+
+        h1 {
+            font-family: var(--font-sans);
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 48px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--cyan);
+        }
+
+        p { margin-bottom: 16px; }
+
+        code {
+            font-family: var(--font-mono);
+            background: var(--bg-code);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 14px;
+            color: var(--cyan);
+        }
+
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        th, td {
+            padding: 10px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        td code {
+            font-size: 13px;
+        }
+
+        .callout {
+            background: rgba(0, 200, 255, 0.06);
+            border-left: 3px solid var(--cyan);
+            padding: 16px 20px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 20px;
+        }
+
+        .callout.warning {
+            background: rgba(255, 192, 48, 0.06);
+            border-left-color: var(--amber);
+        }
+
+        .callout.tip {
+            background: rgba(0, 239, 130, 0.06);
+            border-left-color: var(--green);
+        }
+
+        .callout strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .callout.warning strong { color: var(--amber); }
+        .callout.tip strong { color: var(--green); }
+        .callout strong { color: var(--cyan); }
+
+        ul, ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        li { margin-bottom: 6px; }
+
+        .key {
+            display: inline-block;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge.present { background: rgba(0, 212, 255, 0.12); color: var(--cyan); }
+        .badge.cinematic { background: rgba(196, 159, 255, 0.15); color: var(--purple); }
+
+        .diagram {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h3>Presenter Guide</h3>
+            <a href="#overview">Overview</a>
+            <a href="#quick-start">Quick Start</a>
+            <a href="#modes">Present vs Cinematic</a>
+
+            <div class="section-label">Usage</div>
+            <a href="#launch">Launch Commands</a>
+            <a href="#keyboard">Keyboard Shortcuts</a>
+            <a href="#pacing">Pacing Strategy</a>
+
+            <div class="section-label">Architecture</div>
+            <a href="#data-flow">Data Flow</a>
+            <a href="#chapters">Chapter Detection</a>
+            <a href="#focus">Focus &amp; Zoom</a>
+
+            <div class="section-label">Recording</div>
+            <a href="#screen-studio">Screen Studio Tips</a>
+            <a href="#workflow">Recording Workflow</a>
+
+            <div class="section-label">Features</div>
+            <a href="#director">Director Mode</a>
+            <a href="#intro-crawl">Intro Crawl</a>
+            <a href="#commentary">Scene Commentary</a>
+            <a href="#briefings">Agent Briefings</a>
+            <a href="#signal-lines">Signal Lines</a>
+            <a href="#ambient">Ambient Audio</a>
+            <a href="#movie-mode">Movie Mode</a>
+            <a href="#director-controls" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Director Controls</a>
+            <a href="#panel-positioner" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Panel Positioner (DnD)</a>
+            <a href="#movie-chapters" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Chapters</a>
+            <a href="#authoring-chapter" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring a New Chapter</a>
+            <a href="#authoring-tips" style="padding-left:24px;font-size:13px">&nbsp;&nbsp;Authoring Tips</a>
+
+            <div class="section-label">JS Architecture</div>
+            <a href="#js-overview">Code Overview</a>
+            <a href="#js-scene-engine">Scene Engine</a>
+            <a href="#js-typewriter">Typewriter Effect</a>
+            <a href="#js-collision">Collision Avoidance</a>
+            <a href="#js-pubnub">PubNub Integration</a>
+
+            <div class="section-label">Lessons Learned</div>
+            <a href="#lessons">Overview</a>
+            <a href="#lesson-error-paths">Error Paths</a>
+            <a href="#lesson-empty-catch">Empty Catch</a>
+            <a href="#lesson-init-order">Init Order</a>
+            <a href="#lesson-cascade">Else-If Cascade</a>
+            <a href="#lesson-cdn-guard">CDN Guards</a>
+            <a href="#lesson-promise-rejection">Promise Rejection</a>
+            <a href="#lesson-architectural">Architectural Pivot</a>
+
+            <div class="section-label">Reference</div>
+            <a href="#files">Files</a>
+            <a href="#troubleshooting">Troubleshooting</a>
+
+            <div class="copyright">
+                Copyright &copy; 2025-2026
+                Sivan Gr&uuml;nberg,
+                <a href="https://vitakka.co/">Vitakka Consulting</a><br>
+                Elastic License 2.0
+            </div>
+        </nav>
+
+        <main class="main">
+            <h1>Sentinel Presenter</h1>
+            <p class="subtitle">Cinematic demo mode for the Agent Sentinel security monitoring system</p>
+
+            <!-- Overview -->
+            <h2 id="overview">Overview</h2>
+            <p>
+                The Sentinel Presenter is a cinematic playback layer for the Agent Sentinel demo.
+                It reuses the dashboard's visual foundation &mdash; the same world map, agent nodes,
+                signal animations, and dark-ops aesthetic &mdash; but adds dramatic focus, smooth camera-like
+                zooms, and narrative pacing designed for conference talks and screen recordings.
+            </p>
+
+            <p>
+                Instead of showing everything at once like the monitoring dashboard, the presenter
+                shows <strong>one agent at a time</strong>, zooming the map to its geographic position
+                and displaying its LLM activity in a focus overlay panel. When a different agent becomes
+                active, the map smoothly pans to the new location.
+            </p>
+
+            <div class="callout">
+                <strong>Key Difference from Dashboard</strong>
+                The dashboard is CCTV footage. The presenter is a documentary shot in the same location
+                with deliberate framing, pacing, and narrative structure.
+            </div>
+
+            <!-- Quick Start -->
+            <h2 id="quick-start">Quick Start</h2>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>PubNub keys in <code>examples/agent-sentinel/.env</code></li>
+                <li>Recordings in <code>examples/agent-sentinel/recordings/</code></li>
+                <li>Python venv with bedsheet installed</li>
+            </ul>
+
+            <h3>Launch</h3>
+<pre><code class="language-bash"># Standard presenter mode
+cd examples/agent-sentinel
+./start.sh --present
+
+# Cinematic mode (no UI chrome)
+./start.sh --present --cinematic
+
+# Custom replay speed
+./start.sh --replay 0.5 --present</code></pre>
+
+            <p>
+                The presenter opens at <code>http://localhost:8765/sentinel-presenter.html</code>.
+                It auto-connects to PubNub using the keys from <code>sentinel-config.js</code>
+                (generated by <code>start.sh</code>).
+            </p>
+
+            <!-- Modes -->
+            <h2 id="modes">Present Mode vs Cinematic Mode</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th><span class="badge present">Present</span></th>
+                        <th><span class="badge cinematic">Cinematic</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Top bar (logo, stats)</td>
+                        <td>Visible</td>
+                        <td>Hidden</td>
+                    </tr>
+                    <tr>
+                        <td>Timeline bar (progress, speed)</td>
+                        <td>Visible</td>
+                        <td>Hidden</td>
+                    </tr>
+                    <tr>
+                        <td>Speed controls</td>
+                        <td>Visible buttons</td>
+                        <td>Keyboard only (invisible)</td>
+                    </tr>
+                    <tr>
+                        <td>World map + agent nodes</td>
+                        <td>Visible</td>
+                        <td>Visible</td>
+                    </tr>
+                    <tr>
+                        <td>Focus overlay panel</td>
+                        <td>Visible</td>
+                        <td>Visible</td>
+                    </tr>
+                    <tr>
+                        <td>Signal line animations</td>
+                        <td>Visible</td>
+                        <td>Visible</td>
+                    </tr>
+                    <tr>
+                        <td>Chapter titles</td>
+                        <td>Label in timeline bar</td>
+                        <td>Full-screen cinematic cards</td>
+                    </tr>
+                    <tr>
+                        <td>Timestamp counter</td>
+                        <td>N/A</td>
+                        <td>Toggle with <span class="key">T</span></td>
+                    </tr>
+                    <tr>
+                        <td>Best for</td>
+                        <td>Live conference talks</td>
+                        <td>Screen recordings</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout tip">
+                <strong>Tip</strong>
+                Press <span class="key">C</span> to toggle between modes at any time.
+                You can start in present mode for setup, then switch to cinematic before recording.
+            </div>
+
+            <!-- Launch Commands -->
+            <h2 id="launch">Launch Commands</h2>
+
+            <table>
+                <thead>
+                    <tr><th>Command</th><th>Effect</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>./start.sh --present</code></td>
+                        <td>Presenter mode with 0.3s replay delay</td>
+                    </tr>
+                    <tr>
+                        <td><code>./start.sh --present --cinematic</code></td>
+                        <td>Start directly in cinematic mode</td>
+                    </tr>
+                    <tr>
+                        <td><code>./start.sh --replay 0.5 --present</code></td>
+                        <td>Presenter with custom 0.5s delay between tokens</td>
+                    </tr>
+                    <tr>
+                        <td><code>./start.sh --present --quiet</code></td>
+                        <td>Presenter without terminal event logging</td>
+                    </tr>
+                    <tr>
+                        <td><code>./start.sh --present --no-dash</code></td>
+                        <td>Run agents only (open presenter manually)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout warning">
+                <strong>Note</strong>
+                <code>--present</code> implies <code>--replay</code>. It reads from
+                <code>recordings/*.jsonl</code> and does <strong>not</strong> make live LLM API calls.
+                However, PubNub keys are still required for agent-to-presenter communication.
+            </div>
+
+            <!-- Keyboard -->
+            <h2 id="keyboard">Keyboard Shortcuts</h2>
+
+            <h3>Director Controls</h3>
+            <table>
+                <thead>
+                    <tr><th>Key</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="key">1</span> - <span class="key">9</span></td>
+                        <td>Jump to agent scene N (director mode)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">Space</span></td>
+                        <td>Pause / resume auto-play</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">&rarr;</span></td>
+                        <td>Step to next event (one at a time)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">Shift</span> + <span class="key">&rarr;</span></td>
+                        <td>Skip to next agent scene</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Speed &amp; Display</h3>
+            <table>
+                <thead>
+                    <tr><th>Key</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="key">Shift</span> + <span class="key">1</span>-<span class="key">5</span></td>
+                        <td>Set speed (0.5x, 1x, 2x, 5x, 10x)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">F</span></td>
+                        <td>Toggle fullscreen</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">C</span></td>
+                        <td>Toggle cinematic mode</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">T</span></td>
+                        <td>Toggle timestamp counter</td>
+                    </tr>
+                    <tr>
+                        <td><span class="key">Esc</span></td>
+                        <td>Exit fullscreen / return to overview</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Pacing -->
+            <h2 id="pacing">Pacing Strategy</h2>
+
+            <h3>For Conference Talks</h3>
+            <ol>
+                <li>Launch with <code>--present</code> (keep UI chrome visible)</li>
+                <li>Start <strong>paused</strong> (press <span class="key">Space</span>)</li>
+                <li>Use <span class="key">&rarr;</span> to step through events as you narrate</li>
+                <li>Use <span class="key">Shift</span>+<span class="key">&rarr;</span> to jump to the next agent when ready</li>
+                <li><span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span> to set speed, or bare <span class="key">1</span>-<span class="key">9</span> to jump to a specific agent's scene</li>
+            </ol>
+
+            <h3>For Screen Recordings</h3>
+            <ol>
+                <li>Launch with <code>--present --cinematic</code></li>
+                <li>Press <span class="key">F</span> for fullscreen</li>
+                <li>Start Screen Studio recording</li>
+                <li>Press <span class="key">Space</span> to begin auto-play</li>
+                <li>Use <span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span> for speed (<span class="key">Shift</span>+<span class="key">2</span> = 1x). Bare number keys jump to agent scenes.</li>
+                <li>The presenter handles focus transitions and chapter cards automatically</li>
+            </ol>
+
+            <div class="callout tip">
+                <strong>Pro tip</strong>
+                The event buffer decouples presentation speed from agent replay speed. Even if agents
+                emit events quickly, the presenter releases them at a controlled pace. This means
+                you can use a fast <code>--replay 0.1</code> to fill the buffer quickly, then present
+                at a comfortable speed.
+            </div>
+
+            <!-- Data Flow -->
+            <h2 id="data-flow">Data Flow</h2>
+
+            <div class="diagram">start.sh --present
+    |
+    +-- Launches 7 agent processes in replay mode
+    |     +-- Each replays LLM responses from recordings/*.jsonl
+    |     +-- Each publishes LLM events to PubNub (_publish_llm_event)
+    |     +-- BEDSHEET_REPLAY_DELAY controls base agent pacing
+    |
+    +-- Starts HTTP server on port 8765
+    |
+    +-- Opens sentinel-presenter.html
+          +-- Connects to PubNub (same subscribe key)
+          +-- Receives LLM events per agent
+          +-- Buffers events in eventBuffer[]
+          +-- Drain loop releases events to UI at controlled pace
+          +-- Auto-zooms map to active agent
+          +-- Shows focus overlay with event cards</div>
+
+            <p>
+                The presenter is <strong>purely a visualization layer</strong>. It doesn't control the
+                agents or modify their behavior. It subscribes to the same PubNub channels as the
+                dashboard but presents events differently.
+            </p>
+
+            <!-- Chapters -->
+            <h2 id="chapters">Chapter Detection</h2>
+
+            <p>
+                Chapters are detected automatically from event patterns as they arrive.
+                A chapter title card is displayed when a chapter boundary is detected.
+            </p>
+
+            <table>
+                <thead>
+                    <tr><th>Chapter</th><th>Trigger</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Network Startup</td>
+                        <td>PubNub connection established</td>
+                    </tr>
+                    <tr>
+                        <td>Skill Acquisition</td>
+                        <td>First <code>tool_call</code> from skill-acquirer</td>
+                    </tr>
+                    <tr>
+                        <td>Malicious Install Blocked</td>
+                        <td><code>tool_result</code> containing "MALICIOUS", "blocked", or "data_exfiltrator"</td>
+                    </tr>
+                    <tr>
+                        <td>Rogue Burst</td>
+                        <td>3+ consecutive <code>tool_call</code> events from same agent</td>
+                    </tr>
+                    <tr>
+                        <td>Gateway Block</td>
+                        <td><code>tool_result</code> containing "Rate exceeded" or "Action denied"</td>
+                    </tr>
+                    <tr>
+                        <td>Sentinel Alert</td>
+                        <td>Critical/high severity <code>alert</code> signal</td>
+                    </tr>
+                    <tr>
+                        <td>Quarantine Issued</td>
+                        <td><code>alert</code> signal with <code>action: quarantine</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Focus -->
+            <h2 id="focus">Focus &amp; Zoom Behavior</h2>
+
+            <p>
+                When an agent starts producing LLM events (kind = <code>event</code>), the presenter:
+            </p>
+
+            <ol>
+                <li>Smoothly zooms the map to 2.5x, centered on the agent's geographic position (0.8s transition)</li>
+                <li>Dims all other agent nodes to 20% opacity</li>
+                <li>Adds a glow effect to the focused agent's node</li>
+                <li>Shows a focus overlay panel to the right of the agent with event cards streaming in</li>
+                <li>Displays a transition label ("web-researcher &rarr; scheduler") during agent switches</li>
+            </ol>
+
+            <p>
+                Non-LLM signals (heartbeats, requests, responses, alerts) still trigger map animations
+                (pulse rings, signal lines, broadcast rings) without changing focus.
+            </p>
+
+            <!-- Screen Studio -->
+            <h2 id="screen-studio">Screen Studio Tips</h2>
+
+            <ul>
+                <li><strong>Resolution:</strong> Use a 1920x1080 browser window for best recording quality</li>
+                <li><strong>Background:</strong> The dark theme records well &mdash; no adjustments needed</li>
+                <li><strong>Mouse:</strong> Keep the mouse out of the frame. All controls are keyboard-driven</li>
+                <li><strong>Chapter cards:</strong> In cinematic mode, chapter titles fade in/out over ~2.5s. Allow time for them to display fully</li>
+                <li><strong>Audio:</strong> Add narration in post-production, or narrate live while recording</li>
+                <li><strong>Timestamp counter:</strong> Press <span class="key">T</span> to show a subtle timestamp in the corner for a "security camera" feel</li>
+            </ul>
+
+            <!-- Workflow -->
+            <h2 id="workflow">Recording Workflow</h2>
+
+            <h3>Step 1: Ensure recordings exist</h3>
+<pre><code class="language-bash"># If you need fresh recordings (requires GEMINI_API_KEY):
+./start.sh --record
+# Wait for a full cycle, then Ctrl+C
+
+# Check recordings:
+ls -la recordings/</code></pre>
+
+            <h3>Step 2: Launch presenter</h3>
+<pre><code class="language-bash">./start.sh --present --cinematic</code></pre>
+
+            <h3>Step 3: Set up recording</h3>
+            <ol>
+                <li>Open the presenter URL in Chrome</li>
+                <li>Press <span class="key">F</span> for fullscreen</li>
+                <li>Press <span class="key">Space</span> to pause immediately</li>
+                <li>Start Screen Studio</li>
+                <li>Press <span class="key">Space</span> to begin the demo</li>
+            </ol>
+
+            <h3>Step 4: During recording</h3>
+            <ul>
+                <li>Let it auto-play, or step manually with <span class="key">&rarr;</span></li>
+                <li>Adjust speed with <span class="key">Shift</span>+<span class="key">1</span>-<span class="key">5</span></li>
+                <li>Skip boring sections with <span class="key">Shift</span>+<span class="key">&rarr;</span></li>
+            </ul>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- FEATURES -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="director">Director Mode</h2>
+            <p>
+                Director mode gives you manual control over scene progression. Instead of auto-playing
+                through agents sequentially, you press a number key to jump to any agent's scene.
+            </p>
+            <p>
+                When the presenter collects events from PubNub, it groups them by agent and assigns each
+                a number (1-based, in order of first appearance). The timeline bar shows the agent list:
+            </p>
+<pre><code>1:web-researcher  [2:scheduler]  3:skill-acquirer  4:behavior-sentinel  ...</code></pre>
+            <p>
+                Press <span class="key">2</span> to jump to the scheduler's scene. The map zooms to its node,
+                the briefing types out, and its LLM events play. Press <span class="key">5</span> to jump to
+                a different agent at any time.
+            </p>
+            <div class="callout tip">
+                <strong>Tip</strong>
+                Start paused (<span class="key">Space</span>), then use number keys to jump between
+                agents in whatever order tells the best story. You're the director.
+            </div>
+
+            <h2 id="intro-crawl">Intro Crawl</h2>
+            <p>
+                The presenter opens with a classified-terminal-style intro overlaid on the map.
+                Text types out character by character in green monospace with a blinking cursor,
+                setting the scene before the demo begins.
+            </p>
+            <p>The intro covers:</p>
+            <ul>
+                <li>The world of autonomous AI agents and the threats they face</li>
+                <li>The OpenClaw crisis of 2026 as a turning point</li>
+                <li>The sentinel network as the response</li>
+            </ul>
+            <p>
+                Press <span class="key">Space</span>, <span class="key">Enter</span>, or click <strong>Begin Monitoring</strong> to dismiss.
+                PubNub connection starts only after dismissal, so the demo doesn't begin while the
+                audience is still reading.
+            </p>
+
+            <h2 id="commentary">Scene Commentary</h2>
+            <p>
+                Each chapter triggers a commentary overlay &mdash; a military-style typed briefing that explains
+                what's happening to the audience. The commentary appears in an "INTELLIGENCE BRIEFING" panel
+                at the bottom of the screen, typed out with a green blinking cursor.
+            </p>
+            <p>Chapters with commentary:</p>
+            <table>
+                <thead><tr><th>Chapter</th><th>Trigger</th></tr></thead>
+                <tbody>
+                    <tr><td>Network Startup</td><td>PubNub connection</td></tr>
+                    <tr><td>Skill Acquisition</td><td>First tool call from skill-acquirer</td></tr>
+                    <tr><td>Malicious Install Blocked</td><td>Blocked malicious package result</td></tr>
+                    <tr><td>Rogue Burst</td><td>3+ consecutive tool_calls from one agent</td></tr>
+                    <tr><td>Gateway Block</td><td>"Rate exceeded" or "Action denied" in result</td></tr>
+                    <tr><td>Sentinel Alert</td><td>Critical/high alert from a sentinel</td></tr>
+                    <tr><td>Quarantine Issued</td><td>Commander issues quarantine</td></tr>
+                </tbody>
+            </table>
+            <p>
+                Commentary begins 3 seconds after the chapter is triggered (approximately 0.5 seconds after the chapter title card fades), preventing visual overlap.
+                It fades out 3 seconds after typing completes.
+            </p>
+
+            <h2 id="briefings">Agent Briefings</h2>
+            <p>
+                When a scene focuses on an agent, a separate <strong>Asset Briefing</strong> window types out
+                a military-style dossier covering:
+            </p>
+            <ul>
+                <li><strong>ASSET:</strong> Name and region</li>
+                <li><strong>ROLE:</strong> What the agent does</li>
+                <li><strong>MISSION:</strong> Operational objective</li>
+                <li><strong>PROTECTS AGAINST:</strong> What threats this agent counters</li>
+                <li><strong>FUTURE OPS:</strong> Planned capabilities (operational agents) or <strong>RISK PROFILE:</strong> Rogue behavior probability (worker agents)</li>
+            </ul>
+            <p>
+                The briefing window is positioned separately from the LLM activity window using
+                collision avoidance (see <a href="#js-collision">Collision Avoidance</a>), so they
+                never overlap each other or the agent node.
+            </p>
+
+            <h2 id="signal-lines">Signal Lines</h2>
+            <p>
+                Animated dashed lines show communication between agents on the map. In the scene-based
+                presenter, signal lines are triggered in two ways:
+            </p>
+            <ol>
+                <li><strong>PubNub signals:</strong> request/response/alert signals from the event buffer
+                    animate lines between sender and target (same as the dashboard).</li>
+                <li><strong>LLM tool calls:</strong> when an agent's scene shows a <code>tool_call</code> event,
+                    the presenter detects inter-agent communication:
+                    <ul>
+                        <li><code>request_remote_agent</code> &rarr; line from caller to target agent (cyan)</li>
+                        <li>Gateway tools (<code>search_web</code>, <code>install_skill</code>, etc.) &rarr; line from agent to action-gateway (amber)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2 id="ambient">Ambient Audio</h2>
+            <p>
+                Drop a sci-fi ambient drone MP3 as <code>docs/ambient.mp3</code> and it auto-plays at 15% volume
+                when the intro is dismissed. If the file doesn't exist, audio is silently skipped.
+            </p>
+            <p>
+                <strong>Finding audio:</strong> Search "sci-fi ambient drone royalty free" on
+                <a href="https://freesound.org" style="color:var(--cyan)">Freesound.org</a> or
+                <a href="https://pixabay.com/music" style="color:var(--cyan)">Pixabay</a>.
+                Alternatively, use Gemini with Lyra to generate a custom track.
+            </p>
+
+            <h2 id="movie-mode">Movie Mode</h2>
+            <p>
+                <strong>Movie mode</strong> is a third peer playback mode alongside <em>live</em> and <em>replay</em>.
+                Fully scripted, synthetic, runs with no PubNub or recordings. <strong>Director mode</strong>
+                (default) means the author controls the tempo &mdash; you press <code>N</code> to move between
+                chapters, the movie never auto-advances. Kiosk-style auto-play is opt-in via <code>&amp;auto=1</code>.
+            </p>
+            <p><strong>Activation:</strong></p>
+            <pre><code># Preferred: launches a local HTTP server + opens the movie URL
+./start.sh --movie
+
+# Direct (file:// works too since movie mode has zero I/O deps)
+open docs/sentinel-presenter.html?mode=movie
+
+# Opt-in auto-advance for kiosks / conference loops
+open "docs/sentinel-presenter.html?mode=movie&amp;auto=1"</code></pre>
+            <p>
+                Movie mode is <strong>boot-time-immutable</strong>: the mode is resolved once from the URL query
+                string at page load and never switches at runtime.
+            </p>
+
+            <h3 id="director-controls">Director Controls</h3>
+            <p>
+                Once the intro crawl is dismissed (Space / Enter / click "Start"), you are the director. All
+                keybindings below work in movie mode only.
+            </p>
+            <table>
+                <tr><th>Key</th><th>Action</th></tr>
+                <tr><td><code>N</code> or <code>&rarr;</code></td><td><strong>Next chapter</strong> &mdash; advance when you're ready for the next beat</td></tr>
+                <tr><td><code>P</code> or <code>&larr;</code></td><td><strong>Previous chapter</strong> &mdash; go back one</td></tr>
+                <tr><td><code>1</code>&ndash;<code>9</code></td><td><strong>Jump to chapter N</strong> &mdash; cancels pending cues, resets visuals, plays target chapter from t=0</td></tr>
+                <tr><td><code>R</code></td><td><strong>Restart</strong> movie from chapter 0</td></tr>
+                <tr><td><code>Shift+1</code>&ndash;<code>5</code></td><td>Speed: 0.5x / 1x / 1.5x / 2x / 3x (re-paces the current chapter's remaining cues)</td></tr>
+                <tr><td><code>F</code></td><td>Fullscreen</td></tr>
+                <tr><td><code>E</code></td><td><strong>Toggle panel-edit mode</strong> &mdash; drag panels to author positions (see next section)</td></tr>
+                <tr><td><code>X</code></td><td><strong>Export panel positions</strong> to console + clipboard (paste into source to lock)</td></tr>
+                <tr><td><code>C</code></td><td>In edit mode: <strong>clear all saved positions</strong> (resets to defaults)</td></tr>
+            </table>
+            <p>
+                <strong>Beats within a chapter are also director-gated.</strong> A chapter splits into "beats"
+                at each <em>spotlight</em> cue &mdash; every time the camera is supposed to move to a different
+                agent, the movie waits for you. Non-spotlight cues (signals, commentary, signal-lines) play
+                automatically <em>within</em> each beat. So in a chapter like "Normal Operations" where the
+                spotlight visits web-researcher, scheduler, and skill-acquirer in sequence, you press <code>N</code>
+                three times to walk through the three beats, then once more to advance to the next chapter.
+            </p>
+            <p>
+                The subtle <code>▸ N advances — E edits panels</code> hint in the bottom-right corner is always
+                there as a reminder: the director has the wheel.
+            </p>
+
+            <h3 id="panel-positioner">Panel Positioner (Drag-and-Drop)</h3>
+            <p>
+                The focus overlay (reasoning stream) and briefing overlay (asset dossier) are positioned by
+                <strong>you, the director</strong>. There is no auto-placement. Positions are authored per
+                spotlighted agent via drag-and-drop, persisted to <code>localStorage</code>, and exported as
+                a JS snippet you paste into the source to lock them in permanently.
+            </p>
+            <p><strong>Workflow:</strong></p>
+            <ol>
+                <li>Open the movie: <code>./start.sh --movie</code></li>
+                <li>Navigate to a chapter where the panels you want to position are visible (e.g. Chapter 3 for skill-acquirer and supply-chain-sentinel scenes)</li>
+                <li>Press <code>E</code> &mdash; a banner appears: <code>// PANEL EDIT &mdash; drag / E to exit / X to export / C to clear</code>. Panels get a dashed cyan outline and a grab cursor.</li>
+                <li>Drag the focus overlay and briefing overlay to the positions you want for the currently-spotlighted agent.</li>
+                <li>Release &mdash; the console logs <code>[panel-edit] saved &lt;agent&gt; &lt;which&gt; &lt;x&gt; &lt;y&gt;</code>. Position is persisted to <code>localStorage</code>.</li>
+                <li>Press <code>N</code> to advance to the next chapter. When the next agent is spotlighted, drag its panels into place.</li>
+                <li>Repeat until every agent's panels are where you want them.</li>
+                <li>Press <code>X</code> &mdash; full <code>PANEL_POSITIONS</code> JS snippet printed to console and copied to clipboard.</li>
+                <li>Paste the snippet into <code>docs/sentinel-presenter.html</code> to replace the existing <code>var PANEL_POSITIONS = {};</code> declaration. Commit.</li>
+            </ol>
+            <p><strong>Persistence:</strong></p>
+            <ul>
+                <li>While editing, positions live in <code>localStorage['bedsheet.panelPositions']</code> &mdash; survives reload, survives restart.</li>
+                <li>Clearing browser data wipes your work; export with <code>X</code> first if you want to save.</li>
+                <li>Once pasted into source, positions are authoritative; the user's <code>localStorage</code> overrides the source so you can experiment without losing the committed default.</li>
+            </ul>
+            <p><strong>Defaults when no position is saved:</strong> focus overlay goes top-right (60% x / 8% y), briefing goes bottom-left (5% x / 55% y). The movie will still play, just with these safe-corner fallbacks. Drag to fix.</p>
+
+            <h3 id="movie-chapters">Chapters</h3>
+            <p>
+                All chapters are director-triggered (press <code>N</code> to advance) except <strong>Chapter 0 (Bedsheet Brief)</strong>,
+                which auto-plays once you dismiss the intro crawl. Inside each chapter, cues fire automatically on
+                their authored <code>t</code> offsets; the director only controls the between-chapter boundary.
+            </p>
+            <ol start="0">
+                <li><strong>Chapter 0</strong> &mdash; Bedsheet Brief &mdash; pitch types out on its own (~37s). Press <code>N</code> when done reading.</li>
+                <li><strong>Chapter 1</strong> &mdash; Architecture &mdash; two-plane diagram draws in with a 3-line caption. Stays until you press <code>N</code>.</li>
+                <li><strong>Chapter 2</strong> &mdash; Network Startup &mdash; 7 agents come online.</li>
+                <li><strong>Chapter 3</strong> &mdash; Normal Operations &mdash; routine tool calls through the gateway.</li>
+                <li><strong>Chapter 4</strong> &mdash; Malicious Install Blocked &mdash; supply-chain sentinel catches SHA-256 mismatch.</li>
+                <li><strong>Chapter 5</strong> &mdash; Rogue Burst &mdash; web-researcher fires 5 tool calls in 2s.</li>
+                <li><strong>Chapter 6</strong> &mdash; Gateway Block &mdash; deterministic rate limiter responds.</li>
+                <li><strong>Chapter 7</strong> &mdash; Sentinel Alert &mdash; behavior-sentinel correlates the spike to commander.</li>
+                <li><strong>Chapter 8</strong> &mdash; Quarantine Issued &mdash; commander quarantines web-researcher.</li>
+                <li><strong>Chapter 9</strong> &mdash; Stable State Restored &mdash; 6 agents on mission, 1 removed.</li>
+            </ol>
+            <p>
+                <strong>Authoring content:</strong> all movie content lives in the <code>MOVIE_SCRIPT</code> array
+                at the bottom of <code>docs/sentinel-presenter.html</code>. Each chapter is an object
+                <code>{ id, title, subtitle, cues: [...] }</code>. A cue is one atomic stage direction &mdash;
+                one of 10 types: <code>chapter-card</code>, <code>spotlight</code>, <code>signal</code>,
+                <code>commentary</code>, <code>line</code>, <code>reset</code>, and the four Chapter-0 overlay
+                cues (<code>movie-pitch-start</code>, <code>movie-pitch-end</code>, <code>movie-arch-start</code>,
+                <code>movie-arch-end</code>). A boot-time linter (<code>lintMovieScript</code>) reports malformed
+                cues to the console without throwing &mdash; the movie plays best-effort past errors.
+            </p>
+            <p>
+                See <code>docs/superpowers/specs/2026-04-14-sentinel-presenter-movie-mode-design.md</code> for
+                full schema, semantics, and design rationale.
+            </p>
+
+            <h3 id="authoring-chapter">Authoring a New Chapter</h3>
+            <p>
+                Add your chapter as a new object in the <code>MOVIE_SCRIPT</code> array (bottom of
+                <code>docs/sentinel-presenter.html</code>). Chapter order in the array is playback order;
+                the <code>1</code>&ndash;<code>8</code> keys jump by index.
+            </p>
+
+            <p><strong>Step 1 &mdash; start with the chapter skeleton:</strong></p>
+            <pre><code>/* Chapter N &mdash; &lt;title&gt; (~&lt;duration&gt;) */
+{
+    id: 'short-kebab-name',
+    title: '&lt;what the audience sees on the chapter card&gt;',
+    subtitle: '&lt;one-line mood setter&gt;',
+    cues: [
+        { t: 0,    type: 'chapter-card', title: 'Chapter N', subtitle: '&lt;...&gt;', hold_ms: 1800 },
+        { t: 1800, type: 'spotlight', agent: 'web-researcher' },  // or null for overview
+        { t: 2000, type: 'commentary', text: '&lt;one-sentence narration&gt;', hold_ms: 8000 },
+        // ... your signals, lines, more spotlights ...
+    ],
+},</code></pre>
+
+            <p><strong>Step 2 &mdash; add the signal events.</strong> Each signal cue is a PubNub-shaped object.
+                Here's the idiomatic pattern for an LLM-event sequence on a single agent:</p>
+            <pre><code>{ t: 3000, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'thinking', text: 'Reasoning about X...' },
+    correlation_id: 'chN-wr-1'
+}},
+{ t: 4200, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher', target: 'action-gateway',
+    payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: { q: 'X' } },
+    correlation_id: 'chN-wr-2'
+}},
+{ t: 5400, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'tool_result', text: '5 results.' },
+    correlation_id: 'chN-wr-3'
+}},
+{ t: 6400, type: 'signal', signal: {
+    kind: 'event', sender: 'web-researcher',
+    payload: { event_type: 'completion', text: 'Done.' },
+    correlation_id: 'chN-wr-4'
+}},</code></pre>
+            <p>
+                <code>target</code> on a <code>tool_call</code> makes <code>driveMapEffectForSignal</code>
+                animate a signal-line from <code>sender</code> to <code>target</code> automatically &mdash; you
+                don't need a separate <code>line</code> cue for normal tool flow.
+            </p>
+
+            <p><strong>Step 3 &mdash; move the spotlight to follow causality.</strong> When one agent's output
+                reaches another, zoom to the receiver:</p>
+            <pre><code>{ t: 7000, type: 'spotlight', agent: 'sentinel-commander' },
+{ t: 8000, type: 'signal', signal: {
+    kind: 'event', sender: 'sentinel-commander',
+    payload: { event_type: 'thinking', text: 'Correlating alerts...' },
+    correlation_id: 'chN-cmd-1'
+}},</code></pre>
+
+            <p><strong>Step 4 &mdash; cross-plane moments use explicit <code>line</code> cues.</strong>
+                When you want a colored line between agents that is <em>not</em> a tool call (e.g. a sentinel
+                alerting the commander), add a <code>line</code> cue:</p>
+            <pre><code>{ t: 9000, type: 'signal', signal: {
+    kind: 'alert', sender: 'behavior-sentinel', target: 'sentinel-commander',
+    payload: { reason: 'rate_spike' }, correlation_id: 'chN-alert'
+}},
+{ t: 9100, type: 'line', from: 'behavior-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },</code></pre>
+
+            <p><strong>Step 5 &mdash; set duration and end.</strong> The chapter advances automatically once the
+                last cue's <code>t + hold_ms</code> elapses. For a clean fade, end with
+                <code>spotlight null</code>:</p>
+            <pre><code>{ t: 13500, type: 'spotlight', agent: null },</code></pre>
+
+            <h3 id="authoring-tips">Authoring tips</h3>
+            <ul>
+                <li><strong>Monotonic <code>t</code>.</strong> Cue timestamps within a chapter must not go
+                    backwards. The linter (<code>lintMovieScript</code>) will warn on boot if you violate this.</li>
+                <li><strong>Typing math for commentary.</strong> <code>showCommentary</code> types at 22 ms/char.
+                    Budget <code>hold_ms</code> &ge; text length &times; 22ms + 2&ndash;3 s of readable hold
+                    afterward. A 100-char sentence wants <code>hold_ms: 5000</code> minimum.</li>
+                <li><strong>Chapter self-sufficiency.</strong> A chapter jumped-to via the <code>1</code>&ndash;<code>8</code>
+                    keys always starts after <code>resetPresenterVisuals()</code>. If your chapter's story depends
+                    on prior state (e.g. "web-researcher is already quarantined"), either fix that state in the
+                    first cues, or accept that jump-in plays with a fresh map.</li>
+                <li><strong>Rapid bursts render faithfully.</strong> Unlike replay mode, signal cues bypass the 800 ms
+                    <code>drainMapEvents</code> throttle &mdash; you can schedule 5 <code>tool_call</code>s in
+                    2 seconds and each will pulse individually (see Chapter 4 for reference).</li>
+                <li><strong>Correlation IDs are free-form.</strong> They surface in the event-card UI but the movie
+                    engine does not use them. Use them to trace which cue is which when debugging.</li>
+                <li><strong>Verify with <code>?mode=movie</code> and the chapter key.</strong> Reload the presenter,
+                    dismiss the intro, press the chapter number. If something looks wrong, open devtools &mdash; the
+                    linter and cue runtime both log to the console (<code>[lint]</code>, <code>[movie]</code>
+                    prefixes).</li>
+                <li><strong>Colors.</strong> <code>line</code> cues accept a CSS custom property
+                    (<code>color: 'var(--purple)'</code>) or a hex (<code>color: '#ff3b6f'</code>). Omit the field
+                    entirely and the color defaults to the sender's role color from <code>ROLE_COLORS</code>.</li>
+            </ul>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- JS ARCHITECTURE -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="js-overview">JavaScript Architecture Overview</h2>
+            <p>
+                The presenter is a single self-contained HTML file (~2400 lines) with inline CSS and JavaScript.
+                No build step, no modules, no frameworks. This matches the project convention (the dashboard
+                is structured the same way). The JS is organized into these sections:
+            </p>
+<pre><code class="language-javascript">// 1. Agent Registry &amp; Constants
+var AGENTS = { ... };       // agent positions, roles, regions
+var CHANNELS = [ ... ];     // PubNub channels to subscribe to
+var ROLE_COLORS = { ... };  // CSS colors per role
+var AGENT_BRIEFINGS = { ... }; // military-style dossiers
+var CHAPTER_COMMENTARY = { ... }; // narration per chapter
+
+// 2. PubNub Connection
+connectToPubNub()          // subscribe to channels
+handleMessage()            // decode signals, collect into scenes
+handlePresence()           // track agent online status
+
+// 3. Scene Engine
+startScenePlayback()       // begin after collection window
+beginScene()               // zoom to agent, show briefing
+playNextSceneEvent()       // drain events one at a time
+jumpToScene(n)             // director mode: jump to scene N
+skipToNextAgent()          // Shift+Right: skip current scene
+
+// 4. Map Animations
+zoomToAgent(name)          // CSS transform zoom + pan
+pulseNode() / animateSignalLine() / animateBroadcast()
+presentMapEffects()        // route signal to correct animation
+animateLinesFromToolCall() // detect inter-agent calls in LLM events
+
+// 5. Overlay Positioning
+findPanelPosition()        // collision-avoiding placement
+positionBothOverlays()     // place briefing + focus, avoid each other
+
+// 6. Visual Effects
+typeText()                 // typewriter effect (intro)
+showCommentary()           // typed commentary with auto-dismiss
+showBriefingOverlay()      // typed agent dossier
+showChapterCard()          // chapter title fade in/out
+animateIntro()             // intro sequence orchestration</code></pre>
+
+            <h2 id="js-scene-engine">Scene Engine (How Playback Works)</h2>
+            <p>
+                The scene engine is the core of the presenter. Unlike the dashboard (which renders events
+                as they arrive), the presenter <strong>collects first, then plays back</strong>.
+            </p>
+<pre><code class="language-javascript">// Phase 1: COLLECTION
+// PubNub events arrive and are sorted into per-agent buckets.
+// A timer resets on each event; after 8s of silence, collection ends.
+
+function handleMessage(event) {
+    var signal = decodeSignal(event.message);
+
+    // LLM events go into per-agent scenes
+    if (signal.kind === 'event') {
+        agentScenes[sender].push(signal);  // grouped by agent
+        agentOrder.push(sender);           // first-seen order
+    }
+
+    // Non-LLM events go to the map animation buffer
+    eventBuffer.push(signal);
+
+    // Reset collection timer (8s window)
+    clearTimeout(collectionTimer);
+    collectionTimer = setTimeout(startScenePlayback, 8000);
+}
+
+// Phase 2: SCENE PLAYBACK
+// Plays one agent's events at a time, in order of first appearance.
+
+function beginScene() {
+    var agent = agentOrder[sceneIndex];
+    transitionToAgent(agent);      // zoom map, show briefing
+    setTimeout(playNextSceneEvent, 1200);  // wait for zoom
+}
+
+function playNextSceneEvent() {
+    var signal = agentScenes[agent][sceneEventIndex++];
+    detectChapter(signal);         // check for chapter boundaries
+    buildEventCard(signal);        // show in focus overlay
+    animateLinesFromToolCall(signal); // draw signal lines
+    setTimeout(playNextSceneEvent, 800 / playbackSpeed);
+}
+
+// When scene finishes: sceneIndex++, beginScene() for next agent
+// When all done: loop back to scene 0</code></pre>
+
+            <div class="callout">
+                <strong>Why collect first?</strong>
+                PubNub delivers events from all agents interleaved. Without collection, focus would
+                thrash between agents every few hundred milliseconds. By collecting into buckets first,
+                each agent gets an uninterrupted scene.
+            </div>
+
+            <h2 id="js-typewriter">Typewriter Effect</h2>
+            <p>
+                The typewriter effect is used in three places: the intro crawl, the commentary overlay,
+                and the agent briefings. All use the same pattern:
+            </p>
+<pre><code class="language-javascript">function typeText(element, text, callback) {
+    var i = 0;
+    element.textContent = '';
+
+    // Add blinking cursor
+    var cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    element.appendChild(cursor);
+
+    // Type one character at a time
+    var interval = setInterval(function() {
+        if (i < text.length) {
+            // Insert character BEFORE the cursor
+            element.insertBefore(
+                document.createTextNode(text[i]),
+                cursor
+            );
+            i++;
+        } else {
+            clearInterval(interval);
+            // Remove cursor after brief pause
+            setTimeout(function() { cursor.remove(); }, 600);
+            if (callback) callback();
+        }
+    }, 25);  // ms per character
+}</code></pre>
+            <p>
+                The cursor is a <code>&lt;span class="cursor"&gt;</code> styled as a blinking green block
+                using CSS <code>animation: blink-cursor 0.7s step-end infinite</code>. Characters are
+                inserted as text nodes <em>before</em> the cursor element, so the cursor stays at the end.
+            </p>
+            <p>
+                Typing speeds vary by context: intro uses 25ms/char (deliberate), commentary uses 30ms/char
+                (brisk), briefings use 18ms/char (fast, since they're longer).
+            </p>
+
+            <h2 id="js-collision">Collision Avoidance</h2>
+            <p>
+                Two overlay panels (briefing + activity) need to be positioned near the focused agent
+                without covering: (a) the agent node itself, (b) each other. The algorithm:
+            </p>
+<pre><code class="language-javascript">function findPanelPosition(areaW, areaH, panelW, panelH,
+                           fracX, fracY, avoidRects) {
+    // Try 8 candidate positions around center
+    var candidates = [
+        right, left, below, above,
+        top-right corner, top-left corner,
+        bottom-right corner, bottom-left corner
+    ];
+
+    // Reorder based on agent's map position
+    // (right-side agents prefer left placement, etc.)
+
+    // Agent node is at screen center after zoom
+    var nodeRect = { x: center-30, y: center-30, w: 60, h: 60 };
+    var allAvoid = [nodeRect].concat(avoidRects);
+
+    // Pick first candidate that doesn't overlap anything
+    for (candidate of candidates) {
+        if (!overlapsAny(candidate, allAvoid)) {
+            return candidate;
+        }
+    }
+    return candidates[0]; // fallback
+}
+
+// Usage: position briefing first, then focus avoids briefing
+var briefPos = findPanelPosition(..., []);
+var focusPos = findPanelPosition(..., [briefingRect]);</code></pre>
+            <p>
+                The <code>rectsOverlap()</code> function is a standard AABB (axis-aligned bounding box)
+                collision test. The briefing is positioned first, then the focus overlay uses
+                the briefing's rect as an additional avoidance zone.
+            </p>
+
+            <h2 id="js-pubnub">PubNub Integration</h2>
+            <p>
+                The presenter connects to PubNub identically to the dashboard &mdash; same channels, same
+                signal decoding. The key difference is what happens after decoding:
+            </p>
+            <table>
+                <thead><tr><th>Dashboard</th><th>Presenter</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>Renders events immediately as they arrive</td>
+                        <td>Collects events into per-agent buckets, then plays scene-by-scene</td>
+                    </tr>
+                    <tr>
+                        <td>All agents visible simultaneously</td>
+                        <td>One agent at a time, with zoom focus</td>
+                    </tr>
+                    <tr>
+                        <td>No playback control</td>
+                        <td>Pause, step, speed, director mode</td>
+                    </tr>
+                    <tr>
+                        <td>userId: <code>dashboard-observer</code></td>
+                        <td>userId: <code>presenter-observer</code></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                The compact key map (<code>k &rarr; kind, s &rarr; sender, p &rarr; payload</code>) is shared
+                with the dashboard and matches <code>bedsheet/sense/serialization.py</code>.
+            </p>
+
+            <!-- ═══════════════════════════════════ -->
+            <!-- LESSONS LEARNED -->
+            <!-- ═══════════════════════════════════ -->
+
+            <h2 id="lessons">Lessons Learned</h2>
+            <p>
+                This section documents bugs found during code review and the patterns behind them.
+                These are common JavaScript pitfalls that apply broadly, not just to this presenter.
+            </p>
+
+            <h3 id="lesson-error-paths">Always Handle the Error Path</h3>
+            <p><strong>Bug:</strong> <code>handleStatus</code> only handled <code>PNConnectedCategory</code>.
+                When PubNub returned an error (bad key, network down, timeout), the user saw "Connecting..."
+                forever with no feedback.</p>
+            <p><strong>Pattern:</strong> Every async connection (PubNub, WebSocket, fetch, etc.) has
+                two outcomes: success and failure. If you only handle success, every failure becomes
+                a silent hang. The fix is to handle known error categories explicitly and add a
+                catch-all for unknown errors:</p>
+<pre><code class="language-javascript">function handleStatus(statusEvent) {
+    if (statusEvent.category === 'PNConnectedCategory') {
+        // Happy path
+    } else if (statusEvent.category === 'PNAccessDeniedCategory') {
+        showError('Access denied');
+    } else if (statusEvent.category === 'PNNetworkDownCategory') {
+        showError('Network error');
+    } else if (statusEvent.error) {
+        // Catch-all: log the category for diagnostics
+        console.error('Unknown error:', statusEvent.category);
+        showError('Failed: ' + statusEvent.category);
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> If a function receives a status/result object, ask: "What categories
+                can this be?" and handle each one. If you can't enumerate them, add a catch-all that
+                at least logs and surfaces the category name.</p>
+
+            <h3 id="lesson-empty-catch">Never Use Empty Catch Blocks</h3>
+            <p><strong>Bug:</strong> <code>catch(e) {}</code> in <code>animateLinesFromToolCall</code>
+                silently swallowed JSON parse errors, null reference errors, and SVG manipulation failures.
+                Signal lines between agents failed invisibly during demos.</p>
+            <p><strong>Pattern:</strong> <code>catch(e) {}</code> is never acceptable. It suppresses
+                ALL errors, not just the one you intended to handle. Even if you think the error is
+                harmless, you lose all diagnostic information when something unexpected goes wrong.</p>
+<pre><code class="language-javascript">// BAD: every error vanishes into the void
+try { riskyCode(); } catch(e) {}
+
+// GOOD: at minimum, log with context
+try { riskyCode(); } catch(e) {
+    console.warn('[context] Failed:', e.message);
+}
+
+// BETTER: handle expected errors, re-throw unexpected ones
+try { JSON.parse(input); } catch(e) {
+    if (e instanceof SyntaxError) {
+        console.warn('Malformed input:', input);
+    } else {
+        throw e;  // unexpected error, don't swallow
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> Every <code>catch</code> block needs at least a <code>console.warn</code>
+                with enough context to diagnose the problem. The comment "// ignore" is not a valid reason
+                to suppress errors &mdash; write <em>what</em> you're ignoring and <em>why</em>.</p>
+
+            <h3 id="lesson-init-order">Initialization Order Between Async Systems</h3>
+            <p><strong>Bug:</strong> <code>drainMapEvents</code> was called 3 seconds after PubNub connected,
+                but <code>playbackRunning</code> was only set to <code>true</code> after the 8-second
+                collection window. So the drain function ran once, saw <code>playbackRunning === false</code>,
+                and exited forever. Map animations were completely dead.</p>
+            <p><strong>Pattern:</strong> When system A depends on system B's state, don't start A
+                alongside B and hope the timing works. Start A <em>from within</em> B, at the point
+                where the dependency is guaranteed to be satisfied:</p>
+<pre><code class="language-javascript">// BAD: race condition — drainMapEvents might run before
+// playbackRunning is true
+connectToPubNub();
+setTimeout(drainMapEvents, 3000);  // might run too early
+setTimeout(startScenePlayback, 8000);  // sets playbackRunning
+
+// GOOD: start the dependent function from where its
+// precondition is guaranteed
+function startScenePlayback() {
+    playbackRunning = true;
+    drainMapEvents();  // now playbackRunning is definitely true
+    beginScene();
+}</code></pre>
+            <p><strong>Rule:</strong> If function A checks a flag that function B sets, start A from
+                inside B, after the flag is set. Never rely on timeout ordering.</p>
+
+            <h3 id="lesson-cascade">Use else-if for Mutually Exclusive Conditions</h3>
+            <p><strong>Bug:</strong> A quarantine signal has <code>kind: 'alert'</code>, <code>severity: 'critical'</code>,
+                AND <code>action: 'quarantine'</code>. Two separate <code>if</code> blocks both matched:
+                first "Sentinel Alert" was shown, then immediately overwritten by "Quarantine Issued".
+                The audience never saw the first card.</p>
+            <p><strong>Pattern:</strong> When multiple conditions can match the same input, and only
+                one should fire, use <code>else if</code>. Put the more specific condition first:</p>
+<pre><code class="language-javascript">// BAD: both conditions fire on the same signal
+if (kind === 'alert' && severity === 'critical') {
+    showChapter('Sentinel Alert');
+}
+if (kind === 'alert' && action === 'quarantine') {
+    showChapter('Quarantine');  // immediately overwrites above
+}
+
+// GOOD: quarantine is more specific, check it first
+if (kind === 'alert') {
+    if (action === 'quarantine') {
+        showChapter('Quarantine');
+    } else if (severity === 'critical') {
+        showChapter('Sentinel Alert');
+    }
+}</code></pre>
+            <p><strong>Rule:</strong> When two conditions can both match the same data, ask: "Should
+                both fire, or only one?" If only one, use <code>else if</code> with the more specific
+                condition first.</p>
+
+            <h3 id="lesson-cdn-guard">Guard External Dependencies</h3>
+            <p><strong>Bug:</strong> PubNub SDK loaded from a CDN. If the CDN is blocked (firewall,
+                DNS, outage), <code>new PubNub()</code> throws <code>ReferenceError: PubNub is not defined</code>.
+                The try/catch caught it, but the error message was cryptic.</p>
+            <p><strong>Pattern:</strong> Before using a global that comes from an external <code>&lt;script&gt;</code>,
+                check if it loaded. Give a clear, actionable error message:</p>
+<pre><code class="language-javascript">// Before using any CDN-loaded library
+if (typeof PubNub === 'undefined') {
+    showError('PubNub SDK failed to load. Check network or firewall.');
+    return;
+}
+
+// Same pattern for any external dependency
+if (typeof Chart === 'undefined') { ... }
+if (typeof hljs === 'undefined') { ... }</code></pre>
+            <p><strong>Rule:</strong> <code>typeof X === 'undefined'</code> before the first use of any
+                global from a CDN. The error message should name the library and suggest a cause
+                (network, firewall) &mdash; not just say "X is not defined".</p>
+
+            <h3 id="lesson-promise-rejection">Handle Promise Rejections</h3>
+            <p><strong>Bug:</strong> <code>requestFullscreen()</code> returns a Promise that can reject
+                (browser policy, iframe restrictions). The rejection was unhandled, producing a console warning.</p>
+            <p><strong>Pattern:</strong> Browser APIs that return Promises (fullscreen, clipboard,
+                notifications, audio play) can reject for policy reasons. Always add <code>.catch()</code>:</p>
+<pre><code class="language-javascript">// BAD: unhandled rejection warning in console
+document.documentElement.requestFullscreen();
+
+// GOOD: catch and log
+document.documentElement.requestFullscreen().catch(function(err) {
+    console.warn('Fullscreen denied:', err.message);
+});
+
+// Same for audio, clipboard, notifications...
+audio.play().catch(function(err) {
+    if (err.name !== 'NotAllowedError') {  // expected for autoplay
+        console.warn('Audio failed:', err.name);
+    }
+});</code></pre>
+            <p><strong>Rule:</strong> Every <code>.then()</code> needs a <code>.catch()</code>, and every
+                <code>await</code> needs a <code>try/catch</code>. For browser APIs, filter expected
+                rejections (like <code>NotAllowedError</code> for autoplay) from unexpected ones.</p>
+
+            <h3 id="lesson-architectural">Architectural Pivot: Reactive to Scene-Based</h3>
+            <p>
+                The biggest change during development was moving from <strong>reactive playback</strong>
+                (show events as they arrive from PubNub) to <strong>scene-based playback</strong>
+                (collect events, group by agent, play one agent at a time).
+            </p>
+            <p><strong>Why the pivot:</strong> PubNub delivers events from all 7 agents interleaved.
+                In reactive mode, focus thrashed between agents every few hundred milliseconds &mdash;
+                the map zoomed to agent A, then immediately to agent B, then back. Unwatchable.</p>
+            <p><strong>The fix:</strong> Collect all events for 8 seconds into per-agent buckets
+                (<code>agentScenes</code>), then play them sequentially. Each agent gets an uninterrupted
+                "scene" with full focus.</p>
+            <p><strong>Lesson:</strong> When you change the architecture, audit ALL code that depended
+                on the old model. The <code>drainMapEvents</code> timing bug existed because it was
+                wired up during the reactive phase and never re-wired after the pivot. Every architectural
+                change leaves orphaned assumptions &mdash; grep for them.</p>
+
+            <!-- Files -->
+            <h2 id="files">Files</h2>
+
+            <table>
+                <thead>
+                    <tr><th>File</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>docs/sentinel-presenter.html</code></td>
+                        <td>The presenter page (CSS + HTML + JS, self-contained)</td>
+                    </tr>
+                    <tr>
+                        <td><code>docs/sentinel-presenter-guide.html</code></td>
+                        <td>This guide</td>
+                    </tr>
+                    <tr>
+                        <td><code>docs/agent-sentinel-dashboard.html</code></td>
+                        <td>The original monitoring dashboard (unchanged)</td>
+                    </tr>
+                    <tr>
+                        <td><code>docs/world-map.svg</code></td>
+                        <td>World map background (shared by both pages)</td>
+                    </tr>
+                    <tr>
+                        <td><code>examples/agent-sentinel/start.sh</code></td>
+                        <td>Launch script with <code>--present</code> and <code>--cinematic</code> flags</td>
+                    </tr>
+                    <tr>
+                        <td><code>examples/agent-sentinel/recordings/*.jsonl</code></td>
+                        <td>Pre-recorded LLM interactions per agent</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Troubleshooting -->
+            <h2 id="troubleshooting">Troubleshooting</h2>
+
+            <h3>Presenter shows "Disconnected" / no events</h3>
+            <ul>
+                <li>Check that <code>.env</code> has valid PubNub keys</li>
+                <li>Check that <code>sentinel-config.js</code> was generated (look in <code>docs/</code>)</li>
+                <li>Verify agents are actually running: <code>tail -f /tmp/sentinel-*.log</code></li>
+            </ul>
+
+            <h3>Map doesn't show / blank page</h3>
+            <ul>
+                <li>Ensure <code>world-map.svg</code> exists in <code>docs/</code></li>
+                <li>Open browser console for errors</li>
+                <li>Try a hard refresh (Cmd+Shift+R)</li>
+            </ul>
+
+            <h3>Events arrive but no focus zoom</h3>
+            <ul>
+                <li>Focus zoom only triggers for LLM events (PubNub signal kind = <code>event</code>)</li>
+                <li>Heartbeats and other signals animate on the map but don't change focus</li>
+                <li>Check browser console for JavaScript errors</li>
+            </ul>
+
+            <h3>Keyboard shortcuts don't work</h3>
+            <ul>
+                <li>Click somewhere on the page first (not in the PubNub key input field)</li>
+                <li>Keyboard events are suppressed when the input field is focused</li>
+            </ul>
+
+            <h3>Recording playback too fast / too slow</h3>
+            <ul>
+                <li>The event buffer decouples agent speed from presentation speed</li>
+                <li>Use speed keys <span class="key">1</span>-<span class="key">5</span> to adjust in real-time</li>
+                <li>Or change the base replay delay: <code>./start.sh --replay 0.5 --present</code></li>
+            </ul>
+        </main>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

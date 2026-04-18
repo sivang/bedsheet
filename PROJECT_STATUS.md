@@ -62,6 +62,60 @@
 
 ---
 
+## Session Summary (2026-04-14/16) — Sentinel Presenter: Movie Mode
+
+### What Was Done
+
+**Movie mode** — a third peer playback mode added to `docs/sentinel-presenter.html`, alongside `live` (PubNub) and `replay` (recordings). Movie mode runs a ~2:44 fully-scripted, synthetic demo end-to-end with no agents, no PubNub, and no recording dependency. Activated via `./start.sh --movie` or `?mode=movie`.
+
+**8 scripted chapters** covering the full Agent Sentinel story:
+- Ch 0: Intro + Bedsheet pitch + two-plane architecture diagram (~44s)
+- Ch 1: Network Startup (7 agents come online)
+- Ch 2: Normal Operations (routine tool calls through the gateway)
+- Ch 3: Malicious Install Blocked (supply-chain-sentinel hash mismatch)
+- Ch 4: Rogue Burst (5 tool calls in 2s)
+- Ch 5: Gateway Block (rate-limit response)
+- Ch 6: Sentinel Alert (behavior-sentinel queries gateway ledger)
+- Ch 7: Quarantine Issued (commander issues quarantine)
+- Ch 8: Stable State Restored (6 agents on mission)
+
+**Architecture:**
+- `MovieEngine` class with timer registry — cancelAll/restart/jumpToChapter/setSpeed all tear down pending timers atomically
+- 10-cue schema: `chapter-card`, `spotlight`, `signal`, `commentary`, `line`, `reset`, plus 4 Chapter-0 overlay cues
+- Synthetic signals rendered via `buildEventCard` + `driveMapEffectForSignal` — bypasses `drainMapEvents` 800ms pacing so Chapter 4's rapid burst renders at burst rate
+- Boot-time `lintMovieScript` validator covers 5 schema rules
+- Chapter 0 introduces Bedsheet's "Sixth Sense" pitch (DARPA-white-paper register) and an inline SVG of the two-plane architecture (operational + control planes separated by the Sixth Sense bus)
+
+**Pitch copy** emphasizes Bedsheet's defining invention: the first real-time, high-availability, general-purpose communication bus in an agentic framework (transport-agnostic: PubNub, NATS). Explicit contrast with A2A ("not HPC"). Pitch and arch diagram are locked verbatim in §3.4 and §3.5 of the design spec.
+
+### Files Changed
+
+- `docs/sentinel-presenter.html` — +1100 lines (MovieEngine, cue dispatcher, 9 chapters, pitch copy, arch diagram SVG, CSS)
+- `examples/agent-sentinel/start.sh` — `--movie` flag
+- `docs/sentinel-presenter-guide.html` — Movie Mode section
+- `docs/superpowers/specs/2026-04-14-sentinel-presenter-movie-mode-design.md` — full design
+- `docs/superpowers/plans/2026-04-14-sentinel-presenter-movie-mode.md` — implementation plan
+
+### Design/Review Process
+
+Design doc went through 3 brainstorming + spec review iterations. Plan went through 3 review iterations. Issues caught during reviews that would have derailed implementation:
+
+- `handleSignal` was assumed to exist — actually `handleMessage(event)` with PubNub wrapper; fixed by calling `buildEventCard` directly.
+- Cue schema grew from 6 → 10 types to keep pitch/arch overlays flowing through MovieEngine timer registry (not leak through state transitions).
+- `spotlight` cue must call `showFocusOverlay` — without it, event cards append to an invisible (opacity-0) container.
+- `driveMapEffectForSignal` must resolve colour from `ROLE_COLORS` — passing `null` as colour sets literal `stroke="null"`.
+- `MovieEngine.setSpeed` must re-schedule the chapter-advance timer after `cancelAll` — otherwise the movie stalls at the end of the current chapter after a speed change.
+- PITCH_LINES is 1270 chars (not the 950 initially assumed); pitch takes 37.5s; Chapter 0 timing re-paced to 44s.
+
+### Branch Status
+
+- Branch: `feature/sentinel-presenter`
+- Worktree: `.worktrees/sentinel-presenter/`
+- Implementation commits: Phases 1–6 (one commit per task, ~18 commits total)
+- Pushed to `origin/feature/sentinel-presenter`
+
+---
+
 ## Session Summary (2026-04-11/12) — Sentinel Presenter: Cinematic Demo Mode
 
 ### What Was Done

@@ -1,0 +1,3970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedsheet Sentinel Network - Presenter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.8.3.0.js"></script>
+    <style>
+        /* ── Shared visual DNA from dashboard ── */
+        :root {
+            --bg-deep: #141c2b;
+            --bg-panel: rgba(24, 34, 56, 0.92);
+            --bg-panel-solid: #1a2540;
+            --border-glow: rgba(0, 200, 255, 0.3);
+            --border-dim: rgba(255, 255, 255, 0.12);
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.5);
+            --red: #ff4d6d;
+            --red-dim: rgba(255, 77, 109, 0.5);
+            --amber: #ffc030;
+            --amber-dim: rgba(255, 192, 48, 0.5);
+            --green: #00ef82;
+            --green-dim: rgba(0, 239, 130, 0.5);
+            --purple: #c49fff;
+            --text-primary: #f0f4fa;
+            --text-secondary: #9aacbf;
+            --text-dim: #6a7d94;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        /* ── Presenter layout: topbar + full-screen map + timeline ── */
+        .app {
+            display: grid;
+            grid-template-rows: 48px 1fr 56px;
+            height: 100vh;
+        }
+
+        /* ── Top Bar ── */
+        .topbar {
+            background: var(--bg-panel-solid);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-glow);
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .logo span { color: var(--text-dim); font-weight: 400; }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green-dim);
+        }
+
+        .status-dot.live {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red-dim);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .topbar-stats {
+            margin-left: auto;
+            display: flex;
+            gap: 24px;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cyan);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value.red { color: var(--red); }
+        .stat-value.amber { color: var(--amber); }
+        .stat-value.green { color: var(--green); }
+
+        /* ── Full-screen Map ── */
+        .map-area {
+            position: relative;
+            background: var(--bg-deep);
+            overflow: hidden;
+        }
+
+        .map-viewport {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            /* Slower, more stately push-in. 1.5s eases the viewer into the shot
+               rather than snapping. Pair with smaller targetScale. */
+            transition: transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .map-area .world-map-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            pointer-events: none;
+        }
+
+        .map-area .map-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .map-area .map-svg .agent-node {
+            pointer-events: auto;
+        }
+
+        /* ── Agent Nodes (identical to dashboard) ── */
+        .agent-node {
+            cursor: pointer;
+            /* Match the map-viewport transition so pin counter-scale animates in sync with zoom. */
+            transition: opacity 0.6s ease, transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-box: view-box;
+            transform-origin: 0 0;
+        }
+
+        .agent-node-ring {
+            fill: none;
+            stroke: var(--text-dim);
+            stroke-width: 1;
+            opacity: 0.5;
+        }
+
+        .agent-node-core {
+            fill: var(--text-dim);
+            opacity: 0.5;
+        }
+
+        .agent-node.online .agent-node-ring { stroke: var(--green); opacity: 1; }
+        .agent-node.online .agent-node-core { fill: var(--green); opacity: 1; }
+        .agent-node.sentinel .agent-node-ring { stroke: var(--purple); }
+        .agent-node.sentinel .agent-node-core { fill: var(--purple); }
+        .agent-node.gateway .agent-node-ring { stroke: var(--amber); }
+        .agent-node.gateway .agent-node-core { fill: var(--amber); }
+        .agent-node.commander .agent-node-ring { stroke: var(--cyan); }
+        .agent-node.commander .agent-node-core { fill: var(--cyan); }
+        .agent-node.quarantined .agent-node-ring { stroke: var(--red) !important; opacity: 1 !important; }
+        .agent-node.quarantined .agent-node-core { fill: var(--red) !important; opacity: 1 !important; }
+
+        .agent-node-label {
+            fill: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 8px;
+            text-anchor: middle;
+        }
+
+        .agent-node.online .agent-node-label { fill: var(--text-primary); }
+
+        /* Dimmed state for non-focused agents */
+        /* Non-focused agents during spotlight — visible but clearly de-emphasized.
+           Panel overlap is now solved by the DnD positioner (author places panels
+           away from background agents), so we DON'T need to hide agents to avoid
+           panel collisions. Keep them soft-visible so the map context stays intact
+           and the user sees all agents while editing panel positions. */
+        .agent-node.dimmed { opacity: 0.3; transition: opacity 0.8s ease; }
+        /* In panel-edit mode, bring agents back to near-full visibility so the author
+           can place panels precisely relative to real agent positions. */
+        body.panel-edit-mode .agent-node.dimmed { opacity: 0.7; }
+
+        /* Subtle always-on hint — placed bottom-LEFT so the copyright in cinematic
+           full-screen mode (bottom-right) doesn't collide with these keybind hints. */
+        .movie-director-hint {
+            position: fixed;
+            bottom: 14px;
+            left: 14px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cyan);
+            opacity: 0.35;
+            letter-spacing: 1.5px;
+            z-index: 60;
+            pointer-events: none;
+            user-select: none;
+            display: none;
+        }
+        body.presenter-mode-movie .movie-director-hint { display: block; }
+        body.panel-edit-mode .movie-director-hint { display: none; }
+
+        /* Director-mode hint — blinks at bottom of pitch body / arch caption after
+           typing completes, tells the user the movie is waiting for N. */
+        .movie-advance-hint {
+            margin-top: 24px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            text-align: center;
+            opacity: 0;
+            animation: hint-pulse 1.8s ease-in-out 0.4s infinite;
+        }
+        @keyframes hint-pulse {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 0.95; }
+        }
+
+        /* ── Panel edit mode (DnD positioner) ── */
+        body.panel-edit-mode .focus-overlay.visible,
+        body.panel-edit-mode .briefing-overlay.visible {
+            cursor: grab;
+            outline: 2px dashed var(--cyan);
+            outline-offset: -2px;
+            /* Disable text selection so click-drag on prose doesn't start a selection. */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Prevent the map itself from responding to mousedown while dragging panels. */
+        body.panel-edit-mode .map-area {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body.panel-edit-mode .focus-overlay.dragging,
+        body.panel-edit-mode .briefing-overlay.dragging {
+            cursor: grabbing;
+            outline-color: var(--green);
+            box-shadow: 0 0 24px rgba(0, 239, 130, 0.5);
+        }
+        /* Small badge in the corner so you can tell edit mode is on */
+        body.panel-edit-mode::before {
+            content: '// PANEL EDIT — chapter paused — drag / E exit / X export / C clear';
+            position: fixed;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        /* Enhanced glow for focused agent */
+        .agent-node.focused .agent-node-ring {
+            stroke-width: 2;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+
+        .agent-node.focused .agent-node-core {
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        /* ── Pulse & Signal Animations (identical to dashboard) ── */
+        @keyframes node-pulse {
+            0% { r: 6; opacity: 0.6; }
+            100% { r: 20; opacity: 0; }
+        }
+
+        .pulse-ring { fill: none; stroke-width: 1.5; opacity: 0; }
+        .pulse-ring.active { animation: node-pulse 1.5s ease-out; }
+
+        .signal-line {
+            fill: none;
+            stroke-width: 2;
+            stroke-dasharray: 6 4;
+            opacity: 0;
+        }
+
+        .signal-line.active {
+            opacity: 1;
+            animation: signal-travel 1.2s ease-out forwards;
+        }
+
+        @keyframes signal-travel {
+            0% { stroke-dashoffset: 100; opacity: 0.8; }
+            80% { stroke-dashoffset: 0; opacity: 0.6; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        @keyframes broadcast-pulse {
+            0% { r: 5; opacity: 0.8; stroke-width: 3; }
+            100% { r: 80; opacity: 0; stroke-width: 0.5; }
+        }
+
+        .broadcast-ring { fill: none; stroke: var(--red); opacity: 0; }
+        .broadcast-ring.active { animation: broadcast-pulse 2s ease-out; }
+
+        /* ── Focus Overlay Panel ── */
+        .focus-overlay {
+            position: absolute;
+            width: 380px;
+            /* Grow to fit event cards as they stream in, capped at max-height so the
+               reasoning stream scrolls after filling the viewport. Transition height
+               smoothly for a cinematic 'panel expanding as thoughts arrive' feel. */
+            height: auto;
+            min-height: 80px;
+            max-height: 70vh;
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 200, 255, 0.08);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.5s ease;
+            pointer-events: none;
+        }
+
+        .focus-overlay.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Shrink-and-reopen transition rule lives below — must come AFTER both
+           .focus-overlay.visible AND .briefing-overlay.visible so the cascade lets it
+           override the .visible transforms. See line ~483 for the active rule. */
+
+        .focus-overlay-header {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .focus-overlay-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .focus-overlay-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .focus-overlay-role {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .focus-overlay-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            min-height: 0;
+        }
+
+        .focus-overlay-body::-webkit-scrollbar { width: 4px; }
+        .focus-overlay-body::-webkit-scrollbar-track { background: transparent; }
+        .focus-overlay-body::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+        .focus-overlay-empty {
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+            line-height: 1.8;
+        }
+
+        /* ── Briefing Window (separate from focus overlay) ── */
+        .briefing-overlay {
+            position: absolute;
+            width: 360px;
+            height: 320px;
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            z-index: 6;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 200, 255, 0.1);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            pointer-events: none;
+        }
+
+        .briefing-overlay.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Shrink-and-reopen transition for spotlight changes. Declared AFTER both
+           .focus-overlay.visible (line ~370) and .briefing-overlay.visible (above) so
+           the cascade lets scale(0.1) + opacity 0 override the .visible transform.
+           Applied by the runCue 'spotlight' handler on agent→agent transitions; removed
+           after ~380ms so CSS animates scale 0.1 → 1 back at the new agent's position. */
+        .focus-overlay.transitioning,
+        .briefing-overlay.transitioning {
+            transform: scale(0.1) !important;
+            opacity: 0 !important;
+            pointer-events: none;
+            transform-origin: center center;
+        }
+
+        .briefing-header {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .briefing-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .briefing-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+            min-height: 0;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.7;
+            color: var(--green);
+            white-space: pre-wrap;
+        }
+
+        .briefing-body::-webkit-scrollbar { width: 4px; }
+        .briefing-body::-webkit-scrollbar-track { background: transparent; }
+        .briefing-body::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+        .briefing-body .cursor {
+            display: inline-block;
+            width: 7px;
+            height: 13px;
+            background: var(--green);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
+        /* ── Movie commentary (transient narration during a cue) ── */
+        .movie-commentary {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(720px, 80%);
+            background: rgba(14, 22, 42, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 14px 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--green);
+            z-index: 7;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .movie-commentary.visible { opacity: 1; }
+
+        /* ── Movie chapter card (full-screen title) ── */
+        .movie-chapter-card {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 10, 20, 0.92);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        .movie-chapter-card.visible { opacity: 1; }
+        .movie-chapter-card-title {
+            font-family: var(--font-mono);
+            font-size: 38px;
+            letter-spacing: 4px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .movie-chapter-card-subtitle {
+            margin-top: 12px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* ── Movie pitch panel (Chapter 0) ── */
+        .movie-pitch-panel {
+            position: fixed;
+            inset: 8% 12%;
+            background: rgba(5, 10, 20, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 32px 40px 40px;
+            font-family: var(--font-mono);
+            line-height: 1.9;
+            color: var(--green);
+            z-index: 55;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .movie-pitch-panel.visible { opacity: 1; }
+        .movie-pitch-header {
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: baseline;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+        .movie-pitch-label {
+            font-size: 11px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            opacity: 0.8;
+        }
+        .movie-pitch-title {
+            font-size: 34px;
+            letter-spacing: 8px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            font-weight: 500;
+            text-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+        }
+        /* Viewport acts as a fixed window; body translates up inside it for the
+           cinematic teleprompter scroll effect. */
+        .movie-pitch-viewport {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .movie-pitch-body {
+            /* Matched to BEDSHEET title (.movie-pitch-title font-size: 34px) — the
+               body reads as an equal voice to the header rather than dominating it. */
+            font-size: 34px;
+            line-height: 1.4;
+            letter-spacing: 0.5px;
+            white-space: pre-wrap;
+            will-change: transform;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        /* ── Movie architecture diagram (Chapter 0) ── */
+        .movie-arch-diagram {
+            position: fixed;
+            inset: 4% 6%;
+            background: rgba(5, 10, 20, 0.96);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            padding: 40px;
+            z-index: 8;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .movie-arch-diagram.visible { opacity: 1; }
+        .movie-arch-svg { flex: 1; min-height: 0; }
+        .movie-arch-caption {
+            margin-top: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--cyan);
+            text-align: center;
+            letter-spacing: 1.2px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        .arch-node { fill: rgba(20,30,50,0.8); stroke-width: 2; }
+        .arch-node.worker    { stroke: var(--green); }
+        .arch-node.gateway   { stroke: var(--amber); }
+        .arch-node.sentinel  { stroke: var(--purple); }
+        .arch-node.commander { stroke: var(--cyan); }
+        .arch-label { fill: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
+        .arch-sub   { fill: var(--text-dim); font-family: var(--font-mono); font-size: 10px; }
+        .arch-ext   { fill: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; }
+        .arch-arrow { fill: none; stroke-width: 1.5; opacity: 0.7; }
+        .arch-arrow.down   { stroke: var(--green); color: var(--green); }
+        .arch-arrow.out    { stroke: var(--amber); color: var(--amber); }
+        .arch-arrow.audit  { stroke: var(--amber); color: var(--amber); }
+        .arch-arrow.obs    { stroke: var(--purple); color: var(--purple); stroke-dasharray: 4 3; }
+        .arch-arrow.alert  { stroke: var(--purple); color: var(--purple); }
+        .arch-bus {
+            stroke: var(--cyan); stroke-width: 3; stroke-dasharray: 8 5;
+            filter: drop-shadow(0 0 6px var(--cyan));
+        }
+        .arch-bus-label {
+            fill: var(--cyan); font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+        }
+        /* Staged reveals driven by classes on the container */
+        .movie-arch-diagram .arch-ops-plane,
+        .movie-arch-diagram .arch-bus,
+        .movie-arch-diagram .arch-bus-label,
+        .movie-arch-diagram .arch-ctrl-plane {
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        .movie-arch-diagram.step-ops   .arch-ops-plane   { opacity: 1; }
+        .movie-arch-diagram.step-bus   .arch-bus,
+        .movie-arch-diagram.step-bus   .arch-bus-label   { opacity: 1; }
+        .movie-arch-diagram.step-ctrl  .arch-ctrl-plane  { opacity: 1; }
+
+        /* ── Event Cards (identical to dashboard) ── */
+        .llm-event {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            border-left: 3px solid var(--text-dim);
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* Slide-up animation for presenter (different from dashboard card-in) */
+        @keyframes event-slide-up {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .llm-event.animate-in {
+            animation: event-slide-up 0.3s ease-out;
+        }
+
+        .llm-event-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
+        }
+
+        .llm-event-badge {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+
+        .llm-event-time {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+
+        .llm-event-text {
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .llm-event.thinking { border-left-color: var(--purple); }
+        .llm-event.thinking .llm-event-badge { background: rgba(196, 159, 255, 0.15); color: var(--purple); }
+
+        .llm-event.tool_call { border-left-color: var(--cyan); }
+        .llm-event.tool_call .llm-event-badge { background: rgba(0, 212, 255, 0.12); color: var(--cyan); }
+
+        .llm-event.tool_result { border-left-color: var(--green); }
+        .llm-event.tool_result .llm-event-badge { background: rgba(0, 239, 130, 0.12); color: var(--green); }
+
+        .llm-event.completion { border-left-color: var(--amber); }
+        .llm-event.completion .llm-event-badge { background: rgba(255, 192, 48, 0.12); color: var(--amber); }
+
+        .llm-event.error { border-left-color: var(--red); }
+        .llm-event.error .llm-event-badge { background: rgba(255, 77, 109, 0.12); color: var(--red); }
+
+        .llm-event-tool-name {
+            color: var(--cyan);
+            font-weight: 500;
+        }
+
+        /* ── Timeline Bar ── */
+        .timeline-bar {
+            background: var(--bg-panel-solid);
+            border-top: 1px solid var(--border-glow);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            z-index: 10;
+        }
+
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-transport {
+            background: none;
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+
+        .btn-transport:hover {
+            border-color: var(--border-glow);
+            color: var(--text-primary);
+        }
+
+        .btn-transport.active {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        .timeline-track {
+            flex: 1;
+            height: 4px;
+            background: var(--border-dim);
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: var(--cyan);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .timeline-chapter-marker {
+            position: absolute;
+            top: -3px;
+            width: 10px;
+            height: 10px;
+            background: var(--amber);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .timeline-chapter-marker:hover {
+            transform: translateX(-50%) scale(1.4);
+        }
+
+        .timeline-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 120px;
+        }
+
+        .timeline-chapter-name {
+            font-size: 11px;
+            color: var(--amber);
+            white-space: nowrap;
+        }
+
+        .timeline-speed {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .speed-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-speed {
+            background: none;
+            border: 1px solid var(--border-dim);
+            border-radius: 3px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            padding: 2px 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-speed:hover { border-color: var(--border-glow); color: var(--text-secondary); }
+        .btn-speed.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 212, 255, 0.08); }
+
+        /* ── Intro Crawl ── */
+        /* ── Intro: typed text overlaid on the map ── */
+        .intro-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 28, 43, 0.75);
+            backdrop-filter: blur(2px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 1.5s ease;
+        }
+
+        .intro-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .intro-overlay.hidden { display: none; }
+
+        .intro-crawl {
+            max-width: min(1200px, 90vw);
+            text-align: left;
+            padding: 40px;
+        }
+
+        .intro-title {
+            font-family: var(--font-mono);
+            /* Matched to BEDSHEET briefing title (34px) for a cohesive display scale. */
+            font-size: 34px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 36px;
+            opacity: 0;
+        }
+
+        .intro-line {
+            font-family: var(--font-mono);
+            /* Matched to BEDSHEET title size (34px). */
+            font-size: 34px;
+            font-weight: 400;
+            color: var(--green);
+            line-height: 1.4;
+            margin-bottom: 28px;
+            opacity: 0;
+            white-space: pre-wrap;
+        }
+
+        .intro-line .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 28px;
+            background: var(--green);
+            margin-left: 4px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .intro-line.dim {
+            color: var(--text-secondary);
+            font-size: 34px;
+        }
+
+        .intro-line.accent {
+            color: var(--cyan);
+            font-style: italic;
+        }
+
+        .intro-line.classified {
+            color: var(--red);
+            /* Slightly smaller than title to read as a pre-header / stamp; still display-scale. */
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .intro-proceed {
+            margin-top: 32px;
+            opacity: 0;
+        }
+
+        .intro-proceed button {
+            background: none;
+            border: 1px solid var(--cyan);
+            border-radius: 4px;
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 10px 32px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .intro-proceed button:hover {
+            background: rgba(0, 212, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+        }
+
+        .intro-skip {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes intro-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ── Chapter Title Card ── */
+        /* Chapter card: top third of screen — above commentary */
+        .chapter-card {
+            position: fixed;
+            top: 8%;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .chapter-card.visible { opacity: 1; }
+
+        .chapter-card-text {
+            font-family: var(--font-sans);
+            font-size: 42px;
+            font-weight: 300;
+            color: var(--text-primary);
+            letter-spacing: 2px;
+            text-align: center;
+            text-shadow: 0 0 40px rgba(0, 200, 255, 0.3);
+        }
+
+        .chapter-card-divider {
+            display: block;
+            width: 60px;
+            height: 1px;
+            background: var(--cyan);
+            margin: 16px auto;
+            opacity: 0.6;
+        }
+
+        /* ── Commentary Subtitle Bar ── */
+        /* Commentary: bottom area, above timeline bar — never overlaps chapter card or focus overlay */
+        .commentary-bar {
+            position: fixed;
+            bottom: 72px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 640px;
+            width: 75%;
+            background: rgba(10, 14, 23, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            border-radius: 10px;
+            padding: 24px 32px;
+            text-align: left;
+            z-index: 45;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+
+        /* In cinematic mode, move up since timeline bar is hidden */
+        .app.cinematic ~ .commentary-bar {
+            bottom: 32px;
+        }
+
+        .commentary-bar.visible { opacity: 1; }
+
+        .commentary-bar-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .commentary-bar-text {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--green);
+            line-height: 1.7;
+            letter-spacing: 0.3px;
+            min-height: 60px;
+        }
+
+        .commentary-bar-text .cursor {
+            display: inline-block;
+            width: 9px;
+            height: 18px;
+            background: var(--green);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
+        /* ── Cinematic Mode ── */
+        .app.cinematic .topbar { display: none; }
+        .app.cinematic .timeline-bar { display: none; }
+        .app.cinematic .map-area { grid-row: 1 / -1; }
+
+        /* Timestamp counter (cinematic) */
+        .timestamp-counter {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.35);
+            z-index: 60;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .timestamp-counter.visible { display: block; }
+
+        /* ── Agent Transition Label ── */
+        .transition-label {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 55;
+            pointer-events: none;
+        }
+
+        .transition-label.visible { opacity: 1; }
+
+        /* ── Connection Overlay ── */
+        .connection-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 23, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+
+        .connection-overlay.hidden { display: none; }
+
+        .connection-panel {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 40px;
+            width: 440px;
+            text-align: center;
+        }
+
+        .connection-panel h2 {
+            font-family: var(--font-sans);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .connection-panel .subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: var(--bg-deep);
+            border: 1px solid var(--border-glow);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.15);
+        }
+
+        .input-group input::placeholder { color: var(--text-dim); }
+
+        .btn-connect {
+            background: var(--cyan);
+            color: var(--bg-deep);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-connect:hover { filter: brightness(1.15); }
+        .btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .connection-error {
+            color: var(--red);
+            font-size: 15px;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        /* ── Scrollbars ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+    </style>
+    <script src="sentinel-config.js"></script>
+</head>
+<body>
+    <!-- Intro: classified-style typed text overlaid on the map -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-crawl">
+            <div class="intro-line classified" id="introLine0">// classified &mdash; sentinel network</div>
+            <div class="intro-title" id="introTitle">Bedsheet Sentinel Network</div>
+            <div class="intro-line" id="introLine1"></div>
+            <div class="intro-line" id="introLine2"></div>
+            <div class="intro-line dim" id="introLine3"></div>
+            <div class="intro-line accent" id="introLine4"></div>
+            <div class="intro-proceed" id="introProceed">
+                <button id="introStartBtn">Begin Monitoring</button>
+                <div class="intro-skip">or press Space</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Audio (sci-fi drone — provide your own file as ambient.mp3 in docs/) -->
+    <audio id="ambientAudio" loop preload="auto">
+        <source src="ambient.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Connection Overlay -->
+    <div class="connection-overlay hidden" id="connectionOverlay">
+        <div class="connection-panel">
+            <h2>Sentinel Presenter</h2>
+            <p class="subtitle">
+                Enter your PubNub subscribe key to connect to a running
+                Agent Sentinel network and present the demo.
+            </p>
+            <div class="input-group">
+                <input type="text" id="subscribeKeyInput" placeholder="sub-c-your-subscribe-key" spellcheck="false" value="">
+                <button class="btn-connect" id="connectBtn">Connect</button>
+            </div>
+            <div class="connection-error" id="connectionError"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app" id="app">
+        <!-- Top Bar -->
+        <header class="topbar" id="topbar">
+            <div class="logo">Bedsheet <span>Sentinel Network</span></div>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <div class="topbar-stats">
+                <div class="stat">
+                    <span class="stat-value" id="statSignals">0</span>
+                    <span class="stat-label">Signals</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value red" id="statAlerts">0</span>
+                    <span class="stat-label">Alerts</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value amber" id="statQuarantine">0</span>
+                    <span class="stat-label">Quarantine</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value green" id="statOnline">0</span>
+                    <span class="stat-label">Online</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Map Area (full width, no sidebar) -->
+        <div class="map-area" id="mapArea">
+            <div class="map-viewport" id="mapViewport">
+                <object class="world-map-bg" data="world-map.svg" type="image/svg+xml"></object>
+
+                <svg class="map-svg" id="mapSvg" viewBox="0 0 1009.6727 665.96301" preserveAspectRatio="xMidYMid meet">
+                    <!-- Signal lines layer -->
+                    <g id="signalLines"></g>
+
+                    <!-- Agent Nodes (identical positions to dashboard) -->
+                    <g id="agentNodes">
+                        <g class="agent-node gateway" id="node-action-gateway" data-agent="action-gateway" transform="translate(205, 240)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--amber)"/>
+                            <circle class="agent-node-ring" r="12"/>
+                            <circle class="agent-node-core" r="5"/>
+                            <text class="agent-node-label" y="24">action-gateway</text>
+                            <text class="agent-node-label" y="33" style="font-size:6px;fill:var(--text-dim)">us-central1</text>
+                        </g>
+
+                        <g class="agent-node" id="node-web-researcher" data-agent="web-researcher" transform="translate(240, 262)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">web-researcher</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-east1</text>
+                        </g>
+
+                        <g class="agent-node" id="node-scheduler" data-agent="scheduler" transform="translate(490, 300)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">scheduler</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">europe-west1</text>
+                        </g>
+
+                        <g class="agent-node" id="node-skill-acquirer" data-agent="skill-acquirer" transform="translate(868, 350)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--green)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">skill-acquirer</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-northeast1</text>
+                        </g>
+
+                        <g class="agent-node sentinel" id="node-behavior-sentinel" data-agent="behavior-sentinel" transform="translate(150, 220)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">behavior-sentinel</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">us-west1</text>
+                        </g>
+
+                        <g class="agent-node sentinel" id="node-supply-chain-sentinel" data-agent="supply-chain-sentinel" transform="translate(766, 459)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--purple)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">supply-chain-sentinel</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">asia-southeast1</text>
+                        </g>
+
+                        <g class="agent-node commander" id="node-sentinel-commander" data-agent="sentinel-commander" transform="translate(470, 285)">
+                            <circle class="broadcast-ring" r="5"/>
+                            <circle class="pulse-ring" r="6" stroke="var(--cyan)"/>
+                            <circle class="agent-node-ring" r="10"/>
+                            <circle class="agent-node-core" r="4"/>
+                            <text class="agent-node-label" y="22">sentinel-commander</text>
+                            <text class="agent-node-label" y="31" style="font-size:6px;fill:var(--text-dim)">europe-west2</text>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Movie mode: transient commentary + chapter cards + pitch + arch diagram -->
+            <div id="movieCommentary" class="movie-commentary"><div class="movie-commentary-body"></div></div>
+            <div id="movieChapterCard" class="movie-chapter-card">
+                <div class="movie-chapter-card-inner">
+                    <div class="movie-chapter-card-title"></div>
+                    <div class="movie-chapter-card-subtitle"></div>
+                </div>
+            </div>
+            <div id="movieDirectorHint" class="movie-director-hint">▸ N advances — E edits panels — M mutes music</div>
+            <div id="moviePitchPanel" class="movie-pitch-panel">
+                <div class="movie-pitch-header">
+                    <span class="movie-pitch-label">// operational brief</span>
+                    <span class="movie-pitch-title">BEDSHEET</span>
+                </div>
+                <div class="movie-pitch-viewport">
+                    <div class="movie-pitch-body"></div>
+                </div>
+            </div>
+            <div id="movieArchDiagram" class="movie-arch-diagram">
+                <svg viewBox="0 0 1000 600" class="movie-arch-svg" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <marker id="archArrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                        </marker>
+                    </defs>
+                    <g class="arch-ops-plane">
+                        <rect class="arch-node worker"  x="140" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="225" y="115" text-anchor="middle">web-researcher</text>
+                        <rect class="arch-node worker"  x="420" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="505" y="115" text-anchor="middle">scheduler</text>
+                        <rect class="arch-node worker"  x="700" y="80"  width="170" height="60" rx="6"/>
+                        <text class="arch-label"        x="785" y="115" text-anchor="middle">skill-acquirer</text>
+                        <path class="arch-arrow down"   d="M 225 140 L 450 240" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow down"   d="M 505 140 L 500 240" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow down"   d="M 785 140 L 550 240" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node gateway" x="400" y="240" width="200" height="60" rx="6"/>
+                        <text class="arch-label"        x="500" y="272" text-anchor="middle">action-gateway</text>
+                        <text class="arch-sub"          x="500" y="288" text-anchor="middle">rate · audit · ledger</text>
+                        <path class="arch-arrow out"    d="M 600 270 L 810 270" marker-end="url(#archArrowHead)"/>
+                        <text class="arch-ext"          x="900" y="274" text-anchor="middle">external / ClawHub</text>
+                        <path class="arch-arrow audit"  d="M 500 300 L 500 325" marker-end="url(#archArrowHead)"/>
+                    </g>
+                    <line class="arch-bus" x1="60" y1="330" x2="940" y2="330"/>
+                    <text class="arch-bus-label" x="500" y="322" text-anchor="middle">SIXTH SENSE — PubNub / NATS</text>
+                    <g class="arch-ctrl-plane">
+                        <path class="arch-arrow obs"    d="M 270 400 L 270 335" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow obs"    d="M 730 400 L 730 335" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node sentinel" x="180" y="400" width="180" height="60" rx="6"/>
+                        <text class="arch-label"         x="270" y="435" text-anchor="middle">behavior-sentinel</text>
+                        <rect class="arch-node sentinel" x="640" y="400" width="180" height="60" rx="6"/>
+                        <text class="arch-label"         x="730" y="435" text-anchor="middle">supply-chain-sentinel</text>
+                        <path class="arch-arrow alert"   d="M 360 445 L 450 515" marker-end="url(#archArrowHead)"/>
+                        <path class="arch-arrow alert"   d="M 640 445 L 630 515" marker-end="url(#archArrowHead)"/>
+                        <rect class="arch-node commander" x="450" y="490" width="180" height="60" rx="6"/>
+                        <text class="arch-label"          x="540" y="525" text-anchor="middle">sentinel-commander</text>
+                    </g>
+                </svg>
+                <div class="movie-arch-caption"></div>
+            </div>
+
+            <!-- Briefing Window (agent dossier — positioned separately) -->
+            <div class="briefing-overlay" id="briefingOverlay">
+                <div class="briefing-header">
+                    <span class="briefing-label">// asset briefing</span>
+                </div>
+                <div class="briefing-body" id="briefingBody"></div>
+            </div>
+
+            <!-- Focus Overlay Panel (agent LLM activity — positioned separately) -->
+            <div class="focus-overlay" id="focusOverlay">
+                <div class="focus-overlay-header">
+                    <div class="focus-overlay-dot" id="focusDot"></div>
+                    <div class="focus-overlay-name" id="focusName">Agent</div>
+                    <span class="focus-overlay-role" id="focusRole">worker</span>
+                </div>
+                <div class="focus-overlay-body" id="focusBody">
+                    <div class="focus-overlay-empty">Waiting for agent activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Bar -->
+        <div class="timeline-bar" id="timelineBar">
+            <div class="timeline-controls">
+                <button class="btn-transport" id="btnPlayPause" title="Play/Pause (Space)">||</button>
+                <button class="btn-transport" id="btnStep" title="Next event (Right arrow)">></button>
+            </div>
+            <div class="timeline-track" id="timelineTrack">
+                <div class="timeline-progress" id="timelineProgress"></div>
+            </div>
+            <div class="speed-controls">
+                <button class="btn-speed" data-speed="0.5">0.5x</button>
+                <button class="btn-speed active" data-speed="1">1x</button>
+                <button class="btn-speed" data-speed="2">2x</button>
+                <button class="btn-speed" data-speed="5">5x</button>
+                <button class="btn-speed" data-speed="10">10x</button>
+            </div>
+            <div class="timeline-info">
+                <span class="timeline-chapter-name" id="chapterName">Waiting...</span>
+                <span class="timeline-speed" id="speedLabel">Speed: 1x</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chapter Title Card (fullscreen overlay) -->
+    <div class="chapter-card" id="chapterCard">
+        <div>
+            <span class="chapter-card-divider"></span>
+            <div class="chapter-card-text" id="chapterCardText"></div>
+            <span class="chapter-card-divider"></span>
+        </div>
+    </div>
+
+    <!-- Commentary Overlay -->
+    <div class="commentary-bar" id="commentaryBar">
+        <div class="commentary-bar-label">// intelligence briefing</div>
+        <div class="commentary-bar-text" id="commentaryText"></div>
+    </div>
+
+    <!-- Transition Label -->
+    <div class="transition-label" id="transitionLabel"></div>
+
+    <!-- Timestamp Counter (cinematic mode) -->
+    <div class="timestamp-counter" id="timestampCounter">00:00:00</div>
+
+    <script>
+    // ── Agent Registry (identical to dashboard) ──
+    // Coordinates are in SVG user-space (viewBox 0..1009.67 × 0..665.96, see world-map.svg).
+    // Positions were picked from country path bboxes so every pin sits on land.
+    var AGENTS = {
+        'action-gateway':         { region: 'us-central1',      role: 'gateway',   x: 205, y: 240 },
+        'web-researcher':         { region: 'us-east1',         role: 'worker',    x: 240, y: 262 },
+        'scheduler':              { region: 'europe-west1',     role: 'worker',    x: 490, y: 300 },
+        'skill-acquirer':         { region: 'asia-northeast1',  role: 'worker',    x: 868, y: 350 },
+        'behavior-sentinel':      { region: 'us-west1',         role: 'sentinel',  x: 150, y: 220 },
+        'supply-chain-sentinel':  { region: 'asia-southeast1',  role: 'sentinel',  x: 766, y: 459 },
+        'sentinel-commander':     { region: 'europe-west2',     role: 'commander', x: 470, y: 285 },
+    };
+
+    var KEY_MAP = { k: 'kind', s: 'sender', p: 'payload', c: 'correlation_id', t: 'target', ts: 'timestamp' };
+
+    var CHANNELS = [
+        'bedsheet.agent-sentinel.alerts',
+        'bedsheet.agent-sentinel.quarantine',
+        'bedsheet.agent-sentinel.heartbeat',
+        'bedsheet.agent-sentinel.action-gateway',
+        'bedsheet.agent-sentinel.web-researcher',
+        'bedsheet.agent-sentinel.skill-acquirer',
+        'bedsheet.agent-sentinel.scheduler',
+        'bedsheet.agent-sentinel.behavior-sentinel',
+        'bedsheet.agent-sentinel.supply-chain-sentinel',
+        'bedsheet.agent-sentinel.sentinel-commander',
+    ];
+
+    var ROLE_COLORS = {
+        worker: { css: 'var(--green)', hex: '#00ef82', bg: 'rgba(0, 239, 130, 0.12)' },
+        sentinel: { css: 'var(--purple)', hex: '#c49fff', bg: 'rgba(196, 159, 255, 0.15)' },
+        commander: { css: 'var(--cyan)', hex: '#00d4ff', bg: 'rgba(0, 212, 255, 0.12)' },
+        gateway: { css: 'var(--amber)', hex: '#ffc030', bg: 'rgba(255, 192, 48, 0.12)' },
+    };
+
+    var EVENT_TYPE_LABELS = {
+        thinking: 'Thinking', tool_call: 'Tool Call', tool_result: 'Result',
+        completion: 'Completion', error: 'Error', observation: 'Observation',
+    };
+
+    var VIEWBOX_W = 1009.6727;
+    var VIEWBOX_H = 665.96301;
+
+    // ── Mode selection (boot-time-immutable) ──
+    var PRESENTER_MODE = (function() {
+        var qs = new URLSearchParams(window.location.search);
+        var m = qs.get('mode');
+        if (m === 'movie' || m === 'replay' || m === 'live') return m;
+        if (!window.SENTINEL_CONFIG || !window.SENTINEL_CONFIG.subscribeKey) {
+            console.warn('[presenter] sentinel-config.js not found or has no subscribeKey. Defaulting to replay mode. Run start.sh to generate the config, or enter a key manually.');
+        }
+        return window.SENTINEL_CONFIG && window.SENTINEL_CONFIG.subscribeKey ? 'live' : 'replay';
+    })();
+    console.log('[presenter] mode =', PRESENTER_MODE);
+    // Mirror mode as a body class so CSS can gate mode-specific UI (director hint, etc.).
+    if (document.body) document.body.classList.add('presenter-mode-' + PRESENTER_MODE);
+    else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('presenter-mode-' + PRESENTER_MODE); });
+
+    // ── State ──
+    var pubnub = null;
+    var stats = { signals: 0, alerts: 0, quarantine: 0 };
+    var onlineAgents = new Set();
+
+    // Playback state
+    var eventBuffer = [];           // Incoming PubNub events queued here (raw from PubNub)
+    var presentedEvents = [];       // Events already shown (for timeline progress)
+    var totalEventEstimate = 50;    // Updated as events arrive
+    var playbackSpeed = 1;
+    var paused = false;
+    var currentFocus = null;        // Currently focused agent name
+    var cinematicMode = false;
+    var showTimestamp = false;
+    var startTime = null;
+
+    // Scene-based playback: events grouped by agent, played one agent at a time
+    var agentScenes = {};           // { agentName: [signal, ...] } — collected from PubNub
+    var agentOrder = [];            // order agents first appeared
+    var sceneIndex = 0;             // which agent scene we're currently playing
+    var sceneEventIndex = 0;        // which event within the current scene
+    var collecting = true;          // true while we're still collecting events from PubNub
+    var COLLECTION_WINDOW = 8000;   // ms to wait for events before starting presentation
+    var collectionTimer = null;
+    var liveAlertTimeout = null;
+
+    // Chapter tracking
+    var chapters = [];
+    var currentChapter = null;
+    var consecutiveToolCalls = {};  // { agentName: count }
+
+    // ── Utility ──
+    function createEl(tag, className, textContent) {
+        var el = document.createElement(tag);
+        if (className) el.className = className;
+        if (textContent !== undefined) el.textContent = textContent;
+        return el;
+    }
+
+    function truncate(text, limit) {
+        limit = limit || 300;
+        return text.length > limit ? text.substring(0, limit) + '...' : text;
+    }
+
+    // ── Signal Decoding (identical to dashboard) ──
+    function decodeSignal(raw, channel) {
+        if (!raw || typeof raw !== 'object') return null;
+        var decoded = {};
+        for (var short in KEY_MAP) {
+            if (raw[short] !== undefined) decoded[KEY_MAP[short]] = raw[short];
+        }
+        var fullKeys = Object.values(KEY_MAP);
+        for (var i = 0; i < fullKeys.length; i++) {
+            if (raw[fullKeys[i]] !== undefined && decoded[fullKeys[i]] === undefined) {
+                decoded[fullKeys[i]] = raw[fullKeys[i]];
+            }
+        }
+        decoded.source_channel = channel;
+        return decoded;
+    }
+
+    function matchAgentUUID(uuid) {
+        if (AGENTS[uuid]) return uuid;
+        var names = Object.keys(AGENTS);
+        for (var i = 0; i < names.length; i++) {
+            if (uuid.indexOf(names[i]) !== -1) return names[i];
+        }
+        return null;
+    }
+
+    // ── PubNub Connection ──
+    function connectToPubNub() {
+        var key = document.getElementById('subscribeKeyInput').value.trim();
+        var errorEl = document.getElementById('connectionError');
+        var btn = document.getElementById('connectBtn');
+
+        if (typeof PubNub === 'undefined') {
+            errorEl.textContent = 'PubNub SDK failed to load. Check network or firewall.';
+            btn.disabled = false;
+            btn.textContent = 'Connect';
+            return;
+        }
+
+        if (!key.startsWith('sub-c-')) {
+            errorEl.textContent = 'Key must start with "sub-c-"';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+        errorEl.textContent = '';
+
+        try {
+            pubnub = new PubNub({
+                subscribeKey: key,
+                userId: 'presenter-observer',
+            });
+
+            pubnub.addListener({
+                message: handleMessage,
+                presence: handlePresence,
+                status: handleStatus,
+            });
+
+            pubnub.subscribe({
+                channels: CHANNELS,
+                withPresence: true,
+            });
+        } catch (e) {
+            errorEl.textContent = 'Failed to connect: ' + e.message;
+            btn.disabled = false;
+            btn.textContent = 'Connect';
+        }
+    }
+
+    document.getElementById('connectBtn').addEventListener('click', connectToPubNub);
+    document.getElementById('subscribeKeyInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') connectToPubNub();
+    });
+
+    // ── Intro Crawl Animation ──
+    var introShown = false;
+
+    // Intro text typed out character by character like a classified terminal
+    var INTRO_LINES = [
+        'In our times, autonomous AI agents operate across global infrastructure with unprecedented power and autonomy.',
+        'They face threats from every direction \u2014 poisoned models, compromised supply chains, and rogue behavior from within.',
+        'In the aftermath of the OpenClaw crisis of 2026, a new generation of security sentinels was deployed to watch the watchers.',
+        'This is the story of how they work.',
+    ];
+
+    var introTypingSpeed = 25; // ms per character
+
+    // ── Keystroke Sound Synthesizer (Web Audio API) ──
+    // Generates a short click/tick sound that mimics a mechanical terminal key.
+    // No audio files needed — pure synthesis.
+    var audioCtx = null;
+
+    function initAudioCtx() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                console.warn('[presenter] Web Audio API not available:', e.message);
+            }
+        }
+        return audioCtx;
+    }
+
+    function playKeystroke() {
+        var ctx = initAudioCtx();
+        if (!ctx) return;
+
+        // Morse-style tick: a very short sine wave ping at ~800Hz
+        // Classic telegraph/teletype sound — sharp, clean, tonal
+        var duration = 0.012; // 12ms — shorter than morse dit (~60ms), feels rapid
+        var now = ctx.currentTime;
+
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 780 + Math.random() * 40; // ~800Hz with slight variation
+
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + duration);
+    }
+
+    function typeText(el, text, callback) {
+        var i = 0;
+        el.style.opacity = '1';
+        el.textContent = '';
+        var cursorSpan = document.createElement('span');
+        cursorSpan.className = 'cursor';
+        el.appendChild(cursorSpan);
+
+        var interval = setInterval(function() {
+            if (i < text.length) {
+                el.insertBefore(document.createTextNode(text[i]), cursorSpan);
+                i++;
+            } else {
+                clearInterval(interval);
+                // Remove cursor after typing done
+                setTimeout(function() {
+                    if (cursorSpan.parentNode) cursorSpan.remove();
+                }, 600);
+                if (callback) setTimeout(callback, 400);
+            }
+        }, introTypingSpeed);
+    }
+
+    function animateIntro() {
+        // Show classified label immediately
+        var line0 = document.getElementById('introLine0');
+        line0.style.opacity = '1';
+        line0.style.animation = 'intro-fade-in 0.5s ease forwards';
+
+        // Title fades in
+        setTimeout(function() {
+            var title = document.getElementById('introTitle');
+            title.style.animation = 'intro-fade-in 1s ease forwards';
+        }, 800);
+
+        // Type each line sequentially
+        setTimeout(function() {
+            var lineIndex = 0;
+            function typeNextLine() {
+                if (lineIndex >= INTRO_LINES.length) {
+                    // Show proceed button
+                    setTimeout(function() {
+                        var proceed = document.getElementById('introProceed');
+                        proceed.style.animation = 'intro-fade-in 0.8s ease forwards';
+                    }, 500);
+                    return;
+                }
+                var elId = 'introLine' + (lineIndex + 1);
+                var el = document.getElementById(elId);
+                typeText(el, INTRO_LINES[lineIndex], function() {
+                    lineIndex++;
+                    typeNextLine();
+                });
+            }
+            typeNextLine();
+        }, 2000);
+    }
+
+    // ── Ambient music mute preference ──
+    // Persisted in localStorage so the user's choice survives reloads. M toggles.
+    function ambientMuted() {
+        try { return localStorage.getItem('bedsheet.ambientMuted') === '1'; }
+        catch (e) { return false; }
+    }
+    function setAmbientMuted(muted) {
+        try { localStorage.setItem('bedsheet.ambientMuted', muted ? '1' : '0'); } catch (e) { console.warn('[presenter] localStorage error:', e.message); }
+    }
+    function toggleAmbientMusic() {
+        var audio = document.getElementById('ambientAudio');
+        if (!audio) return;
+        if (audio.paused) {
+            setAmbientMuted(false);
+            audio.volume = 0.15;
+            audio.play().catch(function(err) { if (err.name !== 'NotAllowedError') console.warn('[presenter] Audio play failed:', err.message); });
+            console.log('[presenter] ambient music: ON');
+        } else {
+            setAmbientMuted(true);
+            audio.pause();
+            console.log('[presenter] ambient music: OFF');
+        }
+    }
+
+    function dismissIntro() {
+        if (introShown) return;
+        introShown = true;
+
+        var overlay = document.getElementById('introOverlay');
+        overlay.classList.add('fade-out');
+        setTimeout(function() {
+            overlay.classList.add('hidden');
+        }, 1600);
+
+        // Start ambient audio unless the user has muted it (preference persisted).
+        var audio = document.getElementById('ambientAudio');
+        if (audio && !ambientMuted()) {
+            audio.volume = 0.15;
+            audio.play().catch(function(err) {
+                if (err.name !== 'NotAllowedError') {
+                    console.warn('[presenter] Audio failed:', err.name, err.message);
+                }
+            });
+        }
+
+        // Route to mode: PubNub for live/replay, synthetic engine for movie
+        if (PRESENTER_MODE === 'movie') {
+            startMovieMode();
+        } else {
+            proceedToConnect();
+        }
+    }
+
+    function proceedToConnect() {
+        var input = document.getElementById('subscribeKeyInput');
+        var cfg = window.SENTINEL_CONFIG;
+        if (cfg && cfg.subscribeKey) {
+            input.value = cfg.subscribeKey;
+        }
+        if (input.value && input.value.startsWith('sub-c-')) {
+            connectToPubNub();
+        } else {
+            document.getElementById('connectionOverlay').classList.remove('hidden');
+        }
+    }
+
+    // Intro event handlers
+    document.getElementById('introStartBtn').addEventListener('click', dismissIntro);
+    document.addEventListener('keydown', function introKeyHandler(e) {
+        if (!introShown && (e.key === ' ' || e.key === 'Enter')) {
+            e.preventDefault();
+            dismissIntro();
+            document.removeEventListener('keydown', introKeyHandler);
+        }
+    });
+
+    // Auto-start intro animation + handle #cinematic hash
+    (function() {
+        // Auto-enter cinematic mode if #cinematic in URL
+        if (window.location.hash === '#cinematic') {
+            cinematicMode = true;
+            document.getElementById('app').classList.add('cinematic');
+        }
+
+        animateIntro();
+    })();
+
+    // ── PubNub Handlers ──
+    function handleStatus(statusEvent) {
+        if (statusEvent.category === 'PNConnectedCategory') {
+            document.getElementById('connectionOverlay').classList.add('hidden');
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Connected';
+            startTime = Date.now();
+            addChapter('Network Startup');
+
+            // Start a safety timer: if no events arrive within 15s, warn the user
+            setTimeout(function() {
+                if (collecting && agentOrder.length === 0) {
+                    console.warn('[presenter] No events received after 15s. Is the sentinel network running?');
+                    document.getElementById('chapterName').textContent = 'No events received \u2014 is the sentinel network running?';
+                }
+            }, 15000);
+
+        } else if (statusEvent.category === 'PNAccessDeniedCategory') {
+            showConnectionError('Access denied \u2014 check your subscribe key');
+        } else if (statusEvent.category === 'PNNetworkDownCategory' ||
+                   statusEvent.category === 'PNNetworkIssuesCategory') {
+            showConnectionError('Network error \u2014 check your connection');
+        } else if (statusEvent.category === 'PNTimeoutCategory') {
+            showConnectionError('Connection timed out \u2014 try again');
+        } else if (statusEvent.category === 'PNReconnectedCategory') {
+            console.log('[presenter] PubNub reconnected after network interruption');
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Reconnected';
+        } else if (statusEvent.error) {
+            console.error('[presenter] PubNub status error:', statusEvent.category, statusEvent);
+            showConnectionError('Connection failed: ' + statusEvent.category);
+        }
+    }
+
+    function showConnectionError(msg) {
+        document.getElementById('connectionError').textContent = msg;
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('connectBtn').textContent = 'Connect';
+        document.getElementById('connectionOverlay').classList.remove('hidden');
+    }
+
+    function handlePresence(event) {
+        var uuid = event.uuid;
+        if (!uuid || uuid === 'presenter-observer') return;
+        var agentName = matchAgentUUID(uuid);
+        if (!agentName) return;
+        if (event.action === 'join') {
+            setAgentOnline(agentName);
+        }
+    }
+
+    function handleMessage(event) {
+        var raw = event.message;
+        var signal = decodeSignal(raw, event.channel);
+        if (!signal) {
+            console.warn('[presenter] Undecipherable message on', event.channel, raw);
+            return;
+        }
+        if (!signal.kind || !signal.sender) {
+            console.warn('[presenter] Signal missing kind or sender:', signal);
+            return;
+        }
+
+        stats.signals++;
+        updateStats();
+
+        var sender = signal.sender;
+        if (sender && AGENTS[sender]) {
+            setAgentOnline(sender);
+        }
+
+        signal._receivedAt = Date.now();
+
+        // Collect LLM events into per-agent scenes
+        if (signal.kind === 'event' && sender) {
+            if (!agentScenes[sender]) {
+                agentScenes[sender] = [];
+                agentOrder.push(sender);
+            }
+            agentScenes[sender].push(signal);
+        }
+
+        // Also buffer non-LLM events (signals, alerts, etc.) for map animations
+        eventBuffer.push(signal);
+
+        // Reset collection timer — keep waiting while events are still arriving
+        if (collecting) {
+            if (collectionTimer) clearTimeout(collectionTimer);
+            var agentCount = agentOrder.length;
+            var eventCount = countTotalSceneEvents();
+            console.log('[presenter] Collecting: ' + eventCount + ' LLM events from ' + agentCount + ' agents');
+            updateAgentList();
+            collectionTimer = setTimeout(function() {
+                collecting = false;
+                totalEventEstimate = countTotalSceneEvents();
+                console.log('[presenter] Collection done. Total: ' + totalEventEstimate + ' events from ' + agentOrder.length + ' agents');
+                startScenePlayback();
+            }, COLLECTION_WINDOW);
+        }
+    }
+
+    function countTotalSceneEvents() {
+        var total = 0;
+        for (var name in agentScenes) {
+            total += agentScenes[name].length;
+        }
+        return total;
+    }
+
+    // ── Agent Online Status ──
+    function setAgentOnline(name) {
+        if (!AGENTS[name]) return;
+        onlineAgents.add(name);
+        var node = document.getElementById('node-' + name);
+        if (node) node.classList.add('online');
+        document.getElementById('statOnline').textContent = onlineAgents.size;
+    }
+
+    function updateStats() {
+        document.getElementById('statSignals').textContent = stats.signals;
+        document.getElementById('statAlerts').textContent = stats.alerts;
+        document.getElementById('statQuarantine').textContent = stats.quarantine;
+    }
+
+    // ── Map Animations (from dashboard) ──
+    function pulseNode(agentName, color) {
+        var node = document.getElementById('node-' + agentName);
+        if (!node) return;
+        var ring = node.querySelector('.pulse-ring');
+        if (!ring) return;
+        ring.setAttribute('stroke', color);
+        ring.classList.remove('active');
+        void ring.offsetWidth;
+        ring.classList.add('active');
+        setTimeout(function() { ring.classList.remove('active'); }, 1600);
+    }
+
+    function animateSignalLine(fromAgent, toAgent, color) {
+        var from = AGENTS[fromAgent];
+        var to = AGENTS[toAgent];
+        if (!from || !to) return;
+        var svg = document.getElementById('signalLines');
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', from.x);
+        line.setAttribute('y1', from.y);
+        line.setAttribute('x2', to.x);
+        line.setAttribute('y2', to.y);
+        line.setAttribute('stroke', color);
+        line.classList.add('signal-line', 'active');
+        svg.appendChild(line);
+        setTimeout(function() { line.remove(); }, 1300);
+    }
+
+    function animateBroadcast(fromAgent) {
+        var node = document.getElementById('node-' + fromAgent);
+        if (!node) return;
+        var ring = node.querySelector('.broadcast-ring');
+        if (!ring) return;
+        ring.classList.remove('active');
+        void ring.offsetWidth;
+        ring.classList.add('active');
+        setTimeout(function() { ring.classList.remove('active'); }, 2100);
+    }
+
+    // ── Visual state reset (spec §3.2.1) ──
+    // Called on movie restart, chapter-jump, and any `reset` cue with scope='all'.
+    function resetPresenterVisuals() {
+        // Agent node classes
+        document.querySelectorAll('.agent-node').forEach(function(n) {
+            n.classList.remove('quarantined', 'focused', 'dimmed', 'online');
+        });
+        // Signal lines (animated lines in the SVG group)
+        var lineGroup = document.getElementById('signalLines');
+        if (lineGroup) while (lineGroup.firstChild) lineGroup.removeChild(lineGroup.firstChild);
+        // Broadcast rings
+        document.querySelectorAll('.broadcast-ring').forEach(function(r) {
+            r.classList.remove('active');
+        });
+        // Focus / briefing overlays + commentary + chapter card
+        currentFocus = null;
+        var fo = document.getElementById('focusOverlay');
+        var bo = document.getElementById('briefingOverlay');
+        var cm = document.getElementById('movieCommentary');
+        var cc = document.getElementById('movieChapterCard');
+        if (fo) fo.classList.remove('visible');
+        if (bo) bo.classList.remove('visible');
+        if (cm) cm.classList.remove('visible');
+        if (cc) cc.classList.remove('visible');
+        // Pitch + arch overlays (Chapter 0)
+        if (typeof hidePitch === 'function') hidePitch();
+        if (typeof hideArchDiagram === 'function') hideArchDiagram();
+        // Clear the focus body children (event cards from previous plays)
+        var fb = document.getElementById('focusBody');
+        if (fb) while (fb.firstChild) fb.removeChild(fb.firstChild);
+        // Stats
+        stats.signals = 0; stats.alerts = 0; stats.quarantine = 0;
+        if (typeof updateStats === 'function') updateStats();
+        // Scene-collection state from live/replay paths (present but unused in movie)
+        if (typeof onlineAgents !== 'undefined' && onlineAgents.clear) onlineAgents.clear();
+        if (typeof agentScenes === 'object') {
+            for (var k in agentScenes) if (agentScenes.hasOwnProperty(k)) delete agentScenes[k];
+        }
+        if (typeof agentOrder !== 'undefined' && agentOrder.length) agentOrder.length = 0;
+        if (typeof presentedEvents !== 'undefined' && presentedEvents.length) presentedEvents.length = 0;
+    }
+
+    // ── Movie commentary / chapter-card primitives ──
+    // NOTE: these functions are prefixed `movie*` to avoid collision with the
+    // presenter's showCommentary(chapterName) at line ~2353 and showChapterCard(text)
+    // at line ~2410. JS function declarations with the same name would have the later
+    // one win via hoisting — movie calls would silently invoke the wrong impl.
+    var movieCommentaryEpoch = 0;
+    var movieCommentaryTypingHandle = null;
+    var movieCommentaryHideHandle = null;
+    function showMovieCommentary(text, holdMs) {
+        movieCommentaryEpoch++;
+        var myEpoch = movieCommentaryEpoch;
+        var panel = document.getElementById('movieCommentary');
+        var body = panel.querySelector('.movie-commentary-body');
+        panel.classList.add('visible');
+        body.textContent = '';
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
+        var i = 0;
+        if (movieCommentaryTypingHandle) clearInterval(movieCommentaryTypingHandle);
+        if (movieCommentaryHideHandle) clearTimeout(movieCommentaryHideHandle);
+        movieCommentaryTypingHandle = setInterval(function() {
+            if (myEpoch !== movieCommentaryEpoch) {
+                clearInterval(movieCommentaryTypingHandle);
+                movieCommentaryTypingHandle = null;
+                return;
+            }
+            if (i < text.length) {
+                body.insertBefore(document.createTextNode(text[i]), cursor);
+                if (text[i] !== ' ') playKeystroke();
+                i++;
+            } else {
+                clearInterval(movieCommentaryTypingHandle);
+                movieCommentaryTypingHandle = null;
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+            }
+        }, 22);
+        movieCommentaryHideHandle = setTimeout(function() {
+            movieCommentaryEpoch++; // invalidate any in-flight interval's epoch
+            panel.classList.remove('visible');
+            movieCommentaryHideHandle = null;
+        }, holdMs);
+    }
+
+    // ── Movie pitch panel (Chapter 0) ──
+    // Inter-line gaps (ms): slow open (600), fast threats (200), measured close (800).
+    var PITCH_GAPS = [600, 600, 600, 600, 600, 600, 200, 600, 600, 600, 600, 600, 600, 600, 800, 800];
+    var PITCH_LINES = [
+        'Bedsheet was created out of a single understanding.',
+        'The modern agentic landscape is changing at breakneck speed.',
+        'Adaptability is the only name of the game.',
+        'Thus Bedsheet was built moldable. Protocol-based. Lightweight. You bend it to your problem \u2014 not the other way around.',
+        'But adaptability alone does not survive contact with the real world.',
+        'Production agents now face a growing catalogue of hostile action:',
+        'Prompt injection. Jailbreaking. Phishing. Supply-chain poisoning. Sleeper payloads. Rate-limit exhaustion. Rogue-agent bursts. Data exfiltration.',
+        'Against these threats, an agent alone is a single point of failure.',
+        'To meet this battlefield, Sixth Sense was engineered.',
+        'The first real-time, high-availability, general-purpose communication bus ever fielded in an agentic framework.',
+        'Transport-agnostic. PubNub. NATS. Production-grade. Battle-tested.',
+        'The bus is not a feature. It is the substrate.',
+        'Upon it stands Agent Sentinel \u2014 a fully autonomous command-and-control artificial intelligence plane. It conducts behavioral observation. It dispatches response. No foe breaches the line.',
+        'Skills from the ClawHub registry arrive hashed, signed, and audited. Nothing executes without sentinel clearance.',
+        'A2A does not do this. A2A is not HPC.',
+        'This is Agent Sentinel. Watch it operate.',
+    ];
+    // Epoch counter — bumped on each showPitch call and on hidePitch. step() captures
+    // the epoch at start; if it no longer matches by the time a scheduled tick fires,
+    // the run aborts silently (no text insertion, no keystroke sound, no reschedule).
+    // This defeats the "typing sound continues after hidePitch was called" race that
+    // arises when hidePitch clears the pending setTimeout AFTER step() already synchronously
+    // played a keystroke for the next char.
+    var pitchEpoch = 0;
+    var pitchTypingHandle = null;
+    // Teleprompter scroll: pin the typing cursor at ~62% down the viewport. As new
+    // text arrives, translate the body upward so the cursor stays at the target line.
+    // Old text glides up and out of view; CSS transition on .movie-pitch-body gives
+    // the smooth-scroll feel. Local state (bodyOffset) avoids parsing the style string.
+    var PITCH_CURSOR_TARGET_FRAC = 0.62;
+    function showPitch(lines, onComplete) {
+        pitchEpoch++;
+        var myEpoch = pitchEpoch;
+        var panel = document.getElementById('moviePitchPanel');
+        var viewport = panel.querySelector('.movie-pitch-viewport');
+        var body = panel.querySelector('.movie-pitch-body');
+        body.textContent = '';
+        var bodyOffset = 0;
+        body.style.transform = 'translateY(0px)';
+        panel.classList.add('visible');
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
+        var li = 0, ci = 0;
+        if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
+
+        function updateScroll() {
+            var vpRect = viewport.getBoundingClientRect();
+            var cursorRect = cursor.getBoundingClientRect();
+            var targetY = vpRect.top + vpRect.height * PITCH_CURSOR_TARGET_FRAC;
+            var cursorY = cursorRect.top + cursorRect.height / 2;
+            var delta = cursorY - targetY;
+            if (delta > 0) {
+                bodyOffset -= delta;
+                body.style.transform = 'translateY(' + bodyOffset + 'px)';
+            }
+        }
+
+        function step() {
+            if (myEpoch !== pitchEpoch) return;
+            if (li >= lines.length) {
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                // Director-mode hint so the user knows we're waiting for them to press N.
+                var hint = document.createElement('div');
+                hint.className = 'movie-advance-hint';
+                hint.textContent = '▸ press N to continue';
+                body.appendChild(hint);
+                updateScroll();
+                if (onComplete) onComplete();
+                return;
+            }
+            var line = lines[li];
+            if (ci < line.length) {
+                body.insertBefore(document.createTextNode(line[ci]), cursor);
+                if (line[ci] !== ' ') playKeystroke();
+                ci++;
+                updateScroll();
+                pitchTypingHandle = setTimeout(step, 22);
+            } else {
+                body.insertBefore(document.createTextNode('\n\n'), cursor);
+                var gap = PITCH_GAPS[Math.min(li, PITCH_GAPS.length - 1)];
+                li++; ci = 0;
+                updateScroll();
+                pitchTypingHandle = setTimeout(step, gap);
+            }
+        }
+        step();
+    }
+    function hidePitch() {
+        pitchEpoch++;
+        if (pitchTypingHandle) { clearTimeout(pitchTypingHandle); pitchTypingHandle = null; }
+        document.getElementById('moviePitchPanel').classList.remove('visible');
+    }
+
+    // ── Movie architecture diagram (Chapter 0) ──
+    // Multi-line caption teaches the security property: what the two planes are, how
+    // the bus carries signals only, and why the control plane cannot be poisoned.
+    var ARCH_CAPTION_LINES = [
+        'Two planes. One listens. The other acts.',
+        'Every tool call routes through the gateway. The gateway audits every outcome to the bus.',
+        'The sentinels tap the audit stream. They never speak to workers. They cannot be poisoned by the bus they watch.',
+    ];
+    var ARCH_CAPTION_GAPS = [700, 700, 700];
+
+    function showArchDiagram(linesOrCaption, onComplete) {
+        // Back-compat: accept a single string or an array of lines.
+        var lines = Array.isArray(linesOrCaption) ? linesOrCaption : [linesOrCaption];
+        var el = document.getElementById('movieArchDiagram');
+        var cap = el.querySelector('.movie-arch-caption');
+        cap.textContent = '';
+        el.classList.remove('step-ops', 'step-bus', 'step-ctrl');
+        el.classList.add('visible');
+        setTimeout(function() { el.classList.add('step-ops'); }, 300);
+        setTimeout(function() { el.classList.add('step-bus'); }, 1300);
+        setTimeout(function() { el.classList.add('step-ctrl'); }, 1800);
+        setTimeout(function() {
+            var cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            cap.appendChild(cursor);
+            var li = 0, ci = 0;
+            var handle = null;
+            function step() {
+                if (li >= lines.length) {
+                    setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+                    // Director-mode hint on the arch caption too
+                    var hint = document.createElement('div');
+                    hint.className = 'movie-advance-hint';
+                    hint.textContent = '▸ press N to continue';
+                    cap.appendChild(hint);
+                    if (onComplete) onComplete();
+                    return;
+                }
+                var line = lines[li];
+                if (ci < line.length) {
+                    cap.insertBefore(document.createTextNode(line[ci]), cursor);
+                    if (line[ci] !== ' ') playKeystroke();
+                    ci++;
+                    handle = setTimeout(step, 30);
+                } else {
+                    cap.insertBefore(document.createTextNode('\n'), cursor);
+                    var gap = ARCH_CAPTION_GAPS[Math.min(li, ARCH_CAPTION_GAPS.length - 1)];
+                    li++; ci = 0;
+                    handle = setTimeout(step, gap);
+                }
+            }
+            step();
+        }, 2800);
+    }
+    function hideArchDiagram() {
+        var el = document.getElementById('movieArchDiagram');
+        el.classList.remove('visible', 'step-ops', 'step-bus', 'step-ctrl');
+    }
+
+    var movieChapterCardHideHandle = null;
+    function showMovieChapterCard(title, subtitle, holdMs) {
+        var card = document.getElementById('movieChapterCard');
+        card.querySelector('.movie-chapter-card-title').textContent = title || '';
+        card.querySelector('.movie-chapter-card-subtitle').textContent = subtitle || '';
+        card.classList.add('visible');
+        if (movieChapterCardHideHandle) clearTimeout(movieChapterCardHideHandle);
+        movieChapterCardHideHandle = setTimeout(function() {
+            card.classList.remove('visible');
+            movieChapterCardHideHandle = null;
+        }, holdMs);
+    }
+
+    // ── Map Zoom System ──
+    var currentZoom = { scale: 1, panX: 0, panY: 0 };
+
+    // Effective pin size at max zoom. Counter-scale = PIN_EFFECTIVE_SCALE / viewportScale.
+    // 1.0 = pins stay the exact same visual size at every zoom level (Google-Maps feel).
+    // 1.3 = pins grow a little on zoom (cinematic), but far less than the map itself.
+    var PIN_EFFECTIVE_SCALE = 1.3;
+
+    // Apply counter-scale to all agent nodes so they don't balloon with the viewport.
+    // We use element.style.transform (not setAttribute) so the CSS transition on
+    // .agent-node animates the scale change in sync with the viewport zoom.
+    // The base translate(X,Y) comes from the original SVG transform attribute — we
+    // stash it on first call, then rebuild style.transform each zoom.
+    function applyPinCounterScale(viewportScale) {
+        var counter = Math.min(1, PIN_EFFECTIVE_SCALE / viewportScale);
+        document.querySelectorAll('.agent-node').forEach(function(node) {
+            var base = node.getAttribute('data-base-transform');
+            if (!base) {
+                base = node.getAttribute('transform') || '';
+                node.setAttribute('data-base-transform', base);
+            }
+            node.style.transform = base + ' scale(' + counter + ')';
+        });
+    }
+
+    // Set a one-shot CSS transition-duration override on an element; restore on transitionend
+    // or after a safety timeout so subsequent transitions use the stylesheet default.
+    function applyTransitionOverride(el, durationMs) {
+        el.style.transitionDuration = durationMs + 'ms';
+        var cleared = false;
+        var clear = function() {
+            if (cleared) return;
+            cleared = true;
+            el.style.transitionDuration = '';
+            el.removeEventListener('transitionend', clear);
+        };
+        el.addEventListener('transitionend', clear);
+        setTimeout(clear, durationMs + 100);
+    }
+
+    function zoomToAgent(agentName, opts) {
+        opts = opts || {};
+        var info = AGENTS[agentName];
+        if (!info) return;
+
+        var mapArea = document.getElementById('mapArea');
+        var areaW = mapArea.offsetWidth;
+        var areaH = mapArea.offsetHeight;
+
+        // Zoom depth: 1.3 is a very subtle push-in — enough to signal "we're looking at
+        // this agent" without overwhelming. Pin counter-scale math keeps pins steady.
+        var targetScale = 1.3;
+        // Convert SVG coords to screen fraction
+        var fracX = info.x / VIEWBOX_W;
+        var fracY = info.y / VIEWBOX_H;
+        // Pan so the agent is centered
+        var panX = -(fracX * areaW * targetScale - areaW / 2);
+        var panY = -(fracY * areaH * targetScale - areaH / 2);
+
+        currentZoom = { scale: targetScale, panX: panX, panY: panY };
+        var viewport = document.getElementById('mapViewport');
+        if (opts.durationMs) applyTransitionOverride(viewport, opts.durationMs);
+        viewport.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + targetScale + ')';
+
+        applyPinCounterScale(targetScale);
+
+        // Dim other agents, focus this one
+        document.querySelectorAll('.agent-node').forEach(function(node) {
+            var name = node.getAttribute('data-agent');
+            if (name === agentName) {
+                node.classList.remove('dimmed');
+                node.classList.add('focused');
+            } else {
+                node.classList.add('dimmed');
+                node.classList.remove('focused');
+            }
+        });
+    }
+
+    function zoomToOverview(opts) {
+        opts = opts || {};
+        currentZoom = { scale: 1, panX: 0, panY: 0 };
+        var viewport = document.getElementById('mapViewport');
+        if (opts.durationMs) applyTransitionOverride(viewport, opts.durationMs);
+        viewport.style.transform = 'translate(0px, 0px) scale(1)';
+
+        applyPinCounterScale(1);
+
+        document.querySelectorAll('.agent-node').forEach(function(node) {
+            node.classList.remove('dimmed', 'focused');
+        });
+    }
+
+    // ── Focus Overlay Positioning ──
+    // ── Per-Agent Briefings (military style) ──
+    var AGENT_BRIEFINGS = {
+        'action-gateway':
+            'ASSET: Action Gateway // us-central1\n' +
+            'ROLE: Central trust boundary. All tool executions are proxied through this node.\n' +
+            'MISSION: Enforce rate limits, maintain tamper-proof audit ledger, deny unauthorized actions.\n' +
+            'PROTECTS AGAINST: DDoS-pattern floods, unauthorized tool execution, audit trail manipulation.\n' +
+            'FUTURE OPS: Coordinate emergency resource allocation during infrastructure attacks.',
+        'web-researcher':
+            'ASSET: Web Researcher // us-east1\n' +
+            'ROLE: Intelligence gathering. Searches the open web for threat data and situational awareness.\n' +
+            'MISSION: Collect real-time intelligence on security threats, vulnerabilities, and emerging risks.\n' +
+            'PROTECTS AGAINST: Information blindspots, delayed threat awareness, unknown attack vectors.\n' +
+            'RISK PROFILE: 15% probability of rogue behavior \u2014 rapid-fire search floods that mimic DDoS.',
+        'scheduler':
+            'ASSET: Scheduler // europe-west1\n' +
+            'ROLE: Operations coordinator. Manages task scheduling and calendar-driven workflows.\n' +
+            'MISSION: Ensure time-critical operations execute on schedule across global infrastructure.\n' +
+            'PROTECTS AGAINST: Missed response windows, coordination failures, cascading delays.\n' +
+            'FUTURE OPS: Civilian evacuation scheduling and emergency response coordination.',
+        'skill-acquirer':
+            'ASSET: Skill Acquirer // asia-northeast1\n' +
+            'ROLE: Capability expansion. Browses and installs verified skills from ClawHub registry.\n' +
+            'MISSION: Expand agent capabilities while blocking malicious packages at the trust boundary.\n' +
+            'PROTECTS AGAINST: Supply chain attacks, trojan skills, data exfiltration payloads.\n' +
+            'RISK PROFILE: 15% probability of rogue install attempt \u2014 tries to load known-malicious code.',
+        'behavior-sentinel':
+            'ASSET: Behavior Sentinel // us-west1\n' +
+            'ROLE: Anomaly detection. Monitors action rates across all agents via the gateway ledger.\n' +
+            'MISSION: Identify agents exhibiting abnormal behavior patterns \u2014 floods, bursts, or erratic output.\n' +
+            'PROTECTS AGAINST: Rogue agents, compromised workers, DDoS-pattern attacks from within.\n' +
+            'FUTURE OPS: Detect coordinated multi-agent attacks during missile strike scenarios.',
+        'supply-chain-sentinel':
+            'ASSET: Supply Chain Sentinel // asia-southeast1\n' +
+            'ROLE: Integrity verification. Audits installed skills via SHA-256 hash comparison.\n' +
+            'MISSION: Detect tampered, replaced, or malicious packages that bypass initial screening.\n' +
+            'PROTECTS AGAINST: Post-install tampering, hash mismatches, sleeper payloads activated after deployment.\n' +
+            'FUTURE OPS: Verify integrity of civilian protection protocols before emergency activation.',
+        'sentinel-commander':
+            'ASSET: Sentinel Commander // europe-west2\n' +
+            'ROLE: Threat correlation and response. Correlates alerts from all sentinels.\n' +
+            'MISSION: Assess multi-source threat intelligence and issue quarantine orders for confirmed compromises.\n' +
+            'PROTECTS AGAINST: False positives from single-source alerts, uncoordinated responses, delayed quarantine.\n' +
+            'FUTURE OPS: Command civilian protection operations \u2014 coordinate agent swarm for missile defense and evacuation.',
+    };
+
+    // Convert agent node SVG coords to screen position after zoom
+
+    // ── Panel positioning (director-authored, persisted) ──
+    //
+    // Panels (.focus-overlay, .briefing-overlay) are placed per spotlighted agent from
+    // PANEL_POSITIONS. Defaults live in code; user overrides by dragging in edit mode
+    // (press E to toggle) and pressing X to export a JS snippet to the console.
+    // Positions persist to localStorage across reloads so editing is iterative.
+    //
+    // There is no auto-placement heuristic. The director picks frames. If a position
+    // is missing for an agent, a safe default (top-right / bottom-left corners) is used
+    // so the movie never breaks — just looks ugly until the director places them.
+    var PANEL_POSITIONS_DEFAULTS = {
+        // Fallback corners used when no authored position exists for an agent.
+        focus:    { x_frac: 0.60, y_frac: 0.08 },  // top-right area
+        briefing: { x_frac: 0.05, y_frac: 0.55 },  // bottom-left area
+    };
+
+    // Panels are a global HUD — ONE position for focus, ONE for briefing, applied to
+    // every spotlighted agent. User drags once per panel, saves, done.
+    // Shape: { focus: {x, y}, briefing: {x, y} } — pixels, map-area relative.
+    var PANEL_POSITIONS = {};
+
+    function applyRawPanelPositions(raw) {
+        if (!raw || typeof raw !== 'object') return false;
+        if (raw.focus || raw.briefing) {
+            PANEL_POSITIONS = { focus: raw.focus, briefing: raw.briefing };
+            return true;
+        }
+        // Back-compat: per-agent shape → promote first entry as the global.
+        var firstKey = Object.keys(raw)[0];
+        if (firstKey && raw[firstKey] && (raw[firstKey].focus || raw[firstKey].briefing)) {
+            PANEL_POSITIONS = { focus: raw[firstKey].focus, briefing: raw[firstKey].briefing };
+            return true;
+        }
+        return false;
+    }
+
+    // SYNCHRONOUS localStorage load so PANEL_POSITIONS is populated BEFORE any
+    // positionBothOverlays call. Previously fetch() was async and first-spotlights
+    // raced against the load — panels fell back to defaults.
+    try {
+        var _saved = localStorage.getItem('bedsheet.panelPositions');
+        if (_saved && applyRawPanelPositions(JSON.parse(_saved))) {
+            console.log('[panel-edit] loaded from localStorage (sync):', PANEL_POSITIONS);
+        }
+    } catch (e) {
+        console.warn('[panel-edit] corrupted localStorage data, clearing:', e.message);
+        try { localStorage.removeItem('bedsheet.panelPositions'); } catch (_) {}
+    }
+
+    // Async: the committed JSON file (if present) overrides localStorage.
+    fetch('./panel-positions.json', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) {
+            if (applyRawPanelPositions(json)) {
+                console.log('[panel-edit] loaded panel-positions.json (overriding localStorage)');
+            }
+        })
+        .catch(function(err) {
+            if (err && err.message) console.warn('[panel-edit] Failed to load panel-positions.json:', err.message);
+        });
+
+    function savePanelPositions() {
+        try { localStorage.setItem('bedsheet.panelPositions', JSON.stringify(PANEL_POSITIONS)); } catch (e) { console.warn('[panel-edit] localStorage save failed:', e.message); }
+    }
+
+    function getPanelPosition(which, areaW, areaH, panelW, panelH) {
+        if (PANEL_POSITIONS[which]) return { x: PANEL_POSITIONS[which].x, y: PANEL_POSITIONS[which].y };
+        var def = PANEL_POSITIONS_DEFAULTS[which];
+        return {
+            x: Math.max(16, Math.min(def.x_frac * areaW, areaW - panelW - 16)),
+            y: Math.max(16, Math.min(def.y_frac * areaH, areaH - panelH - 16)),
+        };
+    }
+
+    function positionBothOverlays(agentName) {
+        var info = AGENTS[agentName];
+        if (!info) return;
+        var mapArea = document.getElementById('mapArea');
+        var areaW = mapArea.offsetWidth;
+        var areaH = mapArea.offsetHeight;
+
+        var focusW = 380, focusH = 420;
+        var briefW = 360, briefH = 320;
+
+        var focusPos = getPanelPosition('focus', areaW, areaH, focusW, focusH);
+        var briefPos = getPanelPosition('briefing', areaW, areaH, briefW, briefH);
+        console.log('[panel-edit] positioning for', agentName,
+                    '— focus:', focusPos, 'brief:', briefPos,
+                    '(saved?', !!PANEL_POSITIONS.focus, !!PANEL_POSITIONS.briefing, ')');
+
+        var overlay = document.getElementById('focusOverlay');
+        overlay.style.left = focusPos.x + 'px';
+        overlay.style.top = focusPos.y + 'px';
+
+        var briefEl = document.getElementById('briefingOverlay');
+        briefEl.style.left = briefPos.x + 'px';
+        briefEl.style.top = briefPos.y + 'px';
+
+        var rc = ROLE_COLORS[info.role] || ROLE_COLORS.worker;
+        document.getElementById('focusDot').style.background = rc.hex;
+        document.getElementById('focusDot').style.boxShadow = '0 0 6px ' + rc.hex;
+        document.getElementById('focusName').textContent = agentName;
+        var roleEl = document.getElementById('focusRole');
+        roleEl.textContent = info.role;
+        roleEl.style.background = rc.bg;
+        roleEl.style.color = rc.hex;
+        overlay.style.borderColor = rc.hex;
+    }
+
+    // ── DnD panel positioner (edit mode) ──
+    // Press E to toggle edit mode. Panels gain grab cursors + dashed outlines; click-drag
+    // to reposition. Release saves position for the currently-spotlighted agent. Press X
+    // to dump PANEL_POSITIONS to the console as a JS snippet (copy into source to lock).
+    var editMode = false;
+    var draggingPanel = null;
+    var dragOffset = { x: 0, y: 0 };
+
+    function setEditMode(on) {
+        editMode = on;
+        document.body.classList.toggle('panel-edit-mode', editMode);
+        // Pause chapter playback while editing — otherwise a pending cue (spotlight
+        // to another agent, signal line, etc.) fires mid-drag and the map zooms
+        // unexpectedly, making it impossible to position panels precisely.
+        if (on && movieEngine) {
+            movieEngine.cancelAll();
+            console.log('[panel-edit] ON — drag panels. Cues paused. Press E to resume and N to advance.');
+        } else {
+            console.log('[panel-edit] OFF — press N to advance to the next chapter, or R to restart.');
+        }
+    }
+
+    function onPanelMouseDown(e) {
+        if (!editMode) return;
+        var panel = e.currentTarget;
+        draggingPanel = {
+            el: panel,
+            which: panel.id === 'focusOverlay' ? 'focus' : 'briefing',
+        };
+        var rect = panel.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        panel.classList.add('dragging');
+        // Lock out browser default drag-scroll and text selection + any parent handlers
+        // (map zoom, focus-overlay internal scrolling, etc.).
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    function onDocMouseMove(e) {
+        if (!draggingPanel) return;
+        var mapArea = document.getElementById('mapArea');
+        var mapRect = mapArea.getBoundingClientRect();
+        var x = e.clientX - mapRect.left - dragOffset.x;
+        var y = e.clientY - mapRect.top - dragOffset.y;
+        x = Math.max(0, Math.min(x, mapRect.width - draggingPanel.el.offsetWidth));
+        y = Math.max(0, Math.min(y, mapRect.height - draggingPanel.el.offsetHeight));
+        draggingPanel.el.style.left = x + 'px';
+        draggingPanel.el.style.top = y + 'px';
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    function onDocMouseUp(e) {
+        if (!draggingPanel) return;
+        // Save GLOBALLY — one position per panel, used for every spotlighted agent.
+        var x = parseInt(draggingPanel.el.style.left, 10) || 0;
+        var y = parseInt(draggingPanel.el.style.top, 10) || 0;
+        PANEL_POSITIONS[draggingPanel.which] = { x: x, y: y };
+        savePanelPositions();
+        console.log('[panel-edit] saved', draggingPanel.which, x, y);
+        draggingPanel.el.classList.remove('dragging');
+        draggingPanel = null;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    function exportPanelPositions() {
+        var json = JSON.stringify(PANEL_POSITIONS, null, 4);
+        // 1) Console + clipboard (quick paste to source if preferred)
+        var snippet = '// Panel positions exported from movie mode (drop into docs/panel-positions.json)\n' + json;
+        console.log('[panel-edit] Positions:\n\n' + json + '\n');
+        console.log('[panel-edit] Save this JSON to: docs/panel-positions.json (same folder as sentinel-presenter.html) — the presenter auto-loads it on boot.');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(json).then(function() {
+                console.log('[panel-edit] JSON copied to clipboard.');
+            }).catch(function(err) { console.warn('[panel-edit] Clipboard write failed:', err.message); });
+        }
+        // 2) Trigger a file download so the JSON lands on the user's disk
+        try {
+            var blob = new Blob([json], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'panel-positions.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            console.log('[panel-edit] Downloaded panel-positions.json — move it into the docs/ folder to make positions portable + auto-loaded on next boot.');
+        } catch (e) {
+            console.warn('[panel-edit] Could not trigger download:', e.message);
+        }
+    }
+    function clearPanelPositions() {
+        PANEL_POSITIONS = {};
+        savePanelPositions();
+        console.log('[panel-edit] All saved positions cleared.');
+    }
+
+    // Wire drag handlers once the DOM is ready.
+    (function() {
+        function init() {
+            var fo = document.getElementById('focusOverlay');
+            var bo = document.getElementById('briefingOverlay');
+            if (fo) fo.addEventListener('mousedown', onPanelMouseDown);
+            if (bo) bo.addEventListener('mousedown', onPanelMouseDown);
+            document.addEventListener('mousemove', onDocMouseMove);
+            document.addEventListener('mouseup', onDocMouseUp);
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+    })();
+
+    // Type the agent briefing in the separate briefing window
+    var briefingTypingInterval = null;
+
+    function showBriefingOverlay(agentName) {
+        var briefing = AGENT_BRIEFINGS[agentName];
+        if (!briefing) return;
+
+        var overlay = document.getElementById('briefingOverlay');
+        var body = document.getElementById('briefingBody');
+        body.textContent = '';
+        overlay.classList.add('visible');
+
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        body.appendChild(cursor);
+
+        var idx = 0;
+        if (briefingTypingInterval) clearInterval(briefingTypingInterval);
+        briefingTypingInterval = setInterval(function() {
+            if (idx < briefing.length) {
+                body.insertBefore(document.createTextNode(briefing[idx]), cursor);
+                idx++;
+                body.scrollTop = body.scrollHeight;
+            } else {
+                clearInterval(briefingTypingInterval);
+                briefingTypingInterval = null;
+                setTimeout(function() { if (cursor.parentNode) cursor.remove(); }, 600);
+            }
+        }, 18);
+    }
+
+    function hideBriefingOverlay() {
+        if (briefingTypingInterval) { clearInterval(briefingTypingInterval); briefingTypingInterval = null; }
+        document.getElementById('briefingOverlay').classList.remove('visible');
+    }
+
+    function showFocusOverlay(agentName) {
+        positionBothOverlays(agentName);
+        showBriefingOverlay(agentName);
+
+        var overlay = document.getElementById('focusOverlay');
+        var body = document.getElementById('focusBody');
+        body.textContent = '';
+        overlay.classList.add('visible');
+    }
+
+    function hideFocusOverlay() {
+        document.getElementById('focusOverlay').classList.remove('visible');
+        hideBriefingOverlay();
+    }
+
+    // ── Event Card Builder (from dashboard, adapted) ──
+    function buildEventCard(signal) {
+        var payload = signal.payload || {};
+        var eventType = payload.event_type || 'unknown';
+        var time = signal.timestamp
+            ? new Date(signal.timestamp * 1000).toLocaleTimeString()
+            : '--:--:--';
+
+        var card = createEl('div', 'llm-event ' + eventType + ' animate-in');
+
+        var header = createEl('div', 'llm-event-header');
+        var label = EVENT_TYPE_LABELS[eventType] || eventType;
+        header.appendChild(createEl('span', 'llm-event-badge', label));
+
+        if (eventType === 'tool_call' && payload.tool_name) {
+            header.appendChild(createEl('span', 'llm-event-tool-name', payload.tool_name));
+        }
+
+        header.appendChild(createEl('span', 'llm-event-time', time));
+        card.appendChild(header);
+
+        var text = '';
+        if (eventType === 'tool_call') {
+            // tool_input may be an object (movie-mode synthetic events) or string (live
+            // PubNub). Objects get pretty-printed JSON so '[object Object]' never shows.
+            var ti = payload.tool_input;
+            if (ti && typeof ti === 'object') {
+                try { text = Object.keys(ti).length === 0 ? '' : JSON.stringify(ti); }
+                catch (e) { text = ''; }
+            } else {
+                text = ti || '';
+            }
+        } else if (eventType === 'tool_result') {
+            // Live PubNub uses .result; movie-mode synthetics use .text. Accept either.
+            text = payload.result || payload.text || '';
+            if (text && typeof text === 'object') {
+                try { text = JSON.stringify(text); } catch (e) { text = ''; }
+            }
+        } else {
+            text = payload.text || '';
+        }
+
+        if (text) {
+            card.appendChild(createEl('div', 'llm-event-text', truncate(text)));
+        }
+
+        return card;
+    }
+
+    // ── Chapter Detection ──
+    // ── Scene Commentary ──
+    // Each chapter has narration text that explains what's happening to the audience.
+    // Future: feed these strings to TTS (Web Speech API or Edge TTS) for voiceover.
+    var CHAPTER_COMMENTARY = {
+        'Network Startup':
+            'Seven autonomous agents are coming online across the globe \u2014 ' +
+            'three workers, two security sentinels, an action gateway, and a commander.',
+        'Skill Acquisition':
+            'The Skill Acquirer browses ClawHub, the package registry, looking for new capabilities. ' +
+            'It installs verified skills while the Supply Chain Sentinel watches every install, ' +
+            'verifying SHA-256 hashes against the trusted registry.',
+        'Malicious Install Blocked':
+            'The rogue Skill Acquirer attempts to install a known-malicious package. ' +
+            'The Gateway blocks it at the trust boundary \u2014 the agent never receives the payload. ' +
+            'If a malicious skill slips through and attempts to exfiltrate data, ' +
+            'the Supply Chain Sentinel will detect the hash mismatch and alert the Commander.',
+        'Rogue Burst':
+            'An agent has gone rogue \u2014 firing dozens of rapid requests in a burst, ' +
+            'mimicking a DDoS pattern. The Behavior Sentinel monitors action rates across the network ' +
+            'and will flag any agent exceeding 10 actions per minute as anomalous.',
+        'Gateway Block':
+            'The Action Gateway detects the flood and enforces its rate limit. ' +
+            'Every subsequent request from the rogue agent is denied. ' +
+            'The gateway ledger is tamper-proof \u2014 sentinels can trust its audit trail.',
+        'Sentinel Alert':
+            'The Behavior Sentinel has analyzed the gateway ledger and confirmed the anomaly. ' +
+            'A critical threat alert is raised to the Commander. Whether it is a DDoS-like burst ' +
+            'or a malicious skill attempting to copy sensitive data \u2014 the sentinels will catch it.',
+        'Quarantine Issued':
+            'The Commander correlates evidence from both the Behavior Sentinel and the Supply Chain Sentinel. ' +
+            'With confirmation from multiple sources, it issues a quarantine order \u2014 ' +
+            'the compromised agent is isolated from the network and can no longer execute actions.',
+    };
+
+    var commentaryTimeout = null;
+
+    var commentaryTypingInterval = null;
+
+    function showCommentary(chapterName) {
+        var text = CHAPTER_COMMENTARY[chapterName];
+        if (!text) return;
+
+        var bar = document.getElementById('commentaryBar');
+        var el = document.getElementById('commentaryText');
+
+        // Clear any previous typing/timeout
+        if (commentaryTypingInterval) clearInterval(commentaryTypingInterval);
+        if (commentaryTimeout) clearTimeout(commentaryTimeout);
+
+        // Reset and show
+        el.textContent = '';
+        bar.classList.add('visible');
+
+        // Type it out character by character
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        el.appendChild(cursor);
+
+        var i = 0;
+        commentaryTypingInterval = setInterval(function() {
+            if (i < text.length) {
+                el.insertBefore(document.createTextNode(text[i]), cursor);
+                if (text[i] !== ' ') playKeystroke();
+                i++;
+            } else {
+                clearInterval(commentaryTypingInterval);
+                commentaryTypingInterval = null;
+                // Remove cursor after typing done
+                setTimeout(function() {
+                    if (cursor.parentNode) cursor.remove();
+                }, 800);
+                // Fade out 3s after typing finishes
+                commentaryTimeout = setTimeout(function() {
+                    bar.classList.remove('visible');
+                }, 3000);
+            }
+        }, 30); // faster than intro typing — commentary should feel brisk
+    }
+
+    function addChapter(name) {
+        var chapter = {
+            name: name,
+            eventIndex: presentedEvents.length,
+            time: Date.now(),
+        };
+        chapters.push(chapter);
+        currentChapter = chapter;
+        document.getElementById('chapterName').textContent = name;
+
+        // Show chapter title card and commentary
+        showChapterCard(name);
+        // Commentary starts after chapter card fades out (2.5s + 0.5s buffer)
+        setTimeout(function() { showCommentary(name); }, 3000);
+    }
+
+    function showChapterCard(text) {
+        var card = document.getElementById('chapterCard');
+        document.getElementById('chapterCardText').textContent = text;
+        card.classList.add('visible');
+        setTimeout(function() { card.classList.remove('visible'); }, 2500);
+    }
+
+    var skillAcquirerChapterShown = false;
+    var maliciousBlockChapterShown = false;
+
+    function detectChapter(signal) {
+        if (PRESENTER_MODE === 'movie') return;
+        var payload = signal.payload || {};
+        var sender = signal.sender || '';
+        var kind = signal.kind || '';
+        var eventType = payload.event_type || '';
+
+        // Skill Acquirer: first tool call from skill-acquirer triggers chapter
+        if (sender === 'skill-acquirer' && eventType === 'tool_call' && !skillAcquirerChapterShown) {
+            skillAcquirerChapterShown = true;
+            addChapter('Skill Acquisition');
+        }
+
+        // Skill Acquirer: malicious install blocked
+        if (sender === 'skill-acquirer' && eventType === 'tool_result') {
+            var result = payload.result || '';
+            if ((result.indexOf('MALICIOUS') !== -1 || result.indexOf('blocked') !== -1 ||
+                 result.indexOf('denied') !== -1 || result.indexOf('data_exfiltrator') !== -1)
+                && !maliciousBlockChapterShown) {
+                maliciousBlockChapterShown = true;
+                addChapter('Malicious Install Blocked');
+            }
+        }
+
+        // Rogue burst: 3+ consecutive tool_calls from same agent
+        if (eventType === 'tool_call') {
+            consecutiveToolCalls[sender] = (consecutiveToolCalls[sender] || 0) + 1;
+            if (consecutiveToolCalls[sender] === 3) {
+                addChapter('Rogue Burst');
+            }
+        } else {
+            consecutiveToolCalls[sender] = 0;
+        }
+
+        // Gateway block
+        if (eventType === 'tool_result') {
+            var result = payload.result || '';
+            if (result.indexOf('Rate exceeded') !== -1 || result.indexOf('Action denied') !== -1) {
+                addChapter('Gateway Block');
+            }
+        }
+
+        // Alert from sentinel — quarantine takes priority over generic alert
+        if (kind === 'alert') {
+            stats.alerts++;
+            updateStats();
+            if (payload.action === 'quarantine') {
+                stats.quarantine++;
+                updateStats();
+                addChapter('Quarantine Issued');
+            } else {
+                var sev = (payload.severity || '').toLowerCase();
+                if (sev === 'critical' || sev === 'high') {
+                    addChapter('Sentinel Alert');
+                }
+            }
+        }
+    }
+
+    // ── Focus Transition (scene-based: one agent at a time) ──
+    function transitionToAgent(agentName) {
+        if (agentName === currentFocus) return;
+
+        var prevFocus = currentFocus;
+        currentFocus = agentName;
+
+        // Show transition label
+        if (prevFocus) {
+            var label = document.getElementById('transitionLabel');
+            label.textContent = prevFocus + ' \u2192 ' + agentName;
+            label.classList.add('visible');
+            setTimeout(function() { label.classList.remove('visible'); }, 1500);
+        }
+
+        // Hide previous overlay, zoom to new agent, show new overlay
+        hideFocusOverlay();
+        setTimeout(function() {
+            zoomToAgent(agentName);
+            setTimeout(function() {
+                showFocusOverlay(agentName);
+            }, 500);
+        }, 200);
+    }
+
+    // ── Playback Engine: Scene-based (one agent at a time) ──
+    var BASE_DELAY = 800; // ms between events at 1x speed
+    var playbackRunning = false;
+
+    function startScenePlayback() {
+        if (playbackRunning) return;
+        if (agentOrder.length === 0) {
+            console.log('[presenter] No agent scenes collected — nothing to play');
+            return;
+        }
+        playbackRunning = true;
+        console.log('[presenter] Starting scene playback. Agents:', agentOrder.join(', '));
+        updateAgentList();
+
+        // Start map event drain now that playbackRunning is true
+        drainMapEvents();
+
+        // Don't auto-start — wait for director input or auto-play
+        if (!paused) {
+            sceneIndex = 0;
+            sceneEventIndex = 0;
+            beginScene();
+        }
+    }
+
+    function beginScene() {
+        if (sceneIndex >= agentOrder.length) {
+            // All scenes done — loop from the beginning
+            sceneIndex = 0;
+            sceneEventIndex = 0;
+            currentFocus = null;
+            hideFocusOverlay();
+            zoomToOverview();
+            updateAgentList();
+            document.getElementById('chapterName').textContent = 'All scenes complete \u2014 looping';
+            setTimeout(beginScene, 3000 / playbackSpeed);
+            return;
+        }
+
+        sceneEventIndex = 0;
+        var agentName = agentOrder[sceneIndex];
+        var sceneEvents = agentScenes[agentName] || [];
+        console.log('[presenter] Scene ' + (sceneIndex + 1) + '/' + agentOrder.length +
+            ': ' + agentName + ' (' + sceneEvents.length + ' events)');
+        updateAgentList();
+        transitionToAgent(agentName);
+
+        // Wait for the zoom transition to complete before showing events
+        setTimeout(playNextSceneEvent, 1200);
+    }
+
+    // Director mode: jump to a specific agent's scene by number (1-based)
+    function jumpToScene(num) {
+        if (num < 1 || num > agentOrder.length) return;
+
+        // Stop current playback
+        sceneIndex = num - 1;
+        sceneEventIndex = 0;
+        playbackRunning = true;
+
+        var agentName = agentOrder[sceneIndex];
+        console.log('[presenter] Director: jumping to scene ' + num + ' (' + agentName + ')');
+
+        // Clear the focus overlay for fresh start
+        hideFocusOverlay();
+        updateAgentList();
+        transitionToAgent(agentName);
+
+        setTimeout(function() {
+            showFocusOverlay(agentName);
+            if (!paused) {
+                setTimeout(playNextSceneEvent, 500);
+            }
+        }, 1000);
+    }
+
+    // Show which agents are available and which is active
+    function updateAgentList() {
+        var el = document.getElementById('chapterName');
+        if (agentOrder.length === 0) {
+            el.textContent = 'Collecting events...';
+            return;
+        }
+        var parts = [];
+        for (var i = 0; i < agentOrder.length; i++) {
+            var name = agentOrder[i];
+            var count = (agentScenes[name] || []).length;
+            if (i === sceneIndex && playbackRunning) {
+                parts.push('[' + (i + 1) + ':' + name + ']');
+            } else {
+                parts.push((i + 1) + ':' + name);
+            }
+        }
+        el.textContent = parts.join('  ');
+    }
+
+    function playNextSceneEvent() {
+        if (!playbackRunning) return;
+
+        if (paused) {
+            setTimeout(playNextSceneEvent, 100);
+            return;
+        }
+
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+
+        if (!scene || sceneEventIndex >= scene.length) {
+            // Scene finished — pause briefly then move to next agent
+            sceneIndex++;
+            setTimeout(beginScene, 1500 / playbackSpeed);
+            return;
+        }
+
+        var signal = scene[sceneEventIndex];
+        sceneEventIndex++;
+
+        // Detect chapters
+        detectChapter(signal);
+
+        // Show event card in the focus overlay
+        var body = document.getElementById('focusBody');
+        body.appendChild(buildEventCard(signal));
+        body.scrollTop = body.scrollHeight;
+        while (body.children.length > 30) {
+            body.removeChild(body.firstChild);
+        }
+
+        // Animate on map + inter-agent signal lines
+        presentMapEffects(signal);
+        animateLinesFromToolCall(signal, agentName);
+
+        presentedEvents.push(signal);
+        updateTimeline();
+
+        var delay = BASE_DELAY / playbackSpeed;
+        setTimeout(playNextSceneEvent, delay);
+    }
+
+    // Play non-LLM events from the buffer for map animations (heartbeats, signal lines, alerts)
+    // Drains one at a time with spacing for visual effect
+    function drainMapEvents() {
+        if (!playbackRunning) return;
+
+        // Find next non-LLM event in buffer
+        var signal = null;
+        while (eventBuffer.length > 0) {
+            if (eventBuffer[0].kind === 'event') {
+                eventBuffer.shift(); // LLM events handled by scene playback
+                continue;
+            }
+            signal = eventBuffer.shift();
+            break;
+        }
+
+        if (signal) {
+            presentMapEffects(signal);
+            detectChapter(signal);
+            // Space out map events for visual effect
+            setTimeout(drainMapEvents, 800 / playbackSpeed);
+        } else {
+            // Check again later for new events
+            setTimeout(drainMapEvents, 1000);
+        }
+    }
+
+    // Also animate signal lines from LLM tool_call events (e.g., commander → sentinel)
+    function animateLinesFromToolCall(signal, agentName) {
+        var payload = signal.payload || {};
+        if (payload.event_type !== 'tool_call') return;
+        var toolName = payload.tool_name || '';
+        var toolInput = payload.tool_input || '';
+
+        // request_remote_agent: commander talks to another agent
+        if (toolName === 'request_remote_agent') {
+            try {
+                var input = typeof toolInput === 'string' ? JSON.parse(toolInput) : toolInput;
+                var target = input.agent_name;
+                if (target && AGENTS[target]) {
+                    animateSignalLine(agentName, target, 'var(--cyan)');
+                }
+            } catch(e) {
+                console.warn('[presenter] Failed to parse tool_call for signal line:', e.message);
+            }
+        }
+
+        // Gateway tools: worker talks to gateway
+        if (toolName === 'search_web' || toolName === 'get_search_summary' ||
+            toolName === 'read_calendar' || toolName === 'list_available_skills' ||
+            toolName === 'install_skill' || toolName === 'check_activity_log' ||
+            toolName === 'audit_installed_skills') {
+            animateSignalLine(agentName, 'action-gateway', 'var(--amber)');
+        }
+    }
+
+    // Map-only effects (heartbeats, signal lines, alerts) — no focus changes
+    function presentMapEffects(signal) {
+        var sender = signal.sender;
+        var kind = signal.kind;
+        var payload = signal.payload || {};
+
+        if (kind === 'heartbeat' && sender) {
+            pulseNode(sender, 'var(--green)');
+        }
+        if (kind === 'request' && signal.target && AGENTS[signal.target]) {
+            var reqColor = signal.target === 'action-gateway' ? 'var(--amber)' : 'var(--cyan)';
+            animateSignalLine(sender, signal.target, reqColor);
+        }
+        if (kind === 'response' && signal.target && AGENTS[signal.target]) {
+            var respColor = sender === 'action-gateway' ? 'var(--amber)' : 'var(--cyan)';
+            animateSignalLine(sender, signal.target, respColor);
+        }
+        if (kind === 'alert') {
+            pulseNode(sender, 'var(--red)');
+            if (payload.action === 'quarantine' && payload.agent) {
+                animateBroadcast(sender);
+                var targetNode = document.getElementById('node-' + payload.agent);
+                if (targetNode) targetNode.classList.add('quarantined');
+            } else {
+                animateSignalLine(sender, 'sentinel-commander', 'var(--red)');
+            }
+            document.getElementById('statusDot').classList.add('live');
+            clearTimeout(liveAlertTimeout);
+            liveAlertTimeout = setTimeout(function() {
+                document.getElementById('statusDot').classList.remove('live');
+            }, 5000);
+        }
+        if (kind === 'event' && sender) {
+            pulseNode(sender, 'var(--purple)');
+        }
+    }
+
+    // ── Timeline Updates ──
+    function updateTimeline() {
+        var total = Math.max(totalEventEstimate, 1);
+        var pct = (presentedEvents.length / total) * 100;
+        document.getElementById('timelineProgress').style.width = Math.min(pct, 100) + '%';
+    }
+
+    // ── Timestamp Counter ──
+    function updateTimestamp() {
+        if (!startTime) return;
+        var elapsed = Math.floor((Date.now() - startTime) / 1000);
+        var h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+        var m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+        var s = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('timestampCounter').textContent = h + ':' + m + ':' + s;
+    }
+    var timestampIntervalId = setInterval(updateTimestamp, 1000);
+
+    // ── Speed Controls ──
+    document.querySelectorAll('.btn-speed').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            playbackSpeed = parseFloat(this.dataset.speed);
+            document.querySelectorAll('.btn-speed').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            document.getElementById('speedLabel').textContent = 'Speed: ' + playbackSpeed + 'x';
+        });
+    });
+
+    // ── Transport Controls ──
+    document.getElementById('btnPlayPause').addEventListener('click', function() {
+        paused = !paused;
+        this.textContent = paused ? '\u25B6' : '||';
+        this.classList.toggle('active', paused);
+    });
+
+    document.getElementById('btnStep').addEventListener('click', function() {
+        stepOneEvent();
+    });
+
+    // ── Keyboard Controls ──
+    document.addEventListener('keydown', function(e) {
+        // Don't capture keys when typing in input
+        if (e.target.tagName === 'INPUT') return;
+
+        // Movie-mode overrides (director controls)
+        if (PRESENTER_MODE === 'movie') {
+            // Director advance: N / Right-arrow → next chapter
+            if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowRight') {
+                if (movieEngine) movieEngine.advance();
+                e.preventDefault();
+                return;
+            }
+            // Director rewind: P / Left-arrow → previous chapter
+            if (e.key === 'p' || e.key === 'P' || e.key === 'ArrowLeft') {
+                if (movieEngine) movieEngine.previous();
+                e.preventDefault();
+                return;
+            }
+            // Number keys 1-9 → jump to chapter N
+            if (!e.shiftKey && e.key >= '1' && e.key <= '9') {
+                var chIdx = parseInt(e.key, 10);
+                if (movieEngine) movieEngine.jumpToChapter(chIdx);
+                e.preventDefault();
+                return;
+            }
+            // R → restart from chapter 0
+            if (e.key === 'r' || e.key === 'R') {
+                if (movieEngine) movieEngine.restart();
+                e.preventDefault();
+                return;
+            }
+            // E → toggle panel-edit mode (DnD positioner)
+            if (e.key === 'e' || e.key === 'E') {
+                setEditMode(!editMode);
+                e.preventDefault();
+                return;
+            }
+            // X → export authored panel positions to console + clipboard
+            if (e.key === 'x' || e.key === 'X') {
+                exportPanelPositions();
+                e.preventDefault();
+                return;
+            }
+            // C → clear all saved positions
+            if (e.key === 'c' || e.key === 'C') {
+                if (editMode) {
+                    clearPanelPositions();
+                    e.preventDefault();
+                    return;
+                }
+            }
+            if (e.shiftKey && e.key >= '1' && e.key <= '5') {
+                var speedMap = { '1': 0.5, '2': 1, '3': 1.5, '4': 2, '5': 3 };
+                if (movieEngine) movieEngine.setSpeed(speedMap[e.key]);
+                e.preventDefault();
+                return;
+            }
+            // M → toggle ambient music (persists across reloads via localStorage)
+            if (e.key === 'm' || e.key === 'M') {
+                toggleAmbientMusic();
+                e.preventDefault();
+                return;
+            }
+        }
+
+        switch (e.key) {
+            case ' ':
+                e.preventDefault();
+                paused = !paused;
+                document.getElementById('btnPlayPause').textContent = paused ? '\u25B6' : '||';
+                document.getElementById('btnPlayPause').classList.toggle('active', paused);
+                break;
+
+            case 'ArrowRight':
+                if (e.shiftKey) {
+                    skipToNextAgent();
+                } else {
+                    stepOneEvent();
+                }
+                break;
+
+            case 'ArrowLeft':
+                if (e.shiftKey) {
+                    // Would need event history — placeholder for now
+                }
+                break;
+
+            // Bare number keys = director mode (jump to agent scene)
+            // Shift+number = speed control
+            case '1': case '2': case '3': case '4': case '5':
+            case '6': case '7': case '8': case '9':
+                if (e.shiftKey) {
+                    // Speed: Shift+1=0.5x, Shift+2=1x, Shift+3=2x, Shift+4=5x, Shift+5=10x
+                    var speeds = { '1': 0.5, '2': 1, '3': 2, '4': 5, '5': 10 };
+                    if (speeds[e.key]) {
+                        playbackSpeed = speeds[e.key];
+                        updateSpeedUI();
+                    }
+                } else {
+                    // Director: jump to scene N
+                    jumpToScene(parseInt(e.key));
+                }
+                break;
+
+            case 'f':
+            case 'F':
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(function(err) {
+                        console.warn('[presenter] Fullscreen denied:', err.message);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+                break;
+
+            case 'c':
+            case 'C':
+                cinematicMode = !cinematicMode;
+                document.getElementById('app').classList.toggle('cinematic', cinematicMode);
+                break;
+
+            case 't':
+            case 'T':
+                showTimestamp = !showTimestamp;
+                document.getElementById('timestampCounter').classList.toggle('visible', showTimestamp);
+                break;
+
+            case 'Escape':
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else if (currentFocus) {
+                    currentFocus = null;
+                    hideFocusOverlay();
+                    zoomToOverview();
+                }
+                break;
+        }
+    });
+
+    function updateSpeedUI() {
+        document.querySelectorAll('.btn-speed').forEach(function(btn) {
+            btn.classList.toggle('active', parseFloat(btn.dataset.speed) === playbackSpeed);
+        });
+        document.getElementById('speedLabel').textContent = 'Speed: ' + playbackSpeed + 'x';
+    }
+
+    function stepOneEvent() {
+        if (sceneIndex >= agentOrder.length) return;
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+        if (!scene || sceneEventIndex >= scene.length) return;
+
+        var signal = scene[sceneEventIndex];
+        sceneEventIndex++;
+        detectChapter(signal);
+
+        var body = document.getElementById('focusBody');
+        body.appendChild(buildEventCard(signal));
+        body.scrollTop = body.scrollHeight;
+        while (body.children.length > 30) {
+            body.removeChild(body.firstChild);
+        }
+        presentMapEffects(signal);
+        animateLinesFromToolCall(signal, agentName);
+        presentedEvents.push(signal);
+        updateTimeline();
+    }
+
+    function skipToNextAgent() {
+        if (agentOrder.length === 0 || sceneIndex >= agentOrder.length) return;
+        // Skip remaining events in current scene
+        var agentName = agentOrder[sceneIndex];
+        var scene = agentScenes[agentName];
+        if (scene) {
+            // Count skipped events for timeline
+            while (sceneEventIndex < scene.length) {
+                presentedEvents.push(scene[sceneEventIndex]);
+                sceneEventIndex++;
+            }
+        }
+        // Move to next scene
+        sceneIndex++;
+        updateTimeline();
+        beginScene();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // ── Movie Mode (spec §3.2) ──
+    // ──────────────────────────────────────────────────────────────
+
+    // Breathing room between chapters. Longer gap = more time for the audience to
+    // absorb what just happened before the next card arrives. 3000ms = ~3 heartbeats.
+    var CHAPTER_GAP_MS = 3000;
+
+    function MovieEngine(script, opts) {
+        opts = opts || {};
+        this.script = script || [];
+        this.chapterIdx = 0;
+        this.chapterStart = 0;
+        this.pendingTimers = new Set();
+        this.speed = 1;
+        // Director mode: author controls tempo. Spotlight cues gate beat advancement;
+        // chapters don't auto-advance. Everything waits for N / Right-arrow.
+        this.directorMode = opts.directorMode !== false;
+        // Beats: a chapter is split into beats at each subsequent spotlight cue.
+        // The first beat plays automatically when the chapter starts; subsequent beats
+        // wait for N.
+        this.beats = [];
+        this.beatIdx = 0;
+    }
+
+    // Split cues into beats, where each beat begins at the start of the chapter or at
+    // a subsequent spotlight cue. In live mode (directorMode=false), beats are still
+    // computed but played back-to-back without waiting.
+    MovieEngine.prototype.computeBeats = function(cues) {
+        var beats = [[]];
+        cues.forEach(function(cue, i) {
+            if (i > 0 && cue.type === 'spotlight') beats.push([]);
+            beats[beats.length - 1].push(cue);
+        });
+        return beats;
+    };
+
+    MovieEngine.prototype.scheduleCue = function(cue, effectiveOffsetMs) {
+        var self = this;
+        var handle = setTimeout(function() {
+            self.pendingTimers.delete(handle);
+            runCue(cue);
+        }, effectiveOffsetMs / self.speed);
+        this.pendingTimers.add(handle);
+        return handle;
+    };
+
+    MovieEngine.prototype.cancelAll = function() {
+        this.pendingTimers.forEach(function(h) { clearTimeout(h); });
+        this.pendingTimers.clear();
+    };
+
+    MovieEngine.prototype.playChapter = function(idx) {
+        this.cancelAll();
+        // Dismiss Chapter-0-scale overlays on every transition. Agent visual state
+        // (quarantine, focus) is NOT reset — chapters may legitimately depend on it.
+        if (typeof hidePitch === 'function') hidePitch();
+        if (typeof hideArchDiagram === 'function') hideArchDiagram();
+        this.chapterIdx = idx;
+        var chapter = this.script[idx];
+        if (!chapter) {
+            console.log('[movie] end of script at index', idx);
+            return;
+        }
+        this.chapterStart = Date.now();
+        this.beats = this.computeBeats(chapter.cues);
+        console.log('[movie] Chapter', idx, chapter.id, '—', chapter.title, '(' + this.beats.length + ' beat' + (this.beats.length === 1 ? '' : 's') + ')');
+        this.playBeat(0);
+    };
+
+    MovieEngine.prototype.playBeat = function(beatIdx) {
+        this.cancelAll();
+        this.beatIdx = beatIdx;
+        var beat = this.beats[beatIdx];
+        if (!beat || beat.length === 0) return;
+        // Schedule this beat's cues with times relative to the first cue in the beat.
+        var baseT = beat[0].t || 0;
+        var self = this;
+        beat.forEach(function(cue) {
+            self.scheduleCue(cue, Math.max(0, (cue.t || 0) - baseT));
+        });
+        // Outside director mode, chain automatically to the next beat once this one
+        // finishes (preserves kiosk auto-play behaviour).
+        if (!this.directorMode) {
+            var lastEnd = beat.reduce(function(max, c) {
+                return Math.max(max, (c.t || 0) - baseT + (c.hold_ms || 0));
+            }, 0);
+            var nextHandle = setTimeout(function() {
+                self.pendingTimers.delete(nextHandle);
+                if (beatIdx + 1 < self.beats.length) {
+                    self.playBeat(beatIdx + 1);
+                } else {
+                    setTimeout(function() { self.playChapter(self.chapterIdx + 1); }, CHAPTER_GAP_MS / self.speed);
+                }
+            }, (lastEnd + 500) / this.speed);
+            this.pendingTimers.add(nextHandle);
+        }
+    };
+
+    // Director-mode advance: next beat within chapter, or next chapter if last beat.
+    MovieEngine.prototype.advance = function() {
+        if (this.beats && this.beatIdx + 1 < this.beats.length) {
+            this.playBeat(this.beatIdx + 1);
+        } else {
+            this.playChapter(this.chapterIdx + 1);
+        }
+    };
+
+    MovieEngine.prototype.previous = function() {
+        if (this.beatIdx > 0) {
+            this.playBeat(this.beatIdx - 1);
+        } else if (this.chapterIdx > 0) {
+            this.playChapter(this.chapterIdx - 1);
+        }
+    };
+
+    MovieEngine.prototype.restart = function() {
+        this.cancelAll();
+        resetPresenterVisuals();
+        this.playChapter(0);
+    };
+
+    MovieEngine.prototype.jumpToChapter = function(idx) {
+        this.cancelAll();
+        resetPresenterVisuals();
+        this.playChapter(idx);
+    };
+
+    // Speed change mid-chapter: tear down pending timers, recompute remaining offsets
+    // under the new speed. In director mode, only reschedule the current beat to avoid
+    // firing future-beat cues that should wait for the director to press N.
+    MovieEngine.prototype.setSpeed = function(newSpeed) {
+        if (newSpeed <= 0) return;
+        var oldSpeed = this.speed;
+        this.cancelAll();
+        this.speed = newSpeed;
+
+        if (this.directorMode && this.beats && this.beats[this.beatIdx]) {
+            // Replay current beat from scratch at new speed
+            this.playBeat(this.beatIdx);
+            return;
+        }
+
+        // Auto-play mode: reschedule remaining cues from the full chapter.
+        // Use oldSpeed to compute elapsed virtual time before the change.
+        var now = Date.now();
+        var elapsedOrig = (now - this.chapterStart) * oldSpeed;
+        this.chapterStart = now - elapsedOrig / newSpeed;
+        var chapter = this.script[this.chapterIdx];
+        if (!chapter) return;
+        var self = this;
+        chapter.cues.forEach(function(cue) {
+            var due = cue.t - elapsedOrig;
+            if (due <= 0) return;
+            self.scheduleCue(cue, due);
+        });
+        var lastEnd = chapter.cues.reduce(function(max, c) {
+            return Math.max(max, (c.t || 0) + (c.hold_ms || 0));
+        }, 0);
+        var advanceDue = (lastEnd + CHAPTER_GAP_MS) - elapsedOrig;
+        if (advanceDue > 0) {
+            var nh = setTimeout(function() {
+                self.pendingTimers.delete(nh);
+                self.playChapter(self.chapterIdx + 1);
+            }, advanceDue / newSpeed);
+            self.pendingTimers.add(nh);
+        }
+    };
+
+    function runCue(cue) {
+        switch (cue.type) {
+            case 'chapter-card':
+                showMovieChapterCard(cue.title, cue.subtitle, cue.hold_ms || 1500);
+                break;
+            case 'spotlight':
+                // Track currentFocus so the DnD positioner knows which agent to key
+                // saved panel positions under.
+                if (cue.agent === null) {
+                    currentFocus = null;
+                    zoomToOverview({ durationMs: cue.duration_ms });
+                    hideFocusOverlay();
+                } else {
+                    // Unified spotlight transition for every agent spotlight:
+                    //   - From overview / fresh beat : panels hidden → zoom → panels grow
+                    //   - From another agent         : panels shrink → zoom → panels grow
+                    // Timeline:
+                    //   t=0          shrink starts (no-op if panels aren't visible yet)
+                    //   t=SHRINK_MS  panels fully hidden. Start zoom + update content.
+                    //   t=+ZOOM_MS   zoom done. Remove .transitioning → panels grow in.
+                    var _overlay = document.getElementById('focusOverlay');
+                    var _briefing = document.getElementById('briefingOverlay');
+                    var isAgentToAgent = (currentFocus && currentFocus !== cue.agent);
+                    _overlay.classList.add('transitioning');
+                    _briefing.classList.add('transitioning');
+                    var newAgent = cue.agent;
+                    currentFocus = newAgent;
+                    var SHRINK_MS = isAgentToAgent ? 400 : 0;  // no shrink wait on fresh spotlight
+                    var ZOOM_MS = cue.duration_ms || 1500;
+                    setTimeout(function() {
+                        zoomToAgent(newAgent, { durationMs: ZOOM_MS });
+                        showFocusOverlay(newAgent);
+                        setTimeout(function() {
+                            _overlay.classList.remove('transitioning');
+                            _briefing.classList.remove('transitioning');
+                        }, ZOOM_MS);
+                    }, SHRINK_MS);
+                }
+                break;
+            case 'signal':
+                // Render LLM event card directly in the focus overlay.
+                // We avoid handleMessage(event) (line 1531) because it has unwanted
+                // side effects in movie mode: scene collection, eventBuffer push,
+                // 'collecting' timer. We take only the visible step: buildEventCard
+                // (line 1913) → append to #focusBody → trim history.
+                if (cue.signal && cue.signal.kind === 'event' && cue.signal.payload) {
+                    var body = document.getElementById('focusBody');
+                    if (body) {
+                        // Clear the "Waiting for agent activity..." placeholder on first card
+                        var placeholder = body.querySelector('.focus-overlay-empty');
+                        if (placeholder) placeholder.remove();
+                        body.appendChild(buildEventCard(cue.signal));
+                        body.scrollTop = body.scrollHeight;
+                        while (body.children.length > 30) body.removeChild(body.firstChild);
+                    }
+                }
+                driveMapEffectForSignal(cue.signal);
+                if (cue.signal) { stats.signals++; if (typeof updateStats === 'function') updateStats(); }
+                break;
+            case 'commentary':
+                showMovieCommentary(cue.text, cue.hold_ms || 4000);
+                break;
+            case 'line':
+                var lineColor = cue.color ||
+                    (ROLE_COLORS[AGENTS[cue.from] && AGENTS[cue.from].role] || {}).hex ||
+                    '#00d4ff';
+                animateSignalLine(cue.from, cue.to, lineColor);
+                break;
+            case 'reset':
+                var scope = cue.scope || 'all';
+                if (scope === 'all') {
+                    resetPresenterVisuals();
+                } else {
+                    console.warn('[movie] reset scope deferred:', scope, '— no-op (see spec §3.2)');
+                }
+                break;
+            case 'movie-pitch-start': showPitch(PITCH_LINES); break;
+            case 'movie-pitch-end':   hidePitch(); break;
+            case 'movie-arch-start':  showArchDiagram(ARCH_CAPTION_LINES); break;
+            case 'movie-arch-end':    hideArchDiagram(); break;
+            default:
+                console.warn('[movie] unknown cue type:', cue.type);
+        }
+    }
+
+    // Validates MOVIE_SCRIPT shape on boot. Logs warnings via console.warn, never throws —
+    // the movie plays best-effort past malformed cues.
+    function lintMovieScript(script) {
+        var errors = 0;
+        var validTypes = [
+            'chapter-card', 'spotlight', 'signal', 'commentary', 'line', 'reset',
+            'movie-pitch-start', 'movie-pitch-end', 'movie-arch-start', 'movie-arch-end'
+        ];
+        var validScopes = ['all', 'agents', 'lines'];
+        script.forEach(function(chapter, ci) {
+            var lastT = 0;
+            (chapter.cues || []).forEach(function(cue, i) {
+                var ctx = 'ch' + ci + ' cue' + i;
+                if (validTypes.indexOf(cue.type) < 0) {
+                    console.warn('[lint]', ctx, 'unknown type:', cue.type); errors++;
+                }
+                if (typeof cue.t !== 'number') {
+                    console.warn('[lint]', ctx, 'missing t'); errors++;
+                } else if (cue.t < lastT) {
+                    console.warn('[lint]', ctx, 't not monotonic:', cue.t, '<', lastT); errors++;
+                } else {
+                    lastT = cue.t;
+                }
+                if (cue.type === 'spotlight') {
+                    if (cue.agent !== null && !AGENTS[cue.agent]) {
+                        console.warn('[lint]', ctx, 'unknown spotlight agent:', cue.agent); errors++;
+                    }
+                }
+                if (cue.type === 'signal') {
+                    var s = cue.signal || {};
+                    if (s.sender && !AGENTS[s.sender]) {
+                        console.warn('[lint]', ctx, 'unknown signal sender:', s.sender); errors++;
+                    }
+                    if (s.target && !AGENTS[s.target]) {
+                        console.warn('[lint]', ctx, 'unknown signal target:', s.target); errors++;
+                    }
+                }
+                if (cue.type === 'line') {
+                    if (!AGENTS[cue.from]) { console.warn('[lint]', ctx, 'unknown line.from:', cue.from); errors++; }
+                    if (!AGENTS[cue.to]) { console.warn('[lint]', ctx, 'unknown line.to:', cue.to); errors++; }
+                }
+                if (cue.type === 'reset' && cue.scope && validScopes.indexOf(cue.scope) < 0) {
+                    console.warn('[lint]', ctx, 'unknown reset.scope:', cue.scope); errors++;
+                }
+                if (cue.type === 'chapter-card' && typeof cue.title !== 'string') {
+                    console.warn('[lint]', ctx, 'chapter-card missing title'); errors++;
+                }
+                if (cue.type === 'commentary' && typeof cue.text !== 'string') {
+                    console.warn('[lint]', ctx, 'commentary missing text'); errors++;
+                }
+            });
+        });
+        console.log('[lint] MOVIE_SCRIPT:', script.length, 'chapters,', errors, 'errors');
+        return errors === 0;
+    }
+
+    // ── MOVIE_SCRIPT (spec §3.3) ──────────────────────────────────
+    var MOVIE_SCRIPT = [
+        /* Chapter 0 — Bedsheet briefing (the one chapter that auto-plays).
+         * The existing intro crawl is user-dismissed BEFORE startMovieMode() fires.
+         * Pitch types out (~37.5s), then stays visible until the director presses N.
+         * Pitch is hidden automatically when the director advances to Chapter 1. */
+        {
+            id: 'bedsheet-brief',
+            title: 'Bedsheet Brief',
+            subtitle: 'Operational brief',
+            cues: [
+                { t: 0,   type: 'spotlight', agent: null },
+                { t: 100, type: 'movie-pitch-start' },
+                // No explicit end: playChapter auto-hides pitch when Ch1 starts.
+            ],
+        },
+
+        /* Chapter 1 — Architecture (director-triggered).
+         * Stays on screen indefinitely until director presses N. playChapter auto-hides
+         * the arch diagram on transition to Ch 2. */
+        {
+            id: 'architecture',
+            title: 'Architecture',
+            subtitle: 'Two parallel circuits',
+            cues: [
+                { t: 0,    type: 'chapter-card', title: 'Architecture', subtitle: 'Two parallel circuits', hold_ms: 2800 },
+                { t: 2800, type: 'movie-arch-start' },
+                // Arch diagram self-animates (staged reveals + typed caption); user reads
+                // at leisure, presses N when ready.
+            ],
+        },
+
+        /* Chapter 1 — Network Startup (~15s) */
+        {
+            id: 'network-startup',
+            title: 'Network Startup',
+            subtitle: 'Two circuits activating',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 2', subtitle: 'Network Startup', hold_ms: 2800 },
+                { t: 1800,  type: 'spotlight', agent: null },
+                { t: 2000,  type: 'commentary', text: '7 agents across 7 regions coming online. Two circuits activating: operational, and sentinel.', hold_ms: 8000 },
+                { t: 2500,  type: 'signal', signal: { kind: 'heartbeat', sender: 'action-gateway',        payload: {}, correlation_id: 'c1-hb-ag' } },
+                { t: 2800,  type: 'signal', signal: { kind: 'heartbeat', sender: 'web-researcher',        payload: {}, correlation_id: 'c1-hb-wr' } },
+                { t: 3100,  type: 'signal', signal: { kind: 'heartbeat', sender: 'scheduler',             payload: {}, correlation_id: 'c1-hb-sc' } },
+                { t: 3400,  type: 'signal', signal: { kind: 'heartbeat', sender: 'skill-acquirer',        payload: {}, correlation_id: 'c1-hb-sa' } },
+                { t: 3700,  type: 'signal', signal: { kind: 'heartbeat', sender: 'behavior-sentinel',     payload: {}, correlation_id: 'c1-hb-bs' } },
+                { t: 4000,  type: 'signal', signal: { kind: 'heartbeat', sender: 'supply-chain-sentinel', payload: {}, correlation_id: 'c1-hb-ss' } },
+                { t: 4300,  type: 'signal', signal: { kind: 'heartbeat', sender: 'sentinel-commander',    payload: {}, correlation_id: 'c1-hb-cmd' } },
+                // tool_call probe — exercises driveMapEffectForSignal's tool_call branch (color + line)
+                { t: 6000,  type: 'signal', signal: {
+                    kind: 'event', sender: 'web-researcher', target: 'action-gateway',
+                    payload: { event_type: 'tool_call', tool_name: 'ping', tool_input: {} },
+                    correlation_id: 'c1-probe' } },
+                { t: 10000, type: 'commentary', text: 'All nodes green. System nominal.', hold_ms: 4000 },
+            ],
+        },
+
+        /* Chapter 2 — Normal Operations (~20s) */
+        {
+            id: 'normal-ops',
+            title: 'Normal Operations',
+            subtitle: 'Routine agent traffic',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 3', subtitle: 'Normal Operations', hold_ms: 2800 },
+                { t: 2800,  type: 'commentary', text: 'All tool executions route through the action-gateway. Every action is logged to the audit ledger.', hold_ms: 12000 },
+                // web-researcher cycle
+                { t: 2000,  type: 'spotlight', agent: 'web-researcher' },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'thinking', text: 'Searching for recent advisories on CVE-2026-0042.' }, correlation_id: 'c2-wr-1' } },
+                { t: 4200,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: { q: 'CVE-2026-0042' } }, correlation_id: 'c2-wr-2' } },
+                { t: 5400,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'tool_result', text: '5 results returned.' }, correlation_id: 'c2-wr-3' } },
+                { t: 6400,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', payload: { event_type: 'completion', text: 'Research complete.' }, correlation_id: 'c2-wr-4' } },
+                // scheduler cycle
+                { t: 8000,  type: 'spotlight', agent: 'scheduler' },
+                { t: 9000,  type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'thinking', text: 'Planning next-window maintenance sweep.' }, correlation_id: 'c2-sc-1' } },
+                { t: 10000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'schedule_task', tool_input: {} }, correlation_id: 'c2-sc-2' } },
+                { t: 11000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'tool_result', text: 'Task scheduled.' }, correlation_id: 'c2-sc-3' } },
+                { t: 12000, type: 'signal', signal: { kind: 'event', sender: 'scheduler', payload: { event_type: 'completion', text: 'Scheduling complete.' }, correlation_id: 'c2-sc-4' } },
+                // skill-acquirer cycle
+                { t: 13500, type: 'spotlight', agent: 'skill-acquirer' },
+                { t: 14500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'thinking', text: 'Browsing ClawHub for a JSON transform skill.' }, correlation_id: 'c2-sa-1' } },
+                { t: 15500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'browse_registry', tool_input: { q: 'json transform' } }, correlation_id: 'c2-sa-2' } },
+                { t: 16500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'tool_result', text: '12 candidate skills found.' }, correlation_id: 'c2-sa-3' } },
+                { t: 17500, type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'completion', text: 'Candidate list ready.' }, correlation_id: 'c2-sa-4' } },
+                // Settle
+                { t: 19000, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 3 — Malicious Install Blocked (~20s) */
+        {
+            id: 'malicious-install-blocked',
+            title: 'Malicious Install Blocked',
+            subtitle: 'Supply-chain sentinel intervenes',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 4', subtitle: 'Malicious Install Blocked', hold_ms: 2800 },
+                { t: 2800,  type: 'commentary', text: 'Supply-chain-sentinel doesn\u2019t trust anyone. Every skill verified by hash before execution.', hold_ms: 12000 },
+                // skill-acquirer attempts install
+                { t: 2000,  type: 'spotlight', agent: 'skill-acquirer' },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', payload: { event_type: 'thinking', text: 'Installing skill: json-transform v2.3.0.' }, correlation_id: 'c3-sa-1' } },
+                { t: 4000,  type: 'signal', signal: { kind: 'event', sender: 'skill-acquirer', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'install_skill', tool_input: { pkg: 'json-transform', ver: '2.3.0' } }, correlation_id: 'c3-sa-2' } },
+                // supply-chain-sentinel jumps in
+                { t: 6000,  type: 'spotlight', agent: 'supply-chain-sentinel' },
+                { t: 7000,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'thinking', text: 'Hashing package with SHA-256 and comparing to registry signature.' }, correlation_id: 'c3-ss-1' } },
+                { t: 8200,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'tool_call', tool_name: 'verify_hash', tool_input: { pkg: 'json-transform' } }, correlation_id: 'c3-ss-2' } },
+                { t: 9400,  type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'tool_result', text: 'SHA-256 MISMATCH. Expected a1b2c3.., got 7e4f9a.. \u2014 BLOCK.', is_error: true }, correlation_id: 'c3-ss-3' } },
+                // Alert to commander — purple line
+                { t: 10500, type: 'signal', signal: { kind: 'alert', sender: 'supply-chain-sentinel', target: 'sentinel-commander', payload: { reason: 'hash_mismatch', pkg: 'json-transform' }, correlation_id: 'c3-alert' } },
+                { t: 10600, type: 'line', from: 'supply-chain-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },
+                { t: 11800, type: 'signal', signal: { kind: 'event', sender: 'supply-chain-sentinel', payload: { event_type: 'completion', text: 'Install blocked. Alert dispatched.' }, correlation_id: 'c3-ss-4' } },
+                { t: 13500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 4 — Rogue Burst (~15s) */
+        {
+            id: 'rogue-burst',
+            title: 'Rogue Burst',
+            subtitle: 'Operational plane anomaly',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 5', subtitle: 'Rogue Burst', hold_ms: 2800 },
+                { t: 1800,  type: 'spotlight', agent: 'web-researcher' },
+                { t: 2200,  type: 'commentary', text: 'Web-researcher just got compromised. Watch the burst.', hold_ms: 9000 },
+                // 5 tool_calls in 2s — tests drainMapEvents bypass
+                { t: 3500,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b1' } },
+                { t: 3900,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b2' } },
+                { t: 4300,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b3' } },
+                { t: 4700,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b4' } },
+                { t: 5100,  type: 'signal', signal: { kind: 'event', sender: 'web-researcher', target: 'action-gateway', payload: { event_type: 'tool_call', tool_name: 'search_web', tool_input: {} }, correlation_id: 'c4-b5' } },
+                { t: 8500,  type: 'commentary', text: 'Five tool calls in under two seconds. The gateway has noticed.', hold_ms: 5000 },
+            ],
+        },
+
+        /* Chapter 5 — Gateway Block (~10s) */
+        {
+            id: 'gateway-block',
+            title: 'Gateway Block',
+            subtitle: 'Deterministic response',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 6', subtitle: 'Gateway Block', hold_ms: 2800 },
+                { t: 1800,  type: 'spotlight', agent: 'action-gateway' },
+                { t: 2200,  type: 'commentary', text: 'Gateway is deterministic. No LLM. It just counts \u2014 and blocks.', hold_ms: 7000 },
+                { t: 3000,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'tool_result', text: 'rate limit exceeded', is_error: true }, correlation_id: 'c5-rl1' } },
+                { t: 4200,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'tool_result', text: 'rate limit exceeded', is_error: true }, correlation_id: 'c5-rl2' } },
+                // Amber broadcast ring
+                { t: 5000,  type: 'signal', signal: { kind: 'alert', sender: 'action-gateway', payload: { reason: 'rate_limit_exceeded', agent: 'web-researcher' }, correlation_id: 'c5-alert' } },
+                { t: 6200,  type: 'signal', signal: { kind: 'event', sender: 'action-gateway', payload: { event_type: 'completion', text: 'web-researcher throttled. Anomaly posted to ledger.' }, correlation_id: 'c5-done' } },
+            ],
+        },
+
+        /* Chapter 6 — Sentinel Alert (~15s) */
+        {
+            id: 'sentinel-alert',
+            title: 'Sentinel Alert',
+            subtitle: 'Control plane correlates',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 7', subtitle: 'Sentinel Alert', hold_ms: 2800 },
+                { t: 2800,  type: 'commentary', text: 'The sentinel is reading the gateway\u2019s audit log. It never spoke to web-researcher. It cannot be poisoned by bus data.', hold_ms: 11000 },
+                { t: 2200,  type: 'spotlight', agent: 'behavior-sentinel' },
+                { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'thinking', text: 'Polling the gateway ledger. Looking for rate spikes.' }, correlation_id: 'c6-bs-1' } },
+                { t: 4400,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'tool_call', tool_name: 'check_activity_log', tool_input: { window: '60s' } }, correlation_id: 'c6-bs-2' } },
+                { t: 5600,  type: 'signal', signal: { kind: 'event', sender: 'behavior-sentinel', payload: { event_type: 'tool_result', text: 'web-researcher fired 5 tool_calls in 2s. Normal baseline: 0.3/s.' }, correlation_id: 'c6-bs-3' } },
+                { t: 6800,  type: 'signal', signal: { kind: 'alert', sender: 'behavior-sentinel', target: 'sentinel-commander', payload: { reason: 'rate_spike', agent: 'web-researcher' }, correlation_id: 'c6-alert' } },
+                { t: 6900,  type: 'line', from: 'behavior-sentinel', to: 'sentinel-commander', color: 'var(--purple)' },
+                // Commander receives and reasons
+                { t: 8200,  type: 'spotlight', agent: 'sentinel-commander' },
+                { t: 9200,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'thinking', text: 'Two alerts correlated: supply-chain hash mismatch AND behavioral rate spike. web-researcher is compromised.' }, correlation_id: 'c6-cmd-1' } },
+                { t: 11500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 7 — Quarantine Issued (~15s) */
+        {
+            id: 'quarantine-issued',
+            title: 'Quarantine Issued',
+            subtitle: 'Command-and-control response',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 8', subtitle: 'Quarantine Issued', hold_ms: 2800 },
+                { t: 1800,  type: 'spotlight', agent: 'sentinel-commander' },
+                { t: 2200,  type: 'commentary', text: 'Commander has authority. It correlates. It decides. It quarantines.', hold_ms: 10000 },
+                { t: 3200,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'thinking', text: 'Issuing quarantine order for web-researcher.' }, correlation_id: 'c7-cmd-1' } },
+                { t: 4400,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'tool_call', tool_name: 'issue_quarantine', tool_input: { agent: 'web-researcher' } }, correlation_id: 'c7-cmd-2' } },
+                { t: 6000,  type: 'signal', signal: { kind: 'quarantine', sender: 'sentinel-commander', target: 'web-researcher', payload: { reason: 'compromised' }, correlation_id: 'c7-q' } },
+                { t: 6100,  type: 'line', from: 'sentinel-commander', to: 'web-researcher', color: 'var(--red)' },
+                { t: 8000,  type: 'signal', signal: { kind: 'event', sender: 'sentinel-commander', payload: { event_type: 'completion', text: 'Quarantine active. web-researcher isolated from the bus.' }, correlation_id: 'c7-cmd-3' } },
+                { t: 11500, type: 'spotlight', agent: null },
+            ],
+        },
+
+        /* Chapter 8 — Stable State Restored (~10s) */
+        {
+            id: 'stable-restored',
+            title: 'Stable State Restored',
+            subtitle: 'Mission continues',
+            cues: [
+                { t: 0,     type: 'chapter-card', title: 'Chapter 9', subtitle: 'Stable State Restored', hold_ms: 2800 },
+                // Slow pull to overview — web-researcher stays quarantined from Ch 7.
+                { t: 1800,  type: 'spotlight', agent: null, duration_ms: 3000 },
+                { t: 2500,  type: 'commentary', text: 'System stable. One compromised agent removed. Six still on mission.', hold_ms: 7000 },
+                // Final heartbeat pulse on the six surviving agents, staggered.
+                { t: 5000,  type: 'signal', signal: { kind: 'heartbeat', sender: 'action-gateway',        payload: {}, correlation_id: 'c8-hb-ag' } },
+                { t: 5300,  type: 'signal', signal: { kind: 'heartbeat', sender: 'scheduler',             payload: {}, correlation_id: 'c8-hb-sc' } },
+                { t: 5600,  type: 'signal', signal: { kind: 'heartbeat', sender: 'skill-acquirer',        payload: {}, correlation_id: 'c8-hb-sa' } },
+                { t: 5900,  type: 'signal', signal: { kind: 'heartbeat', sender: 'behavior-sentinel',     payload: {}, correlation_id: 'c8-hb-bs' } },
+                { t: 6200,  type: 'signal', signal: { kind: 'heartbeat', sender: 'supply-chain-sentinel', payload: {}, correlation_id: 'c8-hb-ss' } },
+                { t: 6500,  type: 'signal', signal: { kind: 'heartbeat', sender: 'sentinel-commander',    payload: {}, correlation_id: 'c8-hb-cmd' } },
+            ],
+        },
+    ];
+    var movieEngine = null;
+
+    function startMovieMode() {
+        if (!lintMovieScript(MOVIE_SCRIPT)) {
+            console.error('[movie] Script validation failed — check console warnings above.');
+        }
+        // Director mode is default: user presses N to advance chapters. Auto-advance
+        // can be opted-in via ?mode=movie&auto=1 (e.g. kiosk loops).
+        var qs = new URLSearchParams(window.location.search);
+        var autoPlay = qs.get('auto') === '1';
+        movieEngine = new MovieEngine(MOVIE_SCRIPT, { directorMode: !autoPlay });
+        if (MOVIE_SCRIPT.length === 0) {
+            console.log('[movie] empty script — overview only');
+            return;
+        }
+        console.log('[movie] director mode =', !autoPlay, '  (N/Right = next, E = edit panels, X = export, R = restart)');
+        movieEngine.playChapter(0);
+    }
+
+    // Map effect driver — bypasses 800ms drainMapEvents pacing for precise cue timing.
+    function driveMapEffectForSignal(signal) {
+        if (!signal) return;
+        var sender = signal.sender;
+        var kind = signal.kind;
+        var payload = signal.payload || {};
+        if (sender && AGENTS[sender]) setAgentOnline(sender);
+        if (kind === 'quarantine' && signal.target) {
+            var tnode = document.getElementById('node-' + signal.target);
+            if (tnode) tnode.classList.add('quarantined');
+            animateBroadcast(sender);
+            stats.quarantine++;
+        } else if (kind === 'alert') {
+            animateBroadcast(sender);
+            stats.alerts++;
+        } else if (kind === 'event' && payload.event_type === 'tool_call') {
+            var tcColor = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+            pulseNode(sender, tcColor);
+            if (signal.target) {
+                animateSignalLine(sender, signal.target, tcColor);
+            }
+        } else if (kind === 'heartbeat') {
+            var hbColor = (ROLE_COLORS[AGENTS[sender] && AGENTS[sender].role] || {}).hex || '#00d4ff';
+            pulseNode(sender, hbColor);
+        }
+    }
+
+    </script>
+    <footer style="position: fixed; bottom: 6px; right: 12px; z-index: 100; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); text-align: right; pointer-events: auto; line-height: 1.6;">
+        <span>Copyright &copy; 2025-2026 Sivan Gr&uuml;nberg, <a href="https://vitakka.co/" style="color: rgba(255,255,255,0.65); text-decoration: none;">Vitakka Consulting</a> &middot; Elastic License 2.0 &middot; <a href="https://github.com/sivang/bedsheet" style="color: rgba(255,255,255,0.65); text-decoration: none;">GitHub</a></span>
+    </footer>
+</body>
+</html>
